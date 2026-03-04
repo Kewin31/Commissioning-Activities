@@ -26,7 +26,7 @@ def load_data():
         # Verificar se a pasta existe
         if not os.path.exists('Dados'):
             st.error(f"❌ Pasta 'Dados' não encontrada!")
-            st.write("Pastas disponíveis:")
+            st.write("Pastas disponíveis na raiz:")
             for item in os.listdir('.'):
                 if os.path.isdir(item):
                     st.write(f"📁 {item}")
@@ -43,6 +43,7 @@ def load_data():
         
         # Tentar diferentes encodings
         encodings = ['utf-8', 'utf-8-sig', 'latin1', 'iso-8859-1', 'cp1252']
+        df = None
         
         for encoding in encodings:
             try:
@@ -50,6 +51,9 @@ def load_data():
                 st.success(f"✅ Arquivo carregado com encoding: {encoding}")
                 break
             except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                st.error(f"Erro com encoding {encoding}: {str(e)}")
                 continue
         
         if df is None:
@@ -75,7 +79,7 @@ def load_data():
 df = load_data()
 
 # Se carregou com sucesso, mostrar o dashboard
-if df is not None:
+if df is not None and not df.empty:
     st.success("✅ Dados carregados com sucesso!")
     st.write(f"Total de registros: {len(df)}")
     
@@ -108,23 +112,56 @@ if df is not None:
         (df['Status'].isin(status_opcoes))
     ]
     
-    # Métricas
-    col1, col2, col3 = st.columns(3)
+    # Métricas principais
+    st.subheader("📊 Visão Geral")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
     with col1:
         st.metric("Total de Equipamentos", len(df_filtrado))
     with col2:
         st.metric("EMT", len(df_filtrado[df_filtrado['Empresa'] == 'EMT']))
     with col3:
         st.metric("ETO", len(df_filtrado[df_filtrado['Empresa'] == 'ETO']))
+    with col4:
+        qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
+        st.metric("Desenvolvidos", qtd_desenvolvidos)
+    with col5:
+        qtd_pendentes = len(df_filtrado[df_filtrado['Status'] != 'Desenvolvido'])
+        st.metric("Pendentes", qtd_pendentes)
     
-    # Tabela
-    st.subheader("📋 Registros")
+    # Gráficos
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Gráfico de pizza por Status
+        status_counts = df_filtrado['Status'].value_counts().reset_index()
+        status_counts.columns = ['Status', 'Quantidade']
+        fig_status = px.pie(status_counts, values='Quantidade', names='Status', 
+                           title='Distribuição por Status')
+        st.plotly_chart(fig_status, use_container_width=True)
+    
+    with col2:
+        # Gráfico de barras por Tipo
+        tipo_counts = df_filtrado['Tipo Equipamento'].value_counts().reset_index()
+        tipo_counts.columns = ['Tipo Equipamento', 'Quantidade']
+        fig_tipo = px.bar(tipo_counts, x='Tipo Equipamento', y='Quantidade',
+                         title='Distribuição por Tipo de Equipamento')
+        st.plotly_chart(fig_tipo, use_container_width=True)
+    
+    # Tabela detalhada
+    st.subheader("📋 Detalhamento dos Registros")
     st.dataframe(
         df_filtrado[['Cód. Equipamento', 'Chamado Desenvolvimento', 'Tipo Equipamento', 
-                    'Responsável Desenvolvimento', 'Status', 'Empresa']],
+                    'Responsável Desenvolvimento', 'Status', 'Empresa', 'Criado']],
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        column_config={
+            "Criado": st.column_config.DatetimeColumn("Criado", format="DD/MM/YYYY HH:mm")
+        }
     )
     
 else:
-    st.warning("⚠️ Não foi possível carregar os dados. Verifique se o arquivo CSV está na pasta '.Dados'.")
+    st.warning("⚠️ Não foi possível carregar os dados. Verifique se:")
+    st.warning("1. A pasta 'Dados' existe no repositório")
+    st.warning("2. O arquivo 'Comissionamento AD - UNs.csv' está dentro da pasta 'Dados'")
+    st.warning("3. O arquivo não está corrompido")
