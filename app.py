@@ -18,14 +18,14 @@ st.title("⚡ Dashboard de Acompanhamento de Comissionamento")
 @st.cache_data
 def load_data():
     try:
-        # Caminho correto para o arquivo na pasta .Dados
-        caminho_arquivo = os.path.join('.Dados', 'Comissionamento AD - UNs.csv')
+        # Caminho correto para o arquivo na pasta Dados
+        caminho_arquivo = os.path.join('Dados', 'Comissionamento AD - UNs.csv')
         
         st.write(f"🔍 Procurando arquivo em: {caminho_arquivo}")
         
         # Verificar se a pasta existe
-        if not os.path.exists('.Dados'):
-            st.error(f"❌ Pasta '.Dados' não encontrada!")
+        if not os.path.exists('Dados'):
+            st.error(f"❌ Pasta 'Dados' não encontrada!")
             st.write("Pastas disponíveis:")
             for item in os.listdir('.'):
                 if os.path.isdir(item):
@@ -35,9 +35,9 @@ def load_data():
         # Verificar se o arquivo existe
         if not os.path.exists(caminho_arquivo):
             st.error(f"❌ Arquivo não encontrado em: {caminho_arquivo}")
-            st.write(f"Arquivos na pasta '.Dados':")
-            if os.path.exists('.Dados'):
-                for arquivo in os.listdir('.Dados'):
+            st.write(f"Arquivos na pasta 'Dados':")
+            if os.path.exists('Dados'):
+                for arquivo in os.listdir('Dados'):
                     st.write(f"📄 {arquivo}")
             return None
         
