@@ -6,6 +6,11 @@ from datetime import datetime
 import numpy as np
 import os
 import io
+import requests
+import base64
+from github import Github
+from github import GithubException
+import tempfile
 
 # Configuração da página
 st.set_page_config(
@@ -14,6 +19,88 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================
+# CONFIGURAÇÕES DO GITHUB
+# ============================================
+# IMPORTANTE: Configure estas variáveis no Streamlit Secrets
+# No Streamlit Cloud, adicione em Settings -> Secrets:
+# GITHUB_TOKEN = "seu_token_aqui"
+# GITHUB_REPO = "usuario/repositorio"  # Ex: "kewinferreira/dashboard-comissionamento"
+# GITHUB_FILE_PATH = "data/Dados/Comissionamento AD - UNs.csv"
+
+def get_github_config():
+    """Obtém configurações do GitHub do Streamlit Secrets"""
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+        repo = st.secrets["GITHUB_REPO"]
+        file_path = st.secrets.get("GITHUB_FILE_PATH", "data/Dados/Comissionamento AD - UNs.csv")
+        return token, repo, file_path
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar configurações do GitHub: {str(e)}")
+        return None, None, None
+
+def atualizar_dados_github(arquivo_upload):
+    """Atualiza o arquivo no GitHub com o novo arquivo enviado"""
+    try:
+        token, repo_name, file_path = get_github_config()
+        
+        if not token or not repo_name:
+            st.error("Configurações do GitHub não encontradas. Configure o Streamlit Secrets.")
+            return False
+        
+        # Conectar ao GitHub
+        g = Github(token)
+        repo = g.get_repo(repo_name)
+        
+        # Ler o conteúdo do arquivo enviado
+        file_content = arquivo_upload.read()
+        
+        # Verificar se o arquivo já existe no repositório
+        try:
+            contents = repo.get_contents(file_path)
+            # Atualizar arquivo existente
+            repo.update_file(
+                path=file_path,
+                message=f"Atualização automática - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                content=file_content,
+                sha=contents.sha
+            )
+            st.success("✅ Arquivo atualizado com sucesso no GitHub!")
+        except GithubException as e:
+            if e.status == 404:
+                # Criar novo arquivo
+                repo.create_file(
+                    path=file_path,
+                    message=f"Criação inicial - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                    content=file_content
+                )
+                st.success("✅ Arquivo criado com sucesso no GitHub!")
+            else:
+                raise e
+        
+        # Limpar cache para carregar novos dados
+        st.cache_data.clear()
+        return True
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao atualizar GitHub: {str(e)}")
+        return False
+
+def get_logo_base64():
+    """Converte a logo para base64 para exibição"""
+    try:
+        # Primeiro, tenta carregar do arquivo local
+        logo_path = "Selo120_Azul_GIF_FundoTransparente novo.gif"
+        if os.path.exists(logo_path):
+            with open(logo_path, "rb") as f:
+                logo_bytes = f.read()
+            return base64.b64encode(logo_bytes).decode()
+    except:
+        pass
+    
+    # Se não encontrar, retorna None
+    return None
 
 # CSS personalizado para estilo corporativo
 st.markdown("""
@@ -107,6 +194,14 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(30,60,114,0.3);
     }
     
+    /* Botão de atualização especial */
+    .update-button > button {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    .update-button > button:hover {
+        background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+    }
+    
     /* Expanders */
     .streamlit-expanderHeader {
         background-color: white;
@@ -130,6 +225,17 @@ st.markdown("""
         font-weight: 500;
     }
     
+    /* Logo container */
+    .logo-container {
+        background: white;
+        padding: 0.5rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
     /* Rodapé */
     .footer {
         background: white;
@@ -141,9 +247,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Função para criar cards de métrica - VERSÃO CORRIGIDA
+# Função para criar cards de métrica
 def metric_card(title, value, subtitle=None, icon="📊", color="#1e3c72", delta=None):
-    # Garantir que value seja string
     if isinstance(value, (int, float)):
         value_str = f"{value:,.0f}".replace(",", ".")
     else:
@@ -219,31 +324,73 @@ def configurar_grafico_corporativo(fig, titulo, height=400):
     return fig
 
 # Função para carregar os dados
-@st.cache_data
+@st.cache_data(ttl=3600)  # Cache expira após 1 hora
 def load_data():
     try:
-        # Caminho do arquivo
-        caminho_arquivo = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
+        # Tenta carregar do GitHub primeiro
+        token, repo_name, file_path = get_github_config()
         
-        # Verificar se arquivo existe
-        if not os.path.exists(caminho_arquivo):
-            st.warning(f"Arquivo não encontrado: {caminho_arquivo}")
-            # Criar dados de exemplo para demonstração
-            dados_exemplo = {
-                'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 51)],
-                'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1051)],
-                'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 50),
-                'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 50),
-                'Responsável Auditoria': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 50),
-                'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 50, p=[0.4, 0.35, 0.25]),
-                'Empresa': np.random.choice(['EMT', 'ETO'], 50),
-                'Criado': pd.date_range(start='2024-01-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M'),
-                'Modificado': pd.date_range(start='2024-02-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M')
-            }
-            df = pd.DataFrame(dados_exemplo)
+        if token and repo_name:
+            try:
+                g = Github(token)
+                repo = g.get_repo(repo_name)
+                contents = repo.get_contents(file_path)
+                
+                # Decodificar conteúdo
+                import base64
+                file_content = base64.b64decode(contents.content).decode('utf-8')
+                
+                # Salvar temporariamente para ler com pandas
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+                    f.write(file_content)
+                    temp_file = f.name
+                
+                df = pd.read_csv(temp_file, encoding='utf-8-sig')
+                os.unlink(temp_file)  # Limpar arquivo temporário
+                
+                st.success("✅ Dados carregados do GitHub!")
+                
+            except Exception as e:
+                st.warning(f"⚠️ Erro ao carregar do GitHub: {str(e)}. Tentando arquivo local...")
+                # Fallback para arquivo local
+                caminho_arquivo = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
+                
+                if not os.path.exists(caminho_arquivo):
+                    # Criar dados de exemplo
+                    dados_exemplo = {
+                        'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 51)],
+                        'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1051)],
+                        'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 50),
+                        'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 50),
+                        'Responsável Auditoria': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 50),
+                        'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 50, p=[0.4, 0.35, 0.25]),
+                        'Empresa': np.random.choice(['EMT', 'ETO'], 50),
+                        'Criado': pd.date_range(start='2024-01-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M'),
+                        'Modificado': pd.date_range(start='2024-02-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M')
+                    }
+                    df = pd.DataFrame(dados_exemplo)
+                else:
+                    df = pd.read_csv(caminho_arquivo, encoding='utf-8-sig')
         else:
-            # Ler o arquivo real
-            df = pd.read_csv(caminho_arquivo, encoding='utf-8-sig')
+            # Carregar do arquivo local
+            caminho_arquivo = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
+            
+            if not os.path.exists(caminho_arquivo):
+                # Criar dados de exemplo
+                dados_exemplo = {
+                    'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 51)],
+                    'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1051)],
+                    'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 50),
+                    'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 50),
+                    'Responsável Auditoria': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 50),
+                    'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 50, p=[0.4, 0.35, 0.25]),
+                    'Empresa': np.random.choice(['EMT', 'ETO'], 50),
+                    'Criado': pd.date_range(start='2024-01-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M'),
+                    'Modificado': pd.date_range(start='2024-02-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M')
+                }
+                df = pd.DataFrame(dados_exemplo)
+            else:
+                df = pd.read_csv(caminho_arquivo, encoding='utf-8-sig')
         
         # Tratar campos vazios
         df['Responsável Desenvolvimento'] = df['Responsável Desenvolvimento'].fillna('Não atribuído')
@@ -270,18 +417,27 @@ if df is not None:
     col_logo, col_title, col_date = st.columns([1, 3, 1])
     
     with col_logo:
-        # Para colocar a logo da empresa, descomente a linha abaixo
-        # st.image("logo_empresa.png", width=120)
+        # Tentar carregar a logo da Energisa
+        logo_base64 = get_logo_base64()
         
-        # Placeholder da logo
-        st.markdown("""
-        <div style='background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-                    width: 60px; height: 60px; border-radius: 12px; 
-                    display: flex; align-items: center; justify-content: center;
-                    font-size: 30px; color: white;'>
-            ⚡
-        </div>
-        """, unsafe_allow_html=True)
+        if logo_base64:
+            # Exibir logo real
+            st.markdown(f"""
+            <div class="logo-container">
+                <img src="data:image/gif;base64,{logo_base64}" 
+                     style="width: 100%; max-width: 120px; border-radius: 8px;">
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Placeholder da logo
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+                        width: 60px; height: 60px; border-radius: 12px; 
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 30px; color: white;'>
+                ⚡
+            </div>
+            """, unsafe_allow_html=True)
     
     with col_title:
         st.markdown("""
@@ -290,7 +446,7 @@ if df is not None:
                 📊 Dashboard de Comissionamento
             </h1>
             <p style='margin:0.5rem 0 0 0; opacity:0.9; font-size:1rem;'>
-                Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energia
+                Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -376,6 +532,45 @@ if df is not None:
         
         st.markdown("---")
         
+        # ============================================
+        # SEÇÃO DE ATUALIZAÇÃO DO GITHUB
+        # ============================================
+        st.markdown("### 🔄 Atualização de Dados")
+        
+        with st.expander("📤 Upload para GitHub", expanded=True):
+            st.markdown("""
+            <p style='font-size:0.85rem; color:#718096; margin-bottom:10px;'>
+                Envie um novo arquivo CSV para atualizar a base de dados no GitHub.
+            </p>
+            """, unsafe_allow_html=True)
+            
+            arquivo_upload = st.file_uploader(
+                "Selecionar arquivo CSV",
+                type=['csv'],
+                key="github_upload"
+            )
+            
+            if arquivo_upload is not None:
+                st.info(f"📁 Arquivo selecionado: {arquivo_upload.name}")
+                st.info(f"📊 Tamanho: {round(arquivo_upload.size/1024, 2)} KB")
+                
+                # Botão de atualização com estilo especial
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    st.markdown('<div class="update-button">', unsafe_allow_html=True)
+                    if st.button("🔄 Atualizar GitHub", use_container_width=True):
+                        with st.spinner("Enviando para o GitHub..."):
+                            if atualizar_dados_github(arquivo_upload):
+                                st.success("✅ Dados atualizados! Recarregando...")
+                                st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button("❌ Cancelar", use_container_width=True):
+                        st.rerun()
+        
+        st.markdown("---")
+        
         # Indicadores rápidos
         if not df.empty:
             st.markdown("### 📊 Progresso Geral")
@@ -407,7 +602,7 @@ if df is not None:
             if st.button("📥 Exportar", use_container_width=True):
                 st.session_state['exportar'] = True
 
-    # Aplicar filtros
+    # Aplicar filtros (mesmo código que você já tinha)
     df_filtrado = df[
         (df['Empresa'].isin(empresas)) &
         (df['Tipo Equipamento'].isin(tipos_equip)) &
@@ -426,7 +621,7 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-       # MÉTRICAS PRINCIPAIS
+    # MÉTRICAS PRINCIPAIS (seu código existente continua igual a partir daqui)
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -544,7 +739,7 @@ if df is not None:
             </div>
             """, unsafe_allow_html=True)
 
-        # TABS
+        # TABS (seu código existente continua igual)
         tab1, tab2, tab3, tab4 = st.tabs([
             "📊 Visão Geral", 
             "📈 Análise de Desempenho", 
@@ -984,8 +1179,8 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             st.markdown("""
             <div style='color:#4a5568; font-size:0.85rem; text-align:right;'>
                 <strong style='color:#1e3c72;'>📞 Suporte</strong><br>
-                kewin.ferreira@energisa.com.br>
-                </div>
+                kewin.ferreira@energisa.com.br
+            </div>
             """, unsafe_allow_html=True)
 
     else:
