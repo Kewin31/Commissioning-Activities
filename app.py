@@ -956,7 +956,7 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
         with col1:
             st.markdown("""
             <div style='color:#4a5568; font-size:0.85rem;'>
-                <strong style='color:#1e3c72;'>© 2024 AD Energia</strong><br>
+                <strong style='color:#1e3c72;'>© 2026 Energisa</strong><br>
                 Dashboard de Comissionamento<br>
                 Versão 2.0.0
             </div>
