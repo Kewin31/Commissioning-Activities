@@ -426,7 +426,7 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS
+       # MÉTRICAS PRINCIPAIS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -441,28 +441,108 @@ if df is not None:
         percent_desenv = (qtd_desenvolvidos/total_equip*100) if total_equip > 0 else 0
         percent_andamento = (qtd_andamento/total_equip*100) if total_equip > 0 else 0
         percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
+        percent_emt = (qtd_emt/total_equip*100) if total_equip > 0 else 0
+        percent_eto = (qtd_eto/total_equip*100) if total_equip > 0 else 0
         
+        # CSS adicional para os cards
+        st.markdown("""
+        <style>
+        .metric-card-simple {
+            background-color: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+            height: 100%;
+            transition: transform 0.2s;
+        }
+        .metric-card-simple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Criar linhas de cards
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
-            metric_card("Total", format_number(total_equip), "ativos", "📦", "#1e3c72")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #1e3c72;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">📦 Total</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #1e3c72; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {total_equip}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">ativos</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            percent_emt = (qtd_emt/total_equip*100) if total_equip > 0 else 0
-            metric_card("EMT", format_number(qtd_emt), f"{percent_emt:.1f}% do total", "⚡", "#2a5298")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #2a5298;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">⚡ EMT</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #2a5298; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {qtd_emt}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_emt:.1f}% do total</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col3:
-            percent_eto = (qtd_eto/total_equip*100) if total_equip > 0 else 0
-            metric_card("ETO", format_number(qtd_eto), f"{percent_eto:.1f}% do total", "🔧", "#4a7ab0")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #4a7ab0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">🔧 ETO</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #4a7ab0; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {qtd_eto}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_eto:.1f}% do total</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col4:
-            metric_card("Desenvolvidos", format_number(qtd_desenvolvidos), f"{percent_desenv:.1f}%", "✅", "#28a745")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #28a745;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">✅ Desenvolvidos</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #28a745; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {qtd_desenvolvidos}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_desenv:.1f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col5:
-            metric_card("Em andamento", format_number(qtd_andamento), f"{percent_andamento:.1f}%", "🔄", "#ffc107")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #ffc107;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">🔄 Em andamento</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #ffc107; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {qtd_andamento}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_andamento:.1f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col6:
-            metric_card("Pendentes", format_number(qtd_pendentes), f"{percent_pend:.1f}%", "⏳", "#dc3545")
+            st.markdown(f"""
+            <div class="metric-card-simple" style="border-left: 4px solid #dc3545;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; color: #4a5568; font-weight: 500;">⏳ Pendentes</span>
+                </div>
+                <div style="font-size: 2rem; font-weight: 700; color: #dc3545; line-height: 1.2; margin-bottom: 0.25rem;">
+                    {qtd_pendentes}
+                </div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_pend:.1f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # TABS
         tab1, tab2, tab3, tab4 = st.tabs([
