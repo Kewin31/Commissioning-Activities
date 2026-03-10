@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
 import os
-from pathlib import Path
+import io
+import base64
 
 # Configuração da página
 st.set_page_config(
@@ -130,21 +131,37 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Dataframe */
+    /* Tabelas estilizadas */
     .dataframe-container {
         background: white;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
         padding: 1rem;
+        overflow-x: auto;
     }
     
-    /* Rodapé */
-    .footer {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        margin-top: 2rem;
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .styled-table th {
+        background-color: #f8fafc;
+        color: #1e3c72;
+        font-weight: 600;
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .styled-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #edf2f7;
+    }
+    
+    .styled-table tr:hover {
+        background-color: #f7fafc;
     }
     
     /* Status colors */
@@ -175,12 +192,21 @@ st.markdown("""
         font-size: 0.85rem;
         display: inline-block;
     }
+    
+    /* Rodapé */
+    .footer {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        margin-top: 2rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Função para criar cards de métrica
 def metric_card(title, value, subtitle=None, icon="📊", color="#1e3c72", delta=None):
-    delta_html = f"<span style='color: {'#28a745' if delta > 0 else '#dc3545'}; font-size:0.9rem;'>{delta:+.1f}%</span>" if delta is not None else ''
+    delta_html = f"<span style='color: {'#28a745' if delta and delta > 0 else '#dc3545'}; font-size:0.9rem;'>{delta:+.1f}%</span>" if delta is not None else ''
     
     st.markdown(f"""
     <div class='metric-card'>
@@ -194,6 +220,50 @@ def metric_card(title, value, subtitle=None, icon="📊", color="#1e3c72", delta
         {f'<div style="font-size:0.85rem; color:#718096;">{subtitle}</div>' if subtitle else ''}
     </div>
     """, unsafe_allow_html=True)
+
+# Função para criar tabela estilizada sem matplotlib
+def criar_tabela_estilizada(df, titulo=None):
+    if df.empty:
+        st.info("Sem dados para exibir")
+        return
+    
+    html = "<div class='dataframe-container'>"
+    if titulo:
+        html += f"<h4 style='margin-top:0; color:#1e3c72;'>{titulo}</h4>"
+    
+    html += "<table class='styled-table'><thead><tr>"
+    for col in df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+    
+    for _, row in df.iterrows():
+        html += "<tr>"
+        for col in df.columns:
+            valor = row[col]
+            # Aplicar formatação especial para status
+            if col == 'Status' or 'status' in str(col).lower():
+                if valor == 'Desenvolvido':
+                    html += f"<td><span class='status-desenvolvido'>{valor}</span></td>"
+                elif valor == 'Pendente':
+                    html += f"<td><span class='status-pendente'>{valor}</span></td>"
+                elif valor == 'Em andamento':
+                    html += f"<td><span class='status-andamento'>{valor}</span></td>"
+                else:
+                    html += f"<td>{valor}</td>"
+            else:
+                html += f"<td>{valor}</td>"
+        html += "</tr>"
+    
+    html += "</tbody></table></div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+# Função para formatar números
+def format_number(val):
+    if pd.isna(val):
+        return "0"
+    if isinstance(val, (int, float)):
+        return f"{val:,.0f}".replace(",", ".")
+    return str(val)
 
 # Função para configurar gráficos com tema corporativo
 def configurar_grafico_corporativo(fig, titulo, height=400):
@@ -262,8 +332,8 @@ def load_data():
                 'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 51)],
                 'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1051)],
                 'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 50),
-                'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza'], 50),
-                'Responsável Auditoria': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira'], 50),
+                'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 50),
+                'Responsável Auditoria': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 50),
                 'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 50, p=[0.4, 0.35, 0.25]),
                 'Empresa': np.random.choice(['EMT', 'ETO'], 50),
                 'Criado': pd.date_range(start='2024-01-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M'),
@@ -280,8 +350,10 @@ def load_data():
         df['Status'] = df['Status'].fillna('Pendente')
         
         # Converter datas
-        df['Criado'] = pd.to_datetime(df['Criado'], format='%d/%m/%Y %H:%M', errors='coerce')
-        df['Modificado'] = pd.to_datetime(df['Modificado'], format='%d/%m/%Y %H:%M', errors='coerce')
+        if 'Criado' in df.columns:
+            df['Criado'] = pd.to_datetime(df['Criado'], format='%d/%m/%Y %H:%M', errors='coerce')
+        if 'Modificado' in df.columns:
+            df['Modificado'] = pd.to_datetime(df['Modificado'], format='%d/%m/%Y %H:%M', errors='coerce')
         
         return df
         
@@ -382,16 +454,17 @@ if df is not None:
                 key="resp_filter"
             )
             
-            responsaveis_audit = st.multiselect(
-                "Responsáveis pela auditoria",
-                options=sorted(df['Responsável Auditoria'].unique()),
-                default=[],
-                key="audit_filter"
-            )
+            if 'Responsável Auditoria' in df.columns:
+                responsaveis_audit = st.multiselect(
+                    "Responsáveis pela auditoria",
+                    options=sorted(df['Responsável Auditoria'].unique()),
+                    default=[],
+                    key="audit_filter"
+                )
         
         # Filtro de data
         with st.expander("📅 Período"):
-            if not df['Criado'].isna().all():
+            if 'Criado' in df.columns and not df['Criado'].isna().all():
                 data_min = df['Criado'].min().date()
                 data_max = df['Criado'].max().date()
                 
@@ -448,7 +521,7 @@ if df is not None:
     if responsaveis_dev:
         df_filtrado = df_filtrado[df_filtrado['Responsável Desenvolvimento'].isin(responsaveis_dev)]
     
-    if responsaveis_audit:
+    if 'responsaveis_audit' in locals() and responsaveis_audit:
         df_filtrado = df_filtrado[df_filtrado['Responsável Auditoria'].isin(responsaveis_audit)]
     
     if data_inicio and data_fim and 'Criado' in df_filtrado.columns:
@@ -469,34 +542,33 @@ if df is not None:
         qtd_andamento = len(df_filtrado[df_filtrado['Status'] == 'Em andamento'])
         qtd_pendentes = len(df_filtrado[df_filtrado['Status'] == 'Pendente'])
         
-        # Calcular deltas (comparação com mês anterior - simulado)
-        delta_total = np.random.uniform(-5, 10)  # Placeholder - implementar lógica real
+        # Calcular percentuais
+        percent_desenv = (qtd_desenvolvidos/total_equip*100) if total_equip > 0 else 0
+        percent_andamento = (qtd_andamento/total_equip*100) if total_equip > 0 else 0
+        percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
         
         # Layout de métricas
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
-            metric_card("Total", total_equip, "ativos", "📦", "#1e3c72", delta_total)
+            metric_card("Total", format_number(total_equip), "ativos", "📦", "#1e3c72")
         
         with col2:
             percent_emt = (qtd_emt/total_equip*100) if total_equip > 0 else 0
-            metric_card("EMT", qtd_emt, f"{percent_emt:.1f}% do total", "⚡", "#2a5298")
+            metric_card("EMT", format_number(qtd_emt), f"{percent_emt:.1f}% do total", "⚡", "#2a5298")
         
         with col3:
             percent_eto = (qtd_eto/total_equip*100) if total_equip > 0 else 0
-            metric_card("ETO", qtd_eto, f"{percent_eto:.1f}% do total", "🔧", "#4a7ab0")
+            metric_card("ETO", format_number(qtd_eto), f"{percent_eto:.1f}% do total", "🔧", "#4a7ab0")
         
         with col4:
-            percent_desenv = (qtd_desenvolvidos/total_equip*100) if total_equip > 0 else 0
-            metric_card("Desenvolvidos", qtd_desenvolvidos, f"{percent_desenv:.1f}%", "✅", "#28a745")
+            metric_card("Desenvolvidos", format_number(qtd_desenvolvidos), f"{percent_desenv:.1f}%", "✅", "#28a745")
         
         with col5:
-            percent_andamento = (qtd_andamento/total_equip*100) if total_equip > 0 else 0
-            metric_card("Em andamento", qtd_andamento, f"{percent_andamento:.1f}%", "🔄", "#ffc107")
+            metric_card("Em andamento", format_number(qtd_andamento), f"{percent_andamento:.1f}%", "🔄", "#ffc107")
         
         with col6:
-            percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
-            metric_card("Pendentes", qtd_pendentes, f"{percent_pend:.1f}%", "⏳", "#dc3545")
+            metric_card("Pendentes", format_number(qtd_pendentes), f"{percent_pend:.1f}%", "⏳", "#dc3545")
 
         # TABS PARA ORGANIZAR O CONTEÚDO
         tab1, tab2, tab3, tab4 = st.tabs([
@@ -565,7 +637,7 @@ if df is not None:
                 st.plotly_chart(fig_tipo, use_container_width=True)
             
             # Gráfico de evolução temporal
-            if not df_filtrado['Criado'].isna().all():
+            if 'Criado' in df_filtrado.columns and not df_filtrado['Criado'].isna().all():
                 st.markdown("### 📅 Evolução Temporal")
                 
                 df_temp = df_filtrado.copy()
@@ -598,10 +670,7 @@ if df is not None:
                 )
                 
                 st.markdown("### 📊 Matriz Empresa vs Status")
-                
-                # Estilizar a tabela
-                styled_cross = cross_tab.style.background_gradient(cmap='Blues', axis=None)
-                st.dataframe(styled_cross, use_container_width=True, height=200)
+                criar_tabela_estilizada(cross_tab)
             
             with col2:
                 # Matriz Tipo vs Status
@@ -613,8 +682,7 @@ if df is not None:
                 )
                 
                 st.markdown("### 📊 Matriz Tipo de Equipamento vs Status")
-                styled_tipo = cross_tab_tipo.style.background_gradient(cmap='Blues', axis=None)
-                st.dataframe(styled_tipo, use_container_width=True, height=300)
+                criar_tabela_estilizada(cross_tab_tipo)
             
             # Indicadores de performance
             st.markdown("### 🎯 Indicadores de Performance")
@@ -674,6 +742,8 @@ if df is not None:
                     )
                     fig_top = configurar_grafico_corporativo(fig_top, "Top 5 Tipos Mais Desenvolvidos", 300)
                     st.plotly_chart(fig_top, use_container_width=True)
+                else:
+                    st.info("Sem dados para exibir")
             
             with col3:
                 # Tipos com mais pendências
@@ -690,6 +760,8 @@ if df is not None:
                     )
                     fig_pend = configurar_grafico_corporativo(fig_pend, "Top 5 Tipos com Mais Pendências", 300)
                     st.plotly_chart(fig_pend, use_container_width=True)
+                else:
+                    st.info("Sem dados para exibir")
 
         with tab3:
             # ALOCAÇÃO DE RECURSOS
@@ -715,57 +787,63 @@ if df is not None:
                     )
                     fig_resp = configurar_grafico_corporativo(fig_resp, "Top 10 Responsáveis - Desenvolvimento", 400)
                     st.plotly_chart(fig_resp, use_container_width=True)
+                else:
+                    st.info("Nenhum responsável atribuído")
             
             with col2:
                 # Responsáveis por auditoria
-                audit_counts = df_filtrado['Responsável Auditoria'].value_counts().reset_index()
-                audit_counts.columns = ['Responsável', 'Quantidade']
-                audit_counts = audit_counts[audit_counts['Responsável'] != 'Não atribuído']
-                
-                if not audit_counts.empty:
-                    fig_audit = px.bar(
-                        audit_counts.head(10), 
-                        x='Quantidade', 
-                        y='Responsável',
-                        title='Top 10 Responsáveis - Auditoria',
-                        orientation='h',
-                        color='Quantidade',
-                        color_continuous_scale='Plasma'
-                    )
-                    fig_audit = configurar_grafico_corporativo(fig_audit, "Top 10 Responsáveis - Auditoria", 400)
-                    st.plotly_chart(fig_audit, use_container_width=True)
+                if 'Responsável Auditoria' in df_filtrado.columns:
+                    audit_counts = df_filtrado['Responsável Auditoria'].value_counts().reset_index()
+                    audit_counts.columns = ['Responsável', 'Quantidade']
+                    audit_counts = audit_counts[audit_counts['Responsável'] != 'Não atribuído']
+                    
+                    if not audit_counts.empty:
+                        fig_audit = px.bar(
+                            audit_counts.head(10), 
+                            x='Quantidade', 
+                            y='Responsável',
+                            title='Top 10 Responsáveis - Auditoria',
+                            orientation='h',
+                            color='Quantidade',
+                            color_continuous_scale='Plasma'
+                        )
+                        fig_audit = configurar_grafico_corporativo(fig_audit, "Top 10 Responsáveis - Auditoria", 400)
+                        st.plotly_chart(fig_audit, use_container_width=True)
+                    else:
+                        st.info("Nenhum responsável de auditoria atribuído")
             
             # Gráfico de carga de trabalho
             st.markdown("### 📊 Carga de Trabalho por Responsável")
             
             # Criar DataFrame com contagem por status para cada responsável
-            carga_trabalho = pd.crosstab(
-                df_filtrado['Responsável Desenvolvimento'],
-                df_filtrado['Status']
-            ).reset_index()
-            
-            if not carga_trabalho.empty and 'Responsável Desenvolvimento' in carga_trabalho.columns:
-                # Derreter para formato longo para o plotly
-                carga_long = carga_trabalho.melt(
-                    id_vars=['Responsável Desenvolvimento'],
-                    var_name='Status',
-                    value_name='Quantidade'
-                )
-                carga_long = carga_long[carga_long['Responsável Desenvolvimento'] != 'Não atribuído']
+            if 'Responsável Desenvolvimento' in df_filtrado.columns:
+                carga_trabalho = pd.crosstab(
+                    df_filtrado['Responsável Desenvolvimento'],
+                    df_filtrado['Status']
+                ).reset_index()
                 
-                if not carga_long.empty:
-                    fig_carga = px.bar(
-                        carga_long,
-                        x='Responsável Desenvolvimento',
-                        y='Quantidade',
-                        color='Status',
-                        title='Distribuição de Status por Responsável',
-                        barmode='stack',
-                        color_discrete_map=cores_status
+                if not carga_trabalho.empty and 'Responsável Desenvolvimento' in carga_trabalho.columns:
+                    # Derreter para formato longo para o plotly
+                    carga_long = carga_trabalho.melt(
+                        id_vars=['Responsável Desenvolvimento'],
+                        var_name='Status',
+                        value_name='Quantidade'
                     )
-                    fig_carga = configurar_grafico_corporativo(fig_carga, "Distribuição de Status por Responsável", 450)
-                    fig_carga.update_xaxis(tickangle=45)
-                    st.plotly_chart(fig_carga, use_container_width=True)
+                    carga_long = carga_long[carga_long['Responsável Desenvolvimento'] != 'Não atribuído']
+                    
+                    if not carga_long.empty:
+                        fig_carga = px.bar(
+                            carga_long,
+                            x='Responsável Desenvolvimento',
+                            y='Quantidade',
+                            color='Status',
+                            title='Distribuição de Status por Responsável',
+                            barmode='stack',
+                            color_discrete_map=cores_status
+                        )
+                        fig_carga = configurar_grafico_corporativo(fig_carga, "Distribuição de Status por Responsável", 450)
+                        fig_carga.update_xaxis(tickangle=45)
+                        st.plotly_chart(fig_carga, use_container_width=True)
 
         with tab4:
             # DADOS COMPLETOS
@@ -777,10 +855,13 @@ if df is not None:
             with col1:
                 colunas_padrao = ['Cód. Equipamento', 'Chamado Desenvolvimento', 'Tipo Equipamento', 
                                  'Responsável Desenvolvimento', 'Status', 'Empresa', 'Criado']
+                colunas_disponiveis = [col for col in colunas_padrao if col in df_filtrado.columns]
+                colunas_adicionais = [col for col in df_filtrado.columns if col not in colunas_padrao]
+                
                 mostrar_colunas = st.multiselect(
                     "📌 Colunas para exibir",
                     options=df_filtrado.columns.tolist(),
-                    default=[col for col in colunas_padrao if col in df_filtrado.columns],
+                    default=colunas_disponiveis if colunas_disponiveis else df_filtrado.columns[:5].tolist(),
                     key="colunas_table"
                 )
             
@@ -793,38 +874,33 @@ if df is not None:
             # Aplicar busca
             df_display = df_filtrado.copy()
             if search:
-                df_display = df_display[
-                    df_display['Cód. Equipamento'].astype(str).str.contains(search, case=False, na=False) |
-                    df_display['Chamado Desenvolvimento'].astype(str).str.contains(search, case=False, na=False)
-                ]
+                mask = pd.Series(False, index=df_display.index)
+                if 'Cód. Equipamento' in df_display.columns:
+                    mask |= df_display['Cód. Equipamento'].astype(str).str.contains(search, case=False, na=False)
+                if 'Chamado Desenvolvimento' in df_display.columns:
+                    mask |= df_display['Chamado Desenvolvimento'].astype(str).str.contains(search, case=False, na=False)
+                df_display = df_display[mask]
             
             # Mostrar estatísticas da busca
             st.caption(f"📊 Mostrando {len(df_display)} de {len(df_filtrado)} registros")
             
             # Exibir tabela com formatação condicional
             if mostrar_colunas:
-                # Função para colorir status
-                def color_status(val):
-                    if val == 'Desenvolvido':
-                        return 'background-color: #d4edda; color: #155724'
-                    elif val == 'Em andamento':
-                        return 'background-color: #fff3cd; color: #856404'
-                    elif val == 'Pendente':
-                        return 'background-color: #f8d7da; color: #721c24'
-                    return ''
+                # Criar uma cópia para exibição
+                df_show = df_display[mostrar_colunas].copy()
                 
-                # Aplicar formatação
-                styled_df = df_display[mostrar_colunas].style.map(color_status, subset=['Status'] if 'Status' in mostrar_colunas else [])
+                # Formatar datas se existirem
+                for col in df_show.columns:
+                    if 'data' in col.lower() or col in ['Criado', 'Modificado']:
+                        if pd.api.types.is_datetime64_any_dtype(df_show[col]):
+                            df_show[col] = df_show[col].dt.strftime('%d/%m/%Y %H:%M')
                 
+                # Exibir com st.dataframe (sem formatação condicional para evitar erro)
                 st.dataframe(
-                    styled_df,
+                    df_show,
                     use_container_width=True,
                     hide_index=True,
-                    height=min(400, 30 + len(df_display) * 35),
-                    column_config={
-                        "Criado": st.column_config.DatetimeColumn("Criado", format="DD/MM/YYYY HH:mm"),
-                        "Modificado": st.column_config.DatetimeColumn("Modificado", format="DD/MM/YYYY HH:mm")
-                    }
+                    height=min(400, 100 + len(df_display) * 35)
                 )
 
         # EXPORTAÇÃO DE DADOS
@@ -856,22 +932,21 @@ if df is not None:
                 )
             
             elif formato_export == "Excel":
-                # Para Excel, precisamos criar um buffer
-                output = pd.ExcelWriter(f"{nome_arquivo}.xlsx", engine='xlsxwriter')
-                df_filtrado.to_excel(output, index=False, sheet_name='Dados')
-                output.close()
+                # Criar buffer para Excel
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df_filtrado.to_excel(writer, index=False, sheet_name='Dados')
                 
-                with open(f"{nome_arquivo}.xlsx", 'rb') as f:
-                    st.download_button(
-                        label="📥 Download Excel",
-                        data=f,
-                        file_name=f"{nome_arquivo}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
+                st.download_button(
+                    label="📥 Download Excel",
+                    data=output.getvalue(),
+                    file_name=f"{nome_arquivo}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
             
             else:  # JSON
-                json_str = df_filtrado.to_json(orient='records', date_format='iso', indent=2)
+                json_str = df_filtrado.to_json(orient='records', date_format='iso', indent=2, force_ascii=False)
                 st.download_button(
                     label="📥 Download JSON",
                     data=json_str,
@@ -881,16 +956,16 @@ if df is not None:
                 )
         
         with col2:
-            # Botão para copiar para área de transferência (apenas números)
+            # Botão para copiar para área de transferência
             if st.button("📋 Copiar resumo", use_container_width=True):
                 resumo = f"""Resumo do Dashboard - {datetime.now().strftime('%d/%m/%Y %H:%M')}
                 
-Total de Registros: {total_equip}
-EMT: {qtd_emt}
-ETO: {qtd_eto}
-Desenvolvidos: {qtd_desenvolvidos} ({percent_desenv:.1f}%)
-Em andamento: {qtd_andamento} ({percent_andamento:.1f}%)
-Pendentes: {qtd_pendentes} ({percent_pend:.1f}%)"""
+Total de Registros: {format_number(total_equip)}
+EMT: {format_number(qtd_emt)}
+ETO: {format_number(qtd_eto)}
+Desenvolvidos: {format_number(qtd_desenvolvidos)} ({percent_desenv:.1f}%)
+Em andamento: {format_number(qtd_andamento)} ({percent_andamento:.1f}%)
+Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
                 st.code(resumo, language="text")
                 st.success("✅ Resumo gerado! Copie o texto acima.")
         
@@ -923,13 +998,13 @@ Pendentes: {qtd_pendentes} ({percent_pend:.1f}%)"""
             """, unsafe_allow_html=True)
         
         with col3:
-            st.markdown("""
+            st.markdown(f"""
             <div style='color:#4a5568; font-size:0.85rem;'>
                 <strong style='color:#1e3c72;'>📊 Estatísticas</strong><br>
-                Total registros: {}<br>
-                Taxa conclusão: {:.1f}%
+                Total registros: {format_number(total_equip)}<br>
+                Taxa conclusão: {percent_desenv:.1f}%
             </div>
-            """.format(total_equip, percent_desenv), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         
         with col4:
             st.markdown("""
