@@ -9,7 +9,7 @@ import io
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboard de Comissionamento | AD Energia",
+    page_title="Dashboard de Comissionamento | Fábrica SCADA",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -984,9 +984,8 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             st.markdown("""
             <div style='color:#4a5568; font-size:0.85rem; text-align:right;'>
                 <strong style='color:#1e3c72;'>📞 Suporte</strong><br>
-                dashboard@adenergia.com<br>
-                Ramal: 1234
-            </div>
+                kewin.ferreira@energisa.com.br>
+                </div>
             """, unsafe_allow_html=True)
 
     else:
