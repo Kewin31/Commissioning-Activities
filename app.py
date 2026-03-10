@@ -763,6 +763,8 @@ if df is not None:
                 else:
                     st.info("Sem dados para exibir")
 
+        # ... (código anterior mantido até a linha 844)
+
         with tab3:
             # ALOCAÇÃO DE RECURSOS
             st.markdown("### 👥 Desempenho por Responsável")
@@ -812,26 +814,33 @@ if df is not None:
                     else:
                         st.info("Nenhum responsável de auditoria atribuído")
             
-            # Gráfico de carga de trabalho
+            # Gráfico de carga de trabalho - CORRIGIDO
             st.markdown("### 📊 Carga de Trabalho por Responsável")
             
             # Criar DataFrame com contagem por status para cada responsável
-            if 'Responsável Desenvolvimento' in df_filtrado.columns:
-                carga_trabalho = pd.crosstab(
-                    df_filtrado['Responsável Desenvolvimento'],
-                    df_filtrado['Status']
-                ).reset_index()
+            if 'Responsável Desenvolvimento' in df_filtrado.columns and 'Status' in df_filtrado.columns:
+                # Filtrar apenas responsáveis atribuídos
+                df_carga = df_filtrado[df_filtrado['Responsável Desenvolvimento'] != 'Não atribuído'].copy()
                 
-                if not carga_trabalho.empty and 'Responsável Desenvolvimento' in carga_trabalho.columns:
+                if not df_carga.empty:
+                    # Criar tabela cruzada
+                    carga_trabalho = pd.crosstab(
+                        df_carga['Responsável Desenvolvimento'],
+                        df_carga['Status']
+                    ).reset_index()
+                    
                     # Derreter para formato longo para o plotly
                     carga_long = carga_trabalho.melt(
                         id_vars=['Responsável Desenvolvimento'],
                         var_name='Status',
                         value_name='Quantidade'
                     )
-                    carga_long = carga_long[carga_long['Responsável Desenvolvimento'] != 'Não atribuído']
+                    
+                    # Remover linhas com quantidade zero
+                    carga_long = carga_long[carga_long['Quantidade'] > 0]
                     
                     if not carga_long.empty:
+                        # CORREÇÃO: usar layout update em vez de update_xaxis diretamente
                         fig_carga = px.bar(
                             carga_long,
                             x='Responsável Desenvolvimento',
@@ -839,11 +848,37 @@ if df is not None:
                             color='Status',
                             title='Distribuição de Status por Responsável',
                             barmode='stack',
-                            color_discrete_map=cores_status
+                            color_discrete_map=cores_status,
+                            text='Quantidade'  # Adicionar texto nas barras
                         )
+                        
+                        # Aplicar configuração corporativa
                         fig_carga = configurar_grafico_corporativo(fig_carga, "Distribuição de Status por Responsável", 450)
-                        fig_carga.update_xaxis(tickangle=45)
+                        
+                        # CORREÇÃO: usar update_layout para rotacionar labels do eixo x
+                        fig_carga.update_layout(
+                            xaxis=dict(
+                                tickangle=45,  # Rotacionar labels em 45 graus
+                                tickfont=dict(size=10)
+                            ),
+                            yaxis=dict(
+                                title="Quantidade"
+                            )
+                        )
+                        
+                        # Adicionar texto nas barras
+                        fig_carga.update_traces(
+                            textposition='inside',
+                            textfont=dict(color='white', size=10)
+                        )
+                        
                         st.plotly_chart(fig_carga, use_container_width=True)
+                    else:
+                        st.info("Sem dados de carga de trabalho para exibir")
+                else:
+                    st.info("Não há responsáveis atribuídos para análise de carga")
+
+# ... (restante do código continua igual)
 
         with tab4:
             # DADOS COMPLETOS
