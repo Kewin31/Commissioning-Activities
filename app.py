@@ -1216,8 +1216,8 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             </div>
             """, unsafe_allow_html=True)
 
-    else:
+        else:  # ← Este else é para o if not df_filtrado.empty:
         st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
 
-else:
+else:  # ← Este else é para o if df is not None: (linha 1222)
     st.error("❌ Não foi possível carregar os dados. Verifique o arquivo de origem.")
