@@ -23,12 +23,6 @@ st.set_page_config(
 # ============================================
 # CONFIGURAÇÕES DO GITHUB
 # ============================================
-# IMPORTANTE: Configure estas variáveis no Streamlit Secrets
-# No Streamlit Cloud, adicione em Settings -> Secrets:
-# GITHUB_TOKEN = "seu_token_aqui"
-# GITHUB_REPO = "usuario/repositorio"  # Ex: "kewinferreira/dashboard-comissionamento"
-# GITHUB_FILE_PATH = "data/Dados/Comissionamento AD - UNs.csv"
-
 def get_github_config():
     """Obtém configurações do GitHub do Streamlit Secrets"""
     try:
@@ -416,61 +410,61 @@ if df is not None:
     # HEADER PRINCIPAL COM LOGO
     col_logo, col_title, col_date = st.columns([1, 3, 1])
     
-with col_logo:
-    # Tentar carregar a logo da Energisa
-    logo_base64 = get_logo_base64()
-    
-    if logo_base64:
-        # Exibir logo real com tamanho controlado
-        st.markdown(f"""
-        <style>
-        .logo-container {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            padding: 0.5rem;
-        }}
-        .logo-container img {{
-            max-width: 100px;
-            max-height: 80px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            border-radius: 8px;
-            background: white;
-            padding: 5px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }}
-        </style>
-        <div class="logo-container">
-            <img src="data:image/gif;base64,{logo_base64}" 
-                 alt="Logo Energisa"
-                 title="Energisa">
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Placeholder da logo
-        st.markdown("""
-        <style>
-        .logo-placeholder {{
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            width: 70px;
-            height: 70px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 35px;
-            color: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            margin: 0 auto;
-        }}
-        </style>
-        <div class="logo-placeholder">
-            ⚡
-        </div>
-        """, unsafe_allow_html=True)
+    with col_logo:
+        # Tentar carregar a logo da Energisa
+        logo_base64 = get_logo_base64()
+        
+        if logo_base64:
+            # Exibir logo real com tamanho controlado
+            st.markdown(f"""
+            <style>
+            .logo-container {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                padding: 0.5rem;
+            }}
+            .logo-container img {{
+                max-width: 100px;
+                max-height: 80px;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+                border-radius: 8px;
+                background: white;
+                padding: 5px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }}
+            </style>
+            <div class="logo-container">
+                <img src="data:image/gif;base64,{logo_base64}" 
+                     alt="Logo Energisa"
+                     title="Energisa">
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Placeholder da logo
+            st.markdown("""
+            <style>
+            .logo-placeholder {{
+                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                width: 70px;
+                height: 70px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 35px;
+                color: white;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                margin: 0 auto;
+            }}
+            </style>
+            <div class="logo-placeholder">
+                ⚡
+            </div>
+            """, unsafe_allow_html=True)
     
     with col_title:
         st.markdown("""
@@ -635,7 +629,7 @@ with col_logo:
             if st.button("📥 Exportar", use_container_width=True):
                 st.session_state['exportar'] = True
 
-    # Aplicar filtros (mesmo código que você já tinha)
+    # Aplicar filtros
     df_filtrado = df[
         (df['Empresa'].isin(empresas)) &
         (df['Tipo Equipamento'].isin(tipos_equip)) &
@@ -654,7 +648,7 @@ with col_logo:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS (seu código existente continua igual a partir daqui)
+    # MÉTRICAS PRINCIPAIS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -772,7 +766,7 @@ with col_logo:
             </div>
             """, unsafe_allow_html=True)
 
-        # TABS (seu código existente continua igual)
+        # TABS
         tab1, tab2, tab3, tab4 = st.tabs([
             "📊 Visão Geral", 
             "📈 Análise de Desempenho", 
@@ -1176,7 +1170,7 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             if st.button("📄 Relatório Executivo", use_container_width=True):
                 st.info("📊 Funcionalidade em desenvolvimento")
 
-                # RODAPÉ
+        # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
@@ -1216,10 +1210,8 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             </div>
             """, unsafe_allow_html=True)
 
-    # ← Este fechamento é do if not df_filtrado.empty:
     else:
         st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
 
-# ← Este fechamento é do if df is not None:
 else:
     st.error("❌ Não foi possível carregar os dados. Verifique o arquivo de origem.")
