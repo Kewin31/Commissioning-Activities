@@ -84,8 +84,8 @@ def atualizar_dados_github(arquivo_upload):
 def get_logo_base64():
     """Converte a logo para base64 para exibição"""
     try:
-        # Primeiro, tenta carregar do arquivo local
-        logo_path = "Selo120_Azul_GIF_FundoTransparente novo.gif"
+        # Tentar carregar a nova logo primeiro
+        logo_path = "Logo_Energisa.gif"
         if os.path.exists(logo_path):
             with open(logo_path, "rb") as f:
                 logo_bytes = f.read()
@@ -104,17 +104,6 @@ st.markdown("""
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-    }
-    
-    /* Cabeçalho principal */
-    .main-header {
-        background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-        padding: 1.8rem;
-        border-radius: 16px;
-        color: white;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 20px rgba(0,20,50,0.15);
-        border: 1px solid rgba(255,255,255,0.1);
     }
     
     /* Cards de métrica */
@@ -217,17 +206,6 @@ st.markdown("""
         border-radius: 8px;
         padding: 0.5rem 1.5rem;
         font-weight: 500;
-    }
-    
-    /* Logo container */
-    .logo-container {
-        background: white;
-        padding: 0.5rem;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     
     /* Rodapé */
@@ -408,12 +386,13 @@ df = load_data()
 
 if df is not None:
     # CABEÇALHO UNIFICADO - LOGO E TÍTULO NO MESMO BLOCO
-    col_esquerda, col_direita = st.columns([4, 1.5])
+    logo_base64 = get_logo_base64()
+    
+    # Criar duas colunas para o header
+    col_esquerda, col_direita = st.columns([4, 1.2])
     
     with col_esquerda:
         # Bloco unificado com logo e título
-        logo_base64 = get_logo_base64()
-        
         st.markdown(f"""
         <style>
         .header-unificado {{
@@ -471,7 +450,7 @@ if df is not None:
         .header-data {{
             background: white;
             border-radius: 16px;
-            padding: 1rem 1.5rem;
+            padding: 1rem 1.2rem;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #e2e8f0;
             text-align: center;
@@ -483,19 +462,19 @@ if df is not None:
         }}
         .header-data .data {{
             color: #1e3c72;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             margin: 0;
         }}
         .header-data .hora {{
             color: #4a5568;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 500;
             margin: 0.2rem 0 0 0;
         }}
         .header-data .label {{
             color: #718096;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             margin: 0.2rem 0 0 0;
         }}
         </style>
@@ -506,51 +485,6 @@ if df is not None:
             <div class="label">dados em tempo real</div>
         </div>
         """, unsafe_allow_html=True)
-    
-    with col_date:
-        st.markdown(f"""
-        <style>
-        .date-box-ajustado {{
-            text-align: right;
-            padding: 1rem;
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            height: 100%;
-            min-height: 90px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,20,50,0.1);
-        }}
-        .date-box-ajustado p {{
-            margin: 0;
-            line-height: 1.5;
-        }}
-        .date-box-ajustado .date {{
-            color: #4a5568;
-            font-weight: 500;
-            font-size: 1.1rem;
-        }}
-        .date-box-ajustado .time {{
-            color: #1e3c72;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }}
-        .date-box-ajustado .small {{
-            color: #718096;
-            font-size: 0.8rem;
-        }}
-        </style>
-        <div class='date-box-ajustado'>
-            <p class='date'>{datetime.now().strftime('%d/%m/%Y')}</p>
-            <p class='time'>⏱️ {datetime.now().strftime('%H:%M')}</p>
-            <p class='small'>dados em tempo real</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Continuação do resto do código (sidebar, filtros, etc.)
-    # ... (todo o restante do seu código permanece igual)
 
     # SIDEBAR
     with st.sidebar:
