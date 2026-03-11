@@ -1191,7 +1191,7 @@ if df is not None:
             if colunas:
                 st.dataframe(df_filtrado[colunas], use_container_width=True, height=500)
 
-        # RODAPÉ
+                # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
