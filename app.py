@@ -411,65 +411,66 @@ if df is not None:
     col_logo, col_title, col_date = st.columns([0.8, 3.2, 1.5])
     
     with col_logo:
-        # Tentar carregar a logo da Energisa
-        logo_base64 = get_logo_base64()
-        
-        if logo_base64:
-            # Exibir logo com a MESMA ALTURA do cabeçalho
-            st.markdown(f"""
-            <style>
-            .logo-container-igual {{
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;  /* Ocupa toda a altura da coluna */
-                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);  /* Mesmo fundo do título */
-                border-radius: 12px;  /* Mesma borda do título */
-                padding: 0.5rem;
-                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-                min-height: 80px;  /* Altura mínima igual ao cabeçalho */
-            }}
-            .logo-container-igual img {{
-                max-width: 100%;
-                max-height: 60px;  /* Altura ajustada para caber no container */
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                background: white;  /* Fundo branco para a logo aparecer bem */
-                padding: 5px;
-                border-radius: 8px;
-            }}
-            </style>
-            <div class="logo-container-igual">
-                <img src="data:image/gif;base64,{logo_base64}" 
-                     alt="Logo Energisa"
-                     title="Energisa">
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Placeholder da logo com mesma altura
-            st.markdown("""
-            <style>
-            .logo-placeholder-igual {
-                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-                width: 100%;
-                height: 100%;
-                min-height: 80px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 35px;
-                color: white;
-                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-            }
-            </style>
-            <div class="logo-placeholder-igual">
-                ⚡
-            </div>
-            """, unsafe_allow_html=True)
+    # Tentar carregar a logo da Energisa
+    logo_base64 = get_logo_base64()
+    
+    if logo_base64:
+        # Exibir logo MAIOR e proporcional
+        st.markdown(f"""
+        <style>
+        .logo-container-maior {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+            border-radius: 12px;
+            padding: 0.8rem 0.5rem;  /* Padding aumentado */
+            box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
+            min-height: 90px;  /* Altura aumentada */
+        }}
+        .logo-container-maior img {{
+            max-width: 90px;  /* Aumentado de 70px para 90px */
+            max-height: 70px;  /* Aumentado de 50px para 70px */
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            background: white;
+            padding: 8px;  /* Padding aumentado */
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);  /* Sombra suave */
+        }}
+        </style>
+        <div class="logo-container-maior">
+            <img src="data:image/gif;base64,{logo_base64}" 
+                 alt="Logo Energisa"
+                 title="Energisa">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Placeholder da logo MAIOR
+        st.markdown("""
+        <style>
+        .logo-placeholder-maior {
+            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+            width: 100%;
+            height: 100%;
+            min-height: 90px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;  /* Ícone maior */
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        </style>
+        <div class="logo-placeholder-maior">
+            ⚡
+        </div>
+        """, unsafe_allow_html=True)
     
     with col_title:
         st.markdown("""
