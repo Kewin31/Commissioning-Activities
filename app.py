@@ -417,27 +417,60 @@ if df is not None:
     col_logo, col_title, col_date = st.columns([1, 3, 1])
     
     with col_logo:
-        # Tentar carregar a logo da Energisa
-        logo_base64 = get_logo_base64()
-        
-        if logo_base64:
-            # Exibir logo real
-            st.markdown(f"""
-            <div class="logo-container">
-                <img src="data:image/gif;base64,{logo_base64}" 
-                     style="width: 100%; max-width: 120px; border-radius: 8px;">
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Placeholder da logo
-            st.markdown("""
-            <div style='background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-                        width: 60px; height: 60px; border-radius: 12px; 
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 30px; color: white;'>
-                ⚡
-            </div>
-            """, unsafe_allow_html=True)
+    # Tentar carregar a logo da Energisa
+    logo_base64 = get_logo_base64()
+    
+    if logo_base64:
+        # Exibir logo real com tamanho controlado
+        st.markdown(f"""
+        <style>
+        .logo-container {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 0.5rem;
+        }}
+        .logo-container img {{
+            max-width: 100px;  /* Largura máxima controlada */
+            max-height: 80px;  /* Altura máxima controlada */
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            background: white;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        </style>
+        <div class="logo-container">
+            <img src="data:image/gif;base64,{logo_base64}" 
+                 alt="Logo Energisa"
+                 title="Energisa">
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Placeholder da logo com tamanho ajustado
+        st.markdown("""
+        <style>
+        .logo-placeholder {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            width: 70px;
+            height: 70px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            margin: 0 auto;
+        }
+        </style>
+        <div class="logo-placeholder">
+            ⚡
+        </div>
+        """, unsafe_allow_html=True)
     
     with col_title:
         st.markdown("""
