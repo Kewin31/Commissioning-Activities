@@ -407,90 +407,145 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # HEADER PRINCIPAL COM LOGO
-    col_logo, col_title, col_date = st.columns([1, 3, 1])
+    # HEADER PRINCIPAL COM LOGO - VERSÃO COM ALTURA IGUAL
+    col_logo, col_title, col_date = st.columns([0.8, 3.2, 1.5])
     
     with col_logo:
         # Tentar carregar a logo da Energisa
         logo_base64 = get_logo_base64()
         
         if logo_base64:
-            # Exibir logo real com tamanho controlado
+            # Exibir logo com a MESMA ALTURA do cabeçalho
             st.markdown(f"""
             <style>
-            .logo-container {{
+            .logo-container-igual {{
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                height: 100%;
+                height: 100%;  /* Ocupa toda a altura da coluna */
+                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);  /* Mesmo fundo do título */
+                border-radius: 12px;  /* Mesma borda do título */
                 padding: 0.5rem;
+                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+                border: 1px solid rgba(255,255,255,0.1);
+                min-height: 80px;  /* Altura mínima igual ao cabeçalho */
             }}
-            .logo-container img {{
-                max-width: 100px;
-                max-height: 80px;
+            .logo-container-igual img {{
+                max-width: 100%;
+                max-height: 60px;  /* Altura ajustada para caber no container */
                 width: auto;
                 height: auto;
                 object-fit: contain;
-                border-radius: 8px;
-                background: white;
+                background: white;  /* Fundo branco para a logo aparecer bem */
                 padding: 5px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border-radius: 8px;
             }}
             </style>
-            <div class="logo-container">
+            <div class="logo-container-igual">
                 <img src="data:image/gif;base64,{logo_base64}" 
                      alt="Logo Energisa"
                      title="Energisa">
             </div>
             """, unsafe_allow_html=True)
         else:
-            # Placeholder da logo
+            # Placeholder da logo com mesma altura
             st.markdown("""
             <style>
-            .logo-placeholder {{
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                width: 70px;
-                height: 70px;
+            .logo-placeholder-igual {
+                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+                width: 100%;
+                height: 100%;
+                min-height: 80px;
                 border-radius: 12px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-size: 35px;
                 color: white;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-                margin: 0 auto;
-            }}
+                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+                border: 1px solid rgba(255,255,255,0.1);
+            }
             </style>
-            <div class="logo-placeholder">
+            <div class="logo-placeholder-igual">
                 ⚡
             </div>
             """, unsafe_allow_html=True)
     
     with col_title:
         st.markdown("""
-        <div class='main-header'>
-            <h1 style='margin:0; font-size:2.2rem; font-weight:600; letter-spacing:-0.02em;'>
-                📊 Dashboard de Comissionamento
-            </h1>
-            <p style='margin:0.5rem 0 0 0; opacity:0.9; font-size:1rem;'>
-                Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa
-            </p>
+        <style>
+        .main-header-igual {
+            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
+            height: 100%;  /* Ocupa toda a altura */
+            min-height: 80px;  /* Altura mínima */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .main-header-igual h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .main-header-igual p {
+            margin: 0.2rem 0 0 0;
+            opacity: 0.9;
+            font-size: 0.85rem;
+        }
+        </style>
+        
+        <div class='main-header-igual'>
+            <h1>📊 Dashboard de Comissionamento</h1>
+            <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
         </div>
         """, unsafe_allow_html=True)
     
     with col_date:
         st.markdown(f"""
-        <div style='text-align:right; padding:1rem; background: white; border-radius: 12px;
-                    border: 1px solid #e2e8f0;'>
-            <p style='color:#4a5568; margin:0; font-size:0.9rem; font-weight:500;'>
-                {datetime.now().strftime('%d/%m/%Y')}
-            </p>
-            <p style='color:#1e3c72; font-weight:600; margin:0.2rem 0 0 0; font-size:1rem;'>
-                ⏱️ {datetime.now().strftime('%H:%M')}
-            </p>
-            <p style='color:#718096; font-size:0.75rem; margin:0.2rem 0 0 0;'>
-                dados em tempo real
-            </p>
+        <style>
+        .date-box-igual {{
+            text-align: right;
+            padding: 0.8rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            height: 100%;  /* Ocupa toda a altura */
+            min-height: 80px;  /* Altura mínima */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,20,50,0.1);
+        }}
+        .date-box-igual p {{
+            margin: 0;
+            line-height: 1.4;
+        }}
+        .date-box-igual .date {{
+            color: #4a5568;
+            font-weight: 500;
+            font-size: 1rem;
+        }}
+        .date-box-igual .time {{
+            color: #1e3c72;
+            font-weight: 600;
+            font-size: 1rem;
+        }}
+        .date-box-igual .small {{
+            color: #718096;
+            font-size: 0.7rem;
+        }}
+        </style>
+        <div class='date-box-igual'>
+            <p class='date'>{datetime.now().strftime('%d/%m/%Y')}</p>
+            <p class='time'>⏱️ {datetime.now().strftime('%H:%M')}</p>
+            <p class='small'>dados em tempo real</p>
         </div>
         """, unsafe_allow_html=True)
 
