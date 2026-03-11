@@ -83,18 +83,33 @@ def atualizar_dados_github(arquivo_upload):
 
 def get_logo_base64():
     """Converte a logo para base64 para exibição"""
-    try:
-        # Tentar carregar a nova logo primeiro
-        logo_path = "Logo_Energisa.gif"
-        if os.path.exists(logo_path):
-            with open(logo_path, "rb") as f:
-                logo_bytes = f.read()
-            return base64.b64encode(logo_bytes).decode()
-    except:
-        pass
+    # Lista de possíveis nomes de arquivo (priorizando PNG)
+    possiveis_nomes = [
+        "Logo_Energisa.png",  # Prioritário
+        "logo_energisa.png",
+        "Logo_Energisa.gif",
+        "Selo120_Azul_GIF_FundoTransparente novo.gif",
+        "energisa.png"
+    ]
     
-    # Se não encontrar, retorna None
-    return None
+    for logo_path in possiveis_nomes:
+        try:
+            if os.path.exists(logo_path):
+                with open(logo_path, "rb") as f:
+                    logo_bytes = f.read()
+                # Detectar tipo da imagem pela extensão
+                if logo_path.lower().endswith('.png'):
+                    mime_type = "image/png"
+                elif logo_path.lower().endswith('.gif'):
+                    mime_type = "image/gif"
+                else:
+                    mime_type = "image/png"  # padrão
+                
+                return base64.b64encode(logo_bytes).decode(), mime_type
+        except:
+            continue
+    
+    return None, None
 
 # CSS personalizado para estilo corporativo
 st.markdown("""
@@ -385,66 +400,77 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # CABEÇALHO UNIFICADO - LOGO E TÍTULO NO MESMO BLOCO
-    logo_base64 = get_logo_base64()
+    # CABEÇALHO UNIFICADO - VERSÃO PNG
+    logo_base64, mime_type = get_logo_base64()
     
-    # Criar duas colunas para o header
     col_esquerda, col_direita = st.columns([4, 1.2])
     
     with col_esquerda:
-        # Bloco unificado com logo e título
-        st.markdown(f"""
-        <style>
-        .header-unificado {{
-            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-            border-radius: 16px;
-            padding: 1rem 2rem;
-            box-shadow: 0 8px 20px rgba(0,20,50,0.15);
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            height: 100%;
-            min-height: 90px;
-        }}
-        .header-logo {{
-            width: 70px;
-            height: 70px;
-            object-fit: contain;
-            background: white;
-            border-radius: 10px;
-            padding: 5px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }}
-        .header-texto {{
-            flex: 1;
-        }}
-        .header-texto h1 {{
-            margin: 0;
-            font-size: 2rem;
-            font-weight: 600;
-            color: white;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-        }}
-        .header-texto p {{
-            margin: 0.2rem 0 0 0;
-            color: rgba(255,255,255,0.9);
-            font-size: 0.95rem;
-        }}
-        </style>
-        
-        <div class="header-unificado">
-            <img src="data:image/gif;base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
-            <div class="header-texto">
-                <h1>📊 Dashboard de Comissionamento</h1>
-                <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+        if logo_base64:
+            st.markdown(f"""
+            <style>
+            .header-unificado {{
+                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+                border-radius: 16px;
+                padding: 1rem 2rem;
+                box-shadow: 0 8px 20px rgba(0,20,50,0.15);
+                border: 1px solid rgba(255,255,255,0.1);
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+                height: 100%;
+                min-height: 90px;
+            }}
+            .header-logo {{
+                width: 70px;
+                height: 70px;
+                object-fit: contain;
+                background: white;
+                border-radius: 10px;
+                padding: 5px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }}
+            .header-texto {{
+                flex: 1;
+            }}
+            .header-texto h1 {{
+                margin: 0;
+                font-size: 2rem;
+                font-weight: 600;
+                color: white;
+                letter-spacing: -0.02em;
+                line-height: 1.2;
+            }}
+            .header-texto p {{
+                margin: 0.2rem 0 0 0;
+                color: rgba(255,255,255,0.9);
+                font-size: 0.95rem;
+            }}
+            </style>
+            
+            <div class="header-unificado">
+                <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
+                <div class="header-texto">
+                    <h1>📊 Dashboard de Comissionamento</h1>
+                    <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+                        border-radius: 16px; padding: 1rem 2rem; display: flex; align-items: center; gap: 1.5rem;">
+                <div style="background: white; width:70px; height:70px; border-radius:10px; display: flex; align-items: center; justify-content: center; font-size:35px;">
+                    ⚡
+                </div>
+                <div>
+                    <h1 style="margin:0; color:white; font-size:2rem;">📊 Dashboard de Comissionamento</h1>
+                    <p style="margin:0.2rem 0 0 0; color:rgba(255,255,255,0.9);">Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     
     with col_direita:
-        # Data e hora (lado direito)
         st.markdown(f"""
         <style>
         .header-data {{
