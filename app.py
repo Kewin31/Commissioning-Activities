@@ -1191,16 +1191,16 @@ if df is not None:
             if colunas:
                 st.dataframe(df_filtrado[colunas], use_container_width=True, height=500)
 
-                       # RODAPÉ
+                               # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.markdown(
-                "<div style='color:#4a5568; font-size:0.85rem;'>"
-                "<strong>© 2026 Energisa</strong><br>"
-                "Versão 2.0.0"
+                "<div style='color:#4a5568; font-size:0.85rem;'>" +
+                "<strong>© 2026 Energisa</strong><br>" +
+                "Versão 2.0.0" +
                 "</div>", 
                 unsafe_allow_html=True
             )
@@ -1208,9 +1208,9 @@ if df is not None:
         with col2:
             data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
             st.markdown(
-                f"<div style='color:#4a5568; font-size:0.85rem;'>"
-                f"<strong>🕒 {data_hora}</strong><br>"
-                f"Fonte: {fonte.upper()}"
+                f"<div style='color:#4a5568; font-size:0.85rem;'>" +
+                f"<strong>🕒 {data_hora}</strong><br>" +
+                f"Fonte: {fonte.upper()}" +
                 f"</div>", 
                 unsafe_allow_html=True
             )
@@ -1218,18 +1218,18 @@ if df is not None:
         with col3:
             total_concluidos = qtd_desenvolvidos + qtd_comissionados + qtd_validados
             st.markdown(
-                f"<div style='color:#4a5568; font-size:0.85rem;'>"
-                f"<strong>📊 Registros:</strong> {total_equip}<br>"
-                f"<strong>✅ Concluídos:</strong> {total_concluidos}"
+                f"<div style='color:#4a5568; font-size:0.85rem;'>" +
+                f"<strong>📊 Registros:</strong> {total_equip}<br>" +
+                f"<strong>✅ Concluídos:</strong> {total_concluidos}" +
                 f"</div>", 
                 unsafe_allow_html=True
             )
         
         with col4:
             st.markdown(
-                "<div style='color:#4a5568; font-size:0.85rem; text-align:right;'>"
-                "<strong>📞 Suporte</strong><br>"
-                "kewin.ferreira@energisa.com.br"
+                "<div style='color:#4a5568; font-size:0.85rem; text-align:right;'>" +
+                "<strong>📞 Suporte</strong><br>" +
+                "kewin.ferreira@energisa.com.br" +
                 "</div>", 
                 unsafe_allow_html=True
             )
@@ -1240,23 +1240,25 @@ if df is not None:
 else:
     st.error("❌ Não foi possível carregar os dados.")
     
-    # Instruções de configuração
+    # Instruções de configuração - SEM TRIPLAS STRINGS
     with st.expander("🔧 Configuração do GitHub"):
-        st.markdown(
-            """
-            ### Para configurar o GitHub:
-            
-            1. **Crie um token no GitHub:**
-               - Acesse: https://github.com/settings/tokens
-               - Clique em "Generate new token (classic)"
-               - Selecione o escopo: `repo`
-               - Copie o token gerado
-            
-            2. **Configure no Streamlit Cloud:**
-               - Vá para seu app no Streamlit Cloud
-               - Settings > Secrets
-               - Adicione:
-               ```toml
-               GITHUB_TOKEN = "seu_token_aqui"
-               GITHUB_REPO = "seu_usuario/seu_repositorio"
-               GITHUB_FILE_PATH = "caminho/do/arquivo.csv"
+        texto_instrucoes = (
+            "### Para configurar o GitHub:\n\n"
+            "1. **Crie um token no GitHub:**\n"
+            "   - Acesse: https://github.com/settings/tokens\n"
+            "   - Clique em \"Generate new token (classic)\"\n"
+            "   - Selecione o escopo: `repo`\n"
+            "   - Copie o token gerado\n\n"
+            "2. **Configure no Streamlit Cloud:**\n"
+            "   - Vá para seu app no Streamlit Cloud\n"
+            "   - Settings > Secrets\n"
+            "   - Adicione:\n"
+            "   ```toml\n"
+            "   GITHUB_TOKEN = \"seu_token_aqui\"\n"
+            "   GITHUB_REPO = \"seu_usuario/seu_repositorio\"\n"
+            "   GITHUB_FILE_PATH = \"caminho/do/arquivo.csv\"\n"
+            "   ```\n\n"
+            "3. **Ou use modo local:**\n"
+            "   - Coloque o arquivo CSV em: `data/Dados/Comissionamento AD - UNs.csv`"
+        )
+        st.markdown(texto_instrucoes, unsafe_allow_html=True)
