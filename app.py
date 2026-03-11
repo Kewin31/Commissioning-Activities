@@ -1176,7 +1176,7 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             if st.button("📄 Relatório Executivo", use_container_width=True):
                 st.info("📊 Funcionalidade em desenvolvimento")
 
-        # RODAPÉ
+                # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
@@ -1216,8 +1216,10 @@ Pendentes: {format_number(qtd_pendentes)} ({percent_pend:.1f}%)"""
             </div>
             """, unsafe_allow_html=True)
 
-        else:  # ← Este else é para o if not df_filtrado.empty:
+    # ← Este fechamento é do if not df_filtrado.empty:
+    else:
         st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
 
-else:  # ← Este else é para o if df is not None: (linha 1222)
+# ← Este fechamento é do if df is not None:
+else:
     st.error("❌ Não foi possível carregar os dados. Verifique o arquivo de origem.")
