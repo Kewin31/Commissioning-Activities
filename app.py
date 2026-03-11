@@ -432,8 +432,8 @@ if df is not None:
             padding: 0.5rem;
         }}
         .logo-container img {{
-            max-width: 100px;  /* Largura máxima controlada */
-            max-height: 80px;  /* Altura máxima controlada */
+            max-width: 100px;
+            max-height: 80px;
             width: auto;
             height: auto;
             object-fit: contain;
@@ -450,10 +450,10 @@ if df is not None:
         </div>
         """, unsafe_allow_html=True)
     else:
-        # Placeholder da logo com tamanho ajustado
+        # Placeholder da logo
         st.markdown("""
         <style>
-        .logo-placeholder {
+        .logo-placeholder {{
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             width: 70px;
             height: 70px;
@@ -465,7 +465,7 @@ if df is not None:
             color: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             margin: 0 auto;
-        }
+        }}
         </style>
         <div class="logo-placeholder">
             ⚡
