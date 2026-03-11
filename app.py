@@ -416,7 +416,7 @@ if df is not None:
     # HEADER PRINCIPAL COM LOGO
     col_logo, col_title, col_date = st.columns([1, 3, 1])
     
-    with col_logo:
+with col_logo:
     # Tentar carregar a logo da Energisa
     logo_base64 = get_logo_base64()
     
