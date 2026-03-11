@@ -404,11 +404,13 @@ if df is not None:
     
     col_esquerda, col_direita = st.columns([4, 1.2])
     
-    if df is not None:
-    # CABEÇALHO UNIFICADO - SEM DATA
-    logo_base64, mime_type = get_logo_base64()
+    # Carregar dados
+df = load_data()
+
+if df is not None:  # ← linha 407
+    # CABEÇALHO UNIFICADO - SEM DATA (tudo indentado abaixo)
+    logo_base64, mime_type = get_logo_base64()  # ← linha 409 (com 4 espaços)
     
-    # Apenas uma coluna para o cabeçalho (ocupando toda a largura)
     st.markdown(f"""
     <style>
     .header-unificado {{
@@ -453,11 +455,14 @@ if df is not None:
     <div class="header-unificado">
         <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
         <div class="header-texto">
-            <h1>Radar de Desenvolvimento e Comissionamento</h1>
-            <p>EMT | ETO</p>
+            <h1>📊 Dashboard de Comissionamento</h1>
+            <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # O RESTO DO SEU CÓDIGO (sidebar, filtros, etc.) continua aqui, tudo indentado
+    # ... (todo o código que estava depois)
         else:
             st.markdown("""
             <div style="background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
