@@ -450,8 +450,8 @@ if df is not None:
             <div class="header-unificado">
                 <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
                 <div class="header-texto">
-                    <h1>Acompanhamento de Comissionamentos/Desenvolvimentos</h1>
-                    <p>EMT | ETO - (Fábrica SCADA - Energisa)</p>
+                    <h1>Radar de Desenvolvimento e Comissionamentos</h1>
+                    <p>EMT | ETO </p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
