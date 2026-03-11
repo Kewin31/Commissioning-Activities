@@ -894,7 +894,7 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS
+        # MÉTRICAS PRINCIPAIS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -902,6 +902,10 @@ if df is not None:
         total_equip = len(df_filtrado)
         qtd_emt = len(df_filtrado[df_filtrado['Empresa'] == 'EMT'])
         qtd_eto = len(df_filtrado[df_filtrado['Empresa'] == 'ETO'])
+        
+        # Calcular percentuais das empresas
+        percent_emt = (qtd_emt/total_equip*100) if total_equip > 0 else 0
+        percent_eto = (qtd_eto/total_equip*100) if total_equip > 0 else 0
         
         qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Desenvolvido'])
         qtd_comissionados = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Comissionado'])
@@ -930,7 +934,7 @@ if df is not None:
             <div class="metric-card-simple" style="border-left: 4px solid #2a5298;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">⚡ EMT</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#2a5298;">{qtd_emt}</div>
-                <div style="font-size:0.8rem; color:#718096;">{percent_desenv:.1f}%</div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_emt:.1f}% do total</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -939,7 +943,7 @@ if df is not None:
             <div class="metric-card-simple" style="border-left: 4px solid #4a7ab0;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">🔧 ETO</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#4a7ab0;">{qtd_eto}</div>
-                <div style="font-size:0.8rem; color:#718096;">{percent_eto:.1f}%</div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_eto:.1f}% do total</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -970,6 +974,7 @@ if df is not None:
             </div>
             """, unsafe_allow_html=True)
         
+        # Segunda linha de cards
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
@@ -1191,16 +1196,16 @@ if df is not None:
             if colunas:
                 st.dataframe(df_filtrado[colunas], use_container_width=True, height=500)
 
-                               # RODAPÉ
+        # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.markdown(
-                "<div style='color:#4a5568; font-size:0.85rem;'>" +
-                "<strong>© 2026 Energisa</strong><br>" +
-                "Versão 2.0.0" +
+                "<div style='color:#4a5568; font-size:0.85rem;'>"
+                "<strong>© 2026 Energisa</strong><br>"
+                "Versão 2.0.0"
                 "</div>", 
                 unsafe_allow_html=True
             )
@@ -1208,9 +1213,9 @@ if df is not None:
         with col2:
             data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
             st.markdown(
-                f"<div style='color:#4a5568; font-size:0.85rem;'>" +
-                f"<strong>🕒 {data_hora}</strong><br>" +
-                f"Fonte: {fonte.upper()}" +
+                f"<div style='color:#4a5568; font-size:0.85rem;'>"
+                f"<strong>🕒 {data_hora}</strong><br>"
+                f"Fonte: {fonte.upper()}"
                 f"</div>", 
                 unsafe_allow_html=True
             )
@@ -1218,18 +1223,18 @@ if df is not None:
         with col3:
             total_concluidos = qtd_desenvolvidos + qtd_comissionados + qtd_validados
             st.markdown(
-                f"<div style='color:#4a5568; font-size:0.85rem;'>" +
-                f"<strong>📊 Registros:</strong> {total_equip}<br>" +
-                f"<strong>✅ Concluídos:</strong> {total_concluidos}" +
+                f"<div style='color:#4a5568; font-size:0.85rem;'>"
+                f"<strong>📊 Registros:</strong> {total_equip}<br>"
+                f"<strong>✅ Concluídos:</strong> {total_concluidos}"
                 f"</div>", 
                 unsafe_allow_html=True
             )
         
         with col4:
             st.markdown(
-                "<div style='color:#4a5568; font-size:0.85rem; text-align:right;'>" +
-                "<strong>📞 Suporte</strong><br>" +
-                "kewin.ferreira@energisa.com.br" +
+                "<div style='color:#4a5568; font-size:0.85rem; text-align:right;'>"
+                "<strong>📞 Suporte</strong><br>"
+                "kewin.ferreira@energisa.com.br"
                 "</div>", 
                 unsafe_allow_html=True
             )
@@ -1240,7 +1245,7 @@ if df is not None:
 else:
     st.error("❌ Não foi possível carregar os dados.")
     
-    # Instruções de configuração - SEM TRIPLAS STRINGS
+    # Instruções de configuração
     with st.expander("🔧 Configuração do GitHub"):
         texto_instrucoes = (
             "### Para configurar o GitHub:\n\n"
