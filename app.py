@@ -14,8 +14,7 @@ import tempfile
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboard de Comissionamento | Fábrica SCADA",
-    page_icon="📊",
+    page_title="Dashboard de Desenvolvimentos/Comissionamentos | Fábrica SCADA",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -451,8 +450,8 @@ if df is not None:
             <div class="header-unificado">
                 <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
                 <div class="header-texto">
-                    <h1>📊 Dashboard de Comissionamento</h1>
-                    <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+                    <h1>Acompanhamento de Comissionamentos/Desenvolvimentos</h1>
+                    <p>Acompanhamento de Desenvolvimentos e Comissionamentos • Energisa</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
