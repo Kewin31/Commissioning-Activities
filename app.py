@@ -1191,42 +1191,48 @@ if df is not None:
             if colunas:
                 st.dataframe(df_filtrado[colunas], use_container_width=True, height=500)
 
-                # RODAPÉ
+                       # RODAPÉ
         st.markdown("---")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.markdown("""
-            <div style='color:#4a5568; font-size:0.85rem;'>
-                <strong>© 2026 Energisa</strong><br>
-                Versão 2.0.0
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                "<div style='color:#4a5568; font-size:0.85rem;'>"
+                "<strong>© 2026 Energisa</strong><br>"
+                "Versão 2.0.0"
+                "</div>", 
+                unsafe_allow_html=True
+            )
         
         with col2:
-            st.markdown(f"""
-            <div style='color:#4a5568; font-size:0.85rem;'>
-                <strong>🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}</strong><br>
-                Fonte: {fonte.upper()}
-            </div>
-            """, unsafe_allow_html=True)
+            data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
+            st.markdown(
+                f"<div style='color:#4a5568; font-size:0.85rem;'>"
+                f"<strong>🕒 {data_hora}</strong><br>"
+                f"Fonte: {fonte.upper()}"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
         
         with col3:
-            st.markdown(f"""
-            <div style='color:#4a5568; font-size:0.85rem;'>
-                <strong>📊 Registros:</strong> {total_equip}<br>
-                <strong>✅ Concluídos:</strong> {qtd_desenvolvidos + qtd_comissionados + qtd_validados}
-            </div>
-            """, unsafe_allow_html=True)
+            total_concluidos = qtd_desenvolvidos + qtd_comissionados + qtd_validados
+            st.markdown(
+                f"<div style='color:#4a5568; font-size:0.85rem;'>"
+                f"<strong>📊 Registros:</strong> {total_equip}<br>"
+                f"<strong>✅ Concluídos:</strong> {total_concluidos}"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
         
         with col4:
-            st.markdown("""
-            <div style='color:#4a5568; font-size:0.85rem; text-align:right;'>
-                <strong>📞 Suporte</strong><br>
-                kewin.ferreira@energisa.com.br
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                "<div style='color:#4a5568; font-size:0.85rem; text-align:right;'>"
+                "<strong>📞 Suporte</strong><br>"
+                "kewin.ferreira@energisa.com.br"
+                "</div>", 
+                unsafe_allow_html=True
+            )
 
     else:
         st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
@@ -1236,20 +1242,21 @@ else:
     
     # Instruções de configuração
     with st.expander("🔧 Configuração do GitHub"):
-        st.markdown("""
-        ### Para configurar o GitHub:
-        
-        1. **Crie um token no GitHub:**
-           - Acesse: https://github.com/settings/tokens
-           - Clique em "Generate new token (classic)"
-           - Selecione o escopo: `repo`
-           - Copie o token gerado
-        
-        2. **Configure no Streamlit Cloud:**
-           - Vá para seu app no Streamlit Cloud
-           - Settings > Secrets
-           - Adicione:
-           ```toml
-           GITHUB_TOKEN = "seu_token_aqui"
-           GITHUB_REPO = "seu_usuario/seu_repositorio"
-           GITHUB_FILE_PATH = "caminho/do/arquivo.csv"
+        st.markdown(
+            """
+            ### Para configurar o GitHub:
+            
+            1. **Crie um token no GitHub:**
+               - Acesse: https://github.com/settings/tokens
+               - Clique em "Generate new token (classic)"
+               - Selecione o escopo: `repo`
+               - Copie o token gerado
+            
+            2. **Configure no Streamlit Cloud:**
+               - Vá para seu app no Streamlit Cloud
+               - Settings > Secrets
+               - Adicione:
+               ```toml
+               GITHUB_TOKEN = "seu_token_aqui"
+               GITHUB_REPO = "seu_usuario/seu_repositorio"
+               GITHUB_FILE_PATH = "caminho/do/arquivo.csv"
