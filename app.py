@@ -404,57 +404,60 @@ if df is not None:
     
     col_esquerda, col_direita = st.columns([4, 1.2])
     
-    with col_esquerda:
-        if logo_base64:
-            st.markdown(f"""
-            <style>
-            .header-unificado {{
-                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-                border-radius: 16px;
-                padding: 1rem 2rem;
-                box-shadow: 0 8px 20px rgba(0,20,50,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-                display: flex;
-                align-items: center;
-                gap: 1.5rem;
-                height: 100%;
-                min-height: 90px;
-            }}
-            .header-logo {{
-                width: 70px;
-                height: 70px;
-                object-fit: contain;
-                background: white;
-                border-radius: 10px;
-                padding: 5px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }}
-            .header-texto {{
-                flex: 1;
-            }}
-            .header-texto h1 {{
-                margin: 0;
-                font-size: 2rem;
-                font-weight: 600;
-                color: white;
-                letter-spacing: -0.02em;
-                line-height: 1.2;
-            }}
-            .header-texto p {{
-                margin: 0.2rem 0 0 0;
-                color: rgba(255,255,255,0.9);
-                font-size: 0.95rem;
-            }}
-            </style>
-            
-            <div class="header-unificado">
-                <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
-                <div class="header-texto">
-                    <h1>Radar de Desenvolvimento e Comissionamento</h1>
-                    <p>EMT | ETO </p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    if df is not None:
+    # CABEÇALHO UNIFICADO - SEM DATA
+    logo_base64, mime_type = get_logo_base64()
+    
+    # Apenas uma coluna para o cabeçalho (ocupando toda a largura)
+    st.markdown(f"""
+    <style>
+    .header-unificado {{
+        background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+        border-radius: 16px;
+        padding: 1rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 20px rgba(0,20,50,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        width: 100%;
+    }}
+    .header-logo {{
+        width: 70px;
+        height: 70px;
+        object-fit: contain;
+        background: white;
+        border-radius: 10px;
+        padding: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }}
+    .header-texto {{
+        flex: 1;
+    }}
+    .header-texto h1 {{
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+        color: white;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }}
+    .header-texto p {{
+        margin: 0.2rem 0 0 0;
+        color: rgba(255,255,255,0.9);
+        font-size: 0.95rem;
+    }}
+    </style>
+    
+    <div class="header-unificado">
+        <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
+        <div class="header-texto">
+            <h1>Radar de Desenvolvimento e Comissionamento</h1>
+            <p>EMT | ETO</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
         else:
             st.markdown("""
             <div style="background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
