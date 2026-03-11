@@ -407,104 +407,103 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # HEADER PRINCIPAL - PROPORÇÕES AJUSTADAS
-    col_logo, col_title, col_date = st.columns([1, 3.2, 1.3])
+    # CABEÇALHO UNIFICADO - LOGO E TÍTULO NO MESMO BLOCO
+    col_esquerda, col_direita = st.columns([4, 1.5])
     
-    with col_logo:  # ← LINHA 413 - corretamente indentada
-        # Tentar carregar a logo da Energisa
-        logo_base64 = get_logo_base64()  # ← LINHA 415 - indentada com 4 espaços
+    with col_esquerda:
+        # Bloco unificado com logo e título
+        logo_base64 = get_logo_base64()
         
-        if logo_base64:
-            # Exibir logo MAIOR e proporcional
-            st.markdown(f"""
-            <style>
-            .logo-container-maior {{
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-                border-radius: 12px;
-                padding: 0.8rem 0.5rem;
-                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-                min-height: 90px;
-            }}
-            .logo-container-maior img {{
-                max-width: 90px;
-                max-height: 70px;
-                width: auto;
-                height: auto;
-                object-fit: contain;
-                background: white;
-                padding: 8px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            }}
-            </style>
-            <div class="logo-container-maior">
-                <img src="data:image/gif;base64,{logo_base64}" 
-                     alt="Logo Energisa"
-                     title="Energisa">
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Placeholder da logo MAIOR
-            st.markdown("""
-            <style>
-            .logo-placeholder-maior {{
-                background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-                width: 100%;
-                height: 100%;
-                min-height: 90px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 45px;
-                color: white;
-                box-shadow: 0 4px 12px rgba(0,20,50,0.15);
-                border: 1px solid rgba(255,255,255,0.1);
-            }}
-            </style>
-            <div class="logo-placeholder-maior">
-                ⚡
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col_title:
-        st.markdown("""
+        st.markdown(f"""
         <style>
-        .main-header-ajustado {
+        .header-unificado {{
             background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-            padding: 1.2rem 1.5rem;
-            border-radius: 12px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(0,20,50,0.15);
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            box-shadow: 0 8px 20px rgba(0,20,50,0.15);
             border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            height: 100%;
+            min-height: 90px;
+        }}
+        .header-logo {{
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }}
+        .header-texto {{
+            flex: 1;
+        }}
+        .header-texto h1 {{
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }}
+        .header-texto p {{
+            margin: 0.2rem 0 0 0;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+        }}
+        </style>
+        
+        <div class="header-unificado">
+            <img src="data:image/gif;base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
+            <div class="header-texto">
+                <h1>📊 Dashboard de Comissionamento</h1>
+                <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_direita:
+        # Data e hora (lado direito)
+        st.markdown(f"""
+        <style>
+        .header-data {{
+            background: white;
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            text-align: center;
             height: 100%;
             min-height: 90px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-        }
-        .main-header-ajustado h1 {
+        }}
+        .header-data .data {{
+            color: #1e3c72;
+            font-size: 1.2rem;
+            font-weight: 700;
             margin: 0;
-            font-size: 2rem;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-        }
-        .main-header-ajustado p {
-            margin: 0.3rem 0 0 0;
-            opacity: 0.9;
-            font-size: 0.95rem;
-        }
+        }}
+        .header-data .hora {{
+            color: #4a5568;
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin: 0.2rem 0 0 0;
+        }}
+        .header-data .label {{
+            color: #718096;
+            font-size: 0.75rem;
+            margin: 0.2rem 0 0 0;
+        }}
         </style>
         
-        <div class='main-header-ajustado'>
-            <h1>📊 Dashboard de Comissionamento</h1>
-            <p>Acompanhimento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+        <div class="header-data">
+            <div class="data">{datetime.now().strftime('%d/%m/%Y')}</div>
+            <div class="hora">⏱️ {datetime.now().strftime('%H:%M')}</div>
+            <div class="label">dados em tempo real</div>
         </div>
         """, unsafe_allow_html=True)
     
