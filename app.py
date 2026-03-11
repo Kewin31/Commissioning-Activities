@@ -399,123 +399,109 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # CABEÇALHO UNIFICADO - VERSÃO PNG
+    # CABEÇALHO UNIFICADO - SEM DATA
     logo_base64, mime_type = get_logo_base64()
     
-    col_esquerda, col_direita = st.columns([4, 1.2])
-    
-    # Carregar dados
-df = load_data()
-
-if df is not None:  # ← linha 407
-    # CABEÇALHO UNIFICADO - SEM DATA (tudo indentado abaixo)
-    logo_base64, mime_type = get_logo_base64()  # ← linha 409 (com 4 espaços)
-    
-    st.markdown(f"""
-    <style>
-    .header-unificado {{
-        background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-        border-radius: 16px;
-        padding: 1rem 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 20px rgba(0,20,50,0.15);
-        border: 1px solid rgba(255,255,255,0.1);
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        width: 100%;
-    }}
-    .header-logo {{
-        width: 70px;
-        height: 70px;
-        object-fit: contain;
-        background: white;
-        border-radius: 10px;
-        padding: 5px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }}
-    .header-texto {{
-        flex: 1;
-    }}
-    .header-texto h1 {{
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 600;
-        color: white;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-    }}
-    .header-texto p {{
-        margin: 0.2rem 0 0 0;
-        color: rgba(255,255,255,0.9);
-        font-size: 0.95rem;
-    }}
-    </style>
-    
-    <div class="header-unificado">
-        <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
-        <div class="header-texto">
-            <h1>📊 Dashboard de Comissionamento</h1>
-            <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # O RESTO DO SEU CÓDIGO (sidebar, filtros, etc.) continua aqui, tudo indentado
-    # ... (todo o código que estava depois)
-        else:
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
-                        border-radius: 16px; padding: 1rem 2rem; display: flex; align-items: center; gap: 1.5rem;">
-                <div style="background: white; width:70px; height:70px; border-radius:10px; display: flex; align-items: center; justify-content: center; font-size:35px;">
-                    ⚡
-                </div>
-                <div>
-                    <h1 style="margin:0; color:white; font-size:2rem;">📊 Dashboard de Comissionamento</h1>
-                    <p style="margin:0.2rem 0 0 0; color:rgba(255,255,255,0.9);">Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    with col_direita:
+    if logo_base64:
         st.markdown(f"""
         <style>
-        .header-data {{
-            background: white;
+        .header-unificado {{
+            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
             border-radius: 16px;
-            padding: 1rem 1.2rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
-            text-align: center;
-            height: 100%;
-            min-height: 90px;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 20px rgba(0,20,50,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            width: 100%;
         }}
-        .header-data .data {{
-            color: #1e3c72;
-            font-size: 1.1rem;
-            font-weight: 700;
+        .header-logo {{
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }}
+        .header-texto {{
+            flex: 1;
+        }}
+        .header-texto h1 {{
             margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
         }}
-        .header-data .hora {{
-            color: #4a5568;
-            font-size: 1rem;
-            font-weight: 500;
+        .header-texto p {{
             margin: 0.2rem 0 0 0;
-        }}
-        .header-data .label {{
-            color: #718096;
-            font-size: 0.7rem;
-            margin: 0.2rem 0 0 0;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
         }}
         </style>
         
-        <div class="header-data">
-            <div class="data">{datetime.now().strftime('%d/%m/%Y')}</div>
-            <div class="hora">⏱️ {datetime.now().strftime('%H:%M')}</div>
-            <div class="label">dados em tempo real</div>
+        <div class="header-unificado">
+            <img src="data:{mime_type};base64,{logo_base64}" class="header-logo" alt="Logo Energisa">
+            <div class="header-texto">
+                <h1>📊 Dashboard de Comissionamento</h1>
+                <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <style>
+        .header-unificado {
+            background: linear-gradient(135deg, #0a1a3c 0%, #1e3c72 100%);
+            border-radius: 16px;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 20px rgba(0,20,50,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            width: 100%;
+        }
+        .header-placeholder {
+            background: white;
+            width: 70px;
+            height: 70px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .header-texto {
+            flex: 1;
+        }
+        .header-texto h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .header-texto p {
+            margin: 0.2rem 0 0 0;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+        }
+        </style>
+        
+        <div class="header-unificado">
+            <div class="header-placeholder">⚡</div>
+            <div class="header-texto">
+                <h1>📊 Dashboard de Comissionamento</h1>
+                <p>Acompanhamento de Desenvolvimentos e Comissionamentos • AD Energisa</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
