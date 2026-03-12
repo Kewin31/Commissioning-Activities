@@ -6,12 +6,21 @@ from datetime import datetime
 import numpy as np
 import os
 import io
-import requests
 import base64
 from github import Github
 from github import GithubException
 import tempfile
 import time
+import locale
+
+# Tentar configurar locale para português
+try:
+    locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+except:
+    try:
+        locale.setlocale(locale.LC_TIME, 'Portuguese_Brazil.1252')
+    except:
+        pass  # Se não conseguir, usa o padrão
 
 # Configuração da página
 st.set_page_config(
@@ -21,27 +30,50 @@ st.set_page_config(
 )
 
 # ============================================
+# FUNÇÕES DE FORMATAÇÃO DE DATA EM PORTUGUÊS
+# ============================================
+def formatar_data_portugues(data, formato='mes'):
+    """Formata datas em português"""
+    if pd.isna(data):
+        return ""
+    
+    meses_pt = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+    
+    dias_semana_pt = {
+        0: 'Segunda-feira', 1: 'Terça-feira', 2: 'Quarta-feira',
+        3: 'Quinta-feira', 4: 'Sexta-feira', 5: 'Sábado', 6: 'Domingo'
+    }
+    
+    if formato == 'dia':
+        return f"{dias_semana_pt[data.weekday()]}, {data.day} de {meses_pt[data.month]}"
+    elif formato == 'mes':
+        return f"{meses_pt[data.month]}/{data.year}"
+    elif formato == 'ano':
+        return f"{data.year}"
+    else:
+        return data.strftime('%d/%m/%Y')
+
+# ============================================
 # CONFIGURAÇÕES DO GITHUB
 # ============================================
 def get_github_config():
     """Obtém configurações do GitHub do Streamlit Secrets com validação"""
     try:
-        # Verificar se os secrets existem
         if "GITHUB_TOKEN" not in st.secrets:
-            st.error("❌ Token do GitHub não configurado. Configure no Streamlit Secrets.")
             return None, None, None
             
         token = st.secrets["GITHUB_TOKEN"]
         
         if "GITHUB_REPO" not in st.secrets:
-            st.error("❌ Repositório do GitHub não configurado. Configure no Streamlit Secrets.")
             return token, None, None
             
         repo = st.secrets["GITHUB_REPO"]
         
-        # Validar formato do repositório (deve ser "usuario/repo")
         if '/' not in repo:
-            st.error("❌ Formato do repositório inválido. Use 'usuario/repo'")
             return token, None, None
             
         file_path = st.secrets.get("GITHUB_FILE_PATH", "data/Dados/Comissionamento AD - UNs.csv")
@@ -49,7 +81,6 @@ def get_github_config():
         return token, repo, file_path
         
     except Exception as e:
-        st.error(f"❌ Erro ao carregar configurações do GitHub: {str(e)}")
         return None, None, None
 
 def test_github_connection():
@@ -60,22 +91,19 @@ def test_github_connection():
         if not token or not repo_name:
             return False, "Configurações incompletas"
         
-        # Testar conexão
         g = Github(token)
         user = g.get_user()
-        
-        # Tentar acessar o repositório
         repo = g.get_repo(repo_name)
         
         return True, f"Conectado como {user.login} | Repositório: {repo_name}"
         
     except GithubException as e:
         if e.status == 401:
-            return False, "Token inválido ou expirado. Gere um novo token no GitHub."
+            return False, "Token inválido ou expirado."
         elif e.status == 404:
             return False, f"Repositório '{repo_name}' não encontrado."
         else:
-            return False, f"Erro GitHub: {e.status} - {e.data.get('message', 'Erro desconhecido')}"
+            return False, f"Erro GitHub: {e.status}"
     except Exception as e:
         return False, f"Erro de conexão: {str(e)}"
 
@@ -85,28 +113,24 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         token, repo_name, file_path = get_github_config()
         
         if not token or not repo_name:
-            st.error("❌ Configurações do GitHub incompletas. Verifique o Streamlit Secrets.")
+            st.error("❌ Configurações do GitHub incompletas.")
             return False
         
-        # Validar arquivo
         if arquivo_upload is None:
             st.error("❌ Nenhum arquivo selecionado.")
             return False
         
-        # Verificar se é CSV
         if not arquivo_upload.name.endswith('.csv'):
             st.error("❌ O arquivo deve ser do tipo CSV.")
             return False
         
-        # Conectar ao GitHub
         g = Github(token)
         
         try:
             repo = g.get_repo(repo_name)
         except GithubException as e:
             if e.status == 401:
-                st.error("❌ Token inválido ou expirado. Gere um novo token no GitHub.")
-                st.info("🔑 Para gerar um novo token: GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic)")
+                st.error("❌ Token inválido ou expirado.")
                 return False
             elif e.status == 404:
                 st.error(f"❌ Repositório '{repo_name}' não encontrado.")
@@ -114,55 +138,44 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
             else:
                 raise e
         
-        # Ler o conteúdo do arquivo enviado
         file_content = arquivo_upload.read()
         
-        # Validar se é um CSV válido
         try:
-            # Tentar ler com pandas para validar
             df_temp = pd.read_csv(io.BytesIO(file_content), encoding='utf-8-sig')
-            st.success(f"✅ CSV válido! {len(df_temp)} linhas, {len(df_temp.columns)} colunas")
+            st.success(f"✅ CSV válido! {len(df_temp)} linhas")
         except Exception as e:
             st.error(f"❌ Arquivo CSV inválido: {str(e)}")
             return False
         
-        # Verificar se o arquivo já existe no repositório
         try:
             contents = repo.get_contents(file_path, ref=branch)
-            # Atualizar arquivo existente
             repo.update_file(
                 path=file_path,
-                message=f"📦 Atualização automática - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                message=f"📦 Atualização - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
                 content=file_content,
                 sha=contents.sha,
                 branch=branch
             )
-            st.success(f"✅ Arquivo atualizado com sucesso no GitHub! ({branch})")
+            st.success(f"✅ Arquivo atualizado no GitHub!")
             
         except GithubException as e:
             if e.status == 404:
-                # Criar novo arquivo
                 try:
                     repo.create_file(
                         path=file_path,
-                        message=f"📦 Criação inicial - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                        message=f"📦 Criação - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
                         content=file_content,
                         branch=branch
                     )
-                    st.success(f"✅ Arquivo criado com sucesso no GitHub! ({branch})")
+                    st.success(f"✅ Arquivo criado no GitHub!")
                 except Exception as create_error:
                     st.error(f"❌ Erro ao criar arquivo: {str(create_error)}")
                     return False
             else:
-                st.error(f"❌ Erro GitHub: {e.status} - {e.data.get('message', 'Erro desconhecido')}")
+                st.error(f"❌ Erro GitHub: {e.status}")
                 return False
         
-        # Limpar cache para carregar novos dados
         st.cache_data.clear()
-        
-        # Registrar no log
-        st.info(f"📝 Commit: Atualização automática - {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-        
         return True
         
     except Exception as e:
@@ -175,26 +188,22 @@ def load_data_from_github():
         token, repo_name, file_path = get_github_config()
         
         if not token or not repo_name:
-            st.warning("⚠️ Configurações do GitHub incompletas. Usando modo offline.")
             return None
         
-        # Conectar ao GitHub
         g = Github(token)
         
         try:
             repo = g.get_repo(repo_name)
             contents = repo.get_contents(file_path)
             
-            # Decodificar conteúdo
             file_content = base64.b64decode(contents.content).decode('utf-8')
             
-            # Salvar temporariamente para ler com pandas
             with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
                 f.write(file_content)
                 temp_file = f.name
             
             df = pd.read_csv(temp_file, encoding='utf-8-sig')
-            os.unlink(temp_file)  # Limpar arquivo temporário
+            os.unlink(temp_file)
             
             return df
             
@@ -203,7 +212,7 @@ def load_data_from_github():
                 st.error("❌ Token GitHub inválido ou expirado.")
                 return None
             elif e.status == 404:
-                st.error(f"❌ Arquivo '{file_path}' não encontrado no repositório.")
+                st.error(f"❌ Arquivo não encontrado.")
                 return None
             else:
                 st.error(f"❌ Erro GitHub: {e.status}")
@@ -244,14 +253,12 @@ def get_logo_base64():
 # CSS personalizado
 st.markdown("""
 <style>
-    /* Fontes e reset */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
     }
     
-    /* Cards de métrica */
     .metric-card {
         background: white;
         padding: 1.5rem;
@@ -278,7 +285,6 @@ st.markdown("""
         background: linear-gradient(90deg, #2a5298, #4a7ab0);
     }
     
-    /* Títulos de seção */
     .section-title {
         color: #0a1a3c;
         font-size: 1.4rem;
@@ -286,12 +292,6 @@ st.markdown("""
         margin: 1.8rem 0 1.2rem 0;
         padding-bottom: 0.8rem;
         border-bottom: 2px solid #e2e8f0;
-        letter-spacing: -0.01em;
-    }
-    
-    /* Sidebar melhorada */
-    .css-1d391kg {
-        background-color: #f7fafc;
     }
     
     .sidebar-header {
@@ -303,7 +303,6 @@ st.markdown("""
         color: white;
     }
     
-    /* Botões e inputs */
     .stButton > button {
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
         color: white;
@@ -313,7 +312,6 @@ st.markdown("""
         font-weight: 500;
         font-size: 0.9rem;
         transition: all 0.3s ease;
-        border: 1px solid rgba(255,255,255,0.1);
         width: 100%;
     }
     .stButton > button:hover {
@@ -322,7 +320,6 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(30,60,114,0.3);
     }
     
-    /* Botões de atualização */
     .update-button > button {
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     }
@@ -337,60 +334,6 @@ st.markdown("""
         background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
     }
     
-    /* Status card */
-    .status-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        margin: 1rem 0;
-    }
-    
-    .status-success {
-        border-left: 4px solid #28a745;
-    }
-    
-    .status-error {
-        border-left: 4px solid #dc3545;
-    }
-    
-    .status-warning {
-        border-left: 4px solid #ffc107;
-    }
-    
-    /* Expanders */
-    .streamlit-expanderHeader {
-        background-color: white;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        font-weight: 500;
-        color: #1e3c72;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f7fafc;
-        padding: 0.5rem;
-        border-radius: 12px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 500;
-    }
-    
-    /* Rodapé */
-    .footer {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        margin-top: 2rem;
-    }
-    
-    /* Cards simples */
     .metric-card-simple {
         background-color: white;
         padding: 1.2rem;
@@ -404,10 +347,26 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
+    
+    .company-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+    .badge-emt {
+        background-color: #2a5298;
+        color: white;
+    }
+    .badge-eto {
+        background-color: #4a7ab0;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Função para criar cards de métrica
 def metric_card(title, value, subtitle=None, icon="📊", color="#1e3c72", delta=None):
     if isinstance(value, (int, float)):
         value_str = f"{value:,.0f}".replace(",", ".")
@@ -481,15 +440,13 @@ def configurar_grafico_corporativo(fig, titulo, height=400):
     
     return fig
 
-# Função para carregar dados com opção de fonte
-@st.cache_data(ttl=300)  # Cache de 5 minutos
+@st.cache_data(ttl=300)
 def load_data(force_github=False):
     """Carrega dados do GitHub ou local"""
     try:
         df = None
         fonte = "local"
         
-        # Se forçar GitHub ou não tiver dados locais, tenta GitHub
         if force_github:
             st.info("🔄 Carregando dados do GitHub...")
             df = load_data_from_github()
@@ -497,34 +454,31 @@ def load_data(force_github=False):
                 fonte = "github"
                 st.success("✅ Dados carregados do GitHub!")
         
-        # Se não conseguiu do GitHub, tenta local
         if df is None:
             caminho_arquivo = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
             
             if os.path.exists(caminho_arquivo):
                 df = pd.read_csv(caminho_arquivo, encoding='utf-8-sig')
-                st.info(f"📁 Dados carregados do arquivo local: {caminho_arquivo}")
+                st.info(f"📁 Dados carregados do arquivo local")
             else:
-                # Criar dados de exemplo
                 st.warning("⚠️ Nenhum arquivo encontrado. Usando dados de exemplo.")
                 dados_exemplo = {
-                    'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 51)],
-                    'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1051)],
-                    'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 50),
-                    'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 50),
-                    'Responsável Comissionamento': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 50),
-                    'Responsável Auditoria': np.random.choice(['Fernando Alves', 'Lucia Santos', 'Marcos Paulo', 'Não atribuído'], 50),
-                    'Fase': np.random.choice(['DEV', 'COM', 'VAL', 'PEN'], 50, p=[0.3, 0.25, 0.2, 0.25]),
-                    'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 50, p=[0.4, 0.35, 0.25]),
-                    'Empresa': np.random.choice(['EMT', 'ETO'], 50),
-                    'Criado': pd.date_range(start='2024-01-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M'),
-                    'Modificado': pd.date_range(start='2024-02-01', periods=50, freq='D').strftime('%d/%m/%Y %H:%M')
+                    'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
+                    'Chamado Desenvolvimento': [f'CHAMADO-{i}' for i in range(1001, 1101)],
+                    'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor', 'Relé', 'Medidor'], 100),
+                    'Unidade': np.random.choice(['Usina A', 'Usina B', 'Subestação X', 'Subestação Y', 'Parque Solar 1', 'Parque Eólico 2'], 100),
+                    'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa', 'Ana Oliveira', 'Carlos Souza', 'Não atribuído'], 100),
+                    'Responsável Comissionamento': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 100),
+                    'Responsável Auditoria': np.random.choice(['Fernando Alves', 'Lucia Santos', 'Marcos Paulo', 'Não atribuído'], 100),
+                    'Fase': np.random.choice(['DEV', 'COM', 'VAL', 'PEN'], 100, p=[0.3, 0.25, 0.2, 0.25]),
+                    'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente'], 100, p=[0.4, 0.35, 0.25]),
+                    'Empresa': np.random.choice(['EMT', 'ETO'], 100),
+                    'Criado': pd.date_range(start='2024-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M'),
+                    'Modificado': pd.date_range(start='2024-02-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
                 }
                 df = pd.DataFrame(dados_exemplo)
         
-        # Tratamento de dados
         if df is not None:
-            # Colunas de responsáveis
             colunas_responsaveis = {
                 'Responsável Desenvolvimento': 'Não atribuído',
                 'Responsável Comissionamento': 'Não atribuído',
@@ -537,12 +491,13 @@ def load_data(force_github=False):
                 else:
                     df[col] = df[col].fillna(valor_padrao)
             
-            # Status
+            if 'Unidade' not in df.columns:
+                df['Unidade'] = np.random.choice(['Usina A', 'Usina B', 'Subestação X', 'Subestação Y'], len(df))
+            
             if 'Status' in df.columns:
                 df['Status'] = df['Status'].fillna('Pendente')
                 df['Status'] = df['Status'].str.strip()
             
-            # Status Detalhado
             if 'Status Detalhado' not in df.columns:
                 if 'Fase' in df.columns:
                     mapa_fases = {
@@ -555,11 +510,24 @@ def load_data(force_github=False):
                 else:
                     df['Status Detalhado'] = df['Status']
             
-            # Datas
             if 'Criado' in df.columns:
                 df['Criado'] = pd.to_datetime(df['Criado'], format='%d/%m/%Y %H:%M', errors='coerce')
             if 'Modificado' in df.columns:
                 df['Modificado'] = pd.to_datetime(df['Modificado'], format='%d/%m/%Y %H:%M', errors='coerce')
+            
+            # Adicionar colunas auxiliares para análise
+            if 'Criado' in df.columns:
+                df['Ano'] = df['Criado'].dt.year
+                df['Mês'] = df['Criado'].dt.month
+                df['Mês/Ano'] = df['Criado'].dt.to_period('M').astype(str)
+                df['Semana'] = df['Criado'].dt.strftime('%Y-%W')
+                df['Dia'] = df['Criado'].dt.date
+                df['Dia da Semana'] = df['Criado'].dt.day_name()
+                df['Mês Nome'] = df['Criado'].dt.month.map({
+                    1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+                    5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+                    9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+                })
         
         return df, fonte
         
@@ -656,17 +624,15 @@ if df is not None:
         </div>
         """, unsafe_allow_html=True)
         
-        # Status da fonte de dados
         st.markdown("### 📊 Fonte de Dados")
         
         if fonte == "github":
             st.success("✅ Conectado ao GitHub")
         elif fonte == "local":
-            st.info("📁 Modo local (arquivo offline)")
+            st.info("📁 Modo local")
         else:
             st.warning("⚠️ Dados de exemplo")
         
-        # Testar conexão GitHub
         with st.expander("🔌 Status da Conexão GitHub", expanded=False):
             conectado, mensagem = test_github_connection()
             
@@ -674,16 +640,7 @@ if df is not None:
                 st.success(f"✅ {mensagem}")
             else:
                 st.error(f"❌ {mensagem}")
-                
-                st.markdown("""
-                **🔑 Como gerar um token:**
-                1. Acesse [GitHub Settings](https://github.com/settings/tokens)
-                2. Clique em "Generate new token (classic)"
-                3. Selecione escopo: `repo`
-                4. Copie o token e adicione ao Streamlit Secrets
-                """)
         
-        # Botão para forçar atualização do GitHub
         st.markdown("### 🔄 Atualização de Dados")
         
         col1, col2 = st.columns(2)
@@ -699,8 +656,6 @@ if df is not None:
                         st.success("✅ Dados sincronizados!")
                         time.sleep(1)
                         st.rerun()
-                    else:
-                        st.error("❌ Falha ao sincronizar")
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
@@ -715,7 +670,6 @@ if df is not None:
         
         st.markdown("---")
         
-        # Upload para GitHub
         with st.expander("📤 Upload para GitHub", expanded=True):
             st.markdown("""
             <p style='font-size:0.85rem; color:#718096; margin-bottom:10px;'>
@@ -723,7 +677,6 @@ if df is not None:
             </p>
             """, unsafe_allow_html=True)
             
-            # Branch selector
             branch = st.selectbox("🌿 Branch", ["main", "master"], index=0)
             
             arquivo_upload = st.file_uploader(
@@ -733,22 +686,21 @@ if df is not None:
             )
             
             if arquivo_upload is not None:
-                # Preview do arquivo
                 try:
                     df_preview = pd.read_csv(io.BytesIO(arquivo_upload.getvalue()), 
                                             encoding='utf-8-sig', nrows=5)
-                    st.info(f"📁 {arquivo_upload.name} | {len(df_preview)} colunas")
+                    st.info(f"📁 {arquivo_upload.name}")
                     
                     with st.expander("Preview"):
                         st.dataframe(df_preview, use_container_width=True)
                 except:
-                    st.warning("Não foi possível ler o preview do arquivo")
+                    st.warning("Não foi possível ler o preview")
                 
                 col1, col2 = st.columns([1, 1])
                 with col1:
                     st.markdown('<div class="update-button">', unsafe_allow_html=True)
-                    if st.button("⬆️ Upload para GitHub", use_container_width=True):
-                        with st.spinner("Enviando para o GitHub..."):
+                    if st.button("⬆️ Upload", use_container_width=True):
+                        with st.spinner("Enviando..."):
                             if atualizar_dados_github(arquivo_upload, branch):
                                 st.success("✅ Upload concluído!")
                                 time.sleep(2)
@@ -761,13 +713,12 @@ if df is not None:
         
         st.markdown("---")
         
-        # FILTROS
         st.markdown("### 📋 Filtros")
         
-        # Inicializar variáveis
         empresas = []
         tipos_equip = []
         status_opcoes = []
+        unidades = []
         responsaveis_dev = []
         responsaveis_com = []
         responsaveis_audit = []
@@ -789,6 +740,15 @@ if df is not None:
                 default=sorted(df['Tipo Equipamento'].unique()),
                 key="tipos_filter"
             )
+        
+        with st.expander("🏭 Unidades", expanded=True):
+            if 'Unidade' in df.columns:
+                unidades = st.multiselect(
+                    "Selecionar unidades",
+                    options=sorted(df['Unidade'].unique()),
+                    default=[],
+                    key="unidades_filter"
+                )
         
         with st.expander("📊 Status", expanded=True):
             status_opcoes = st.multiselect(
@@ -834,15 +794,12 @@ if df is not None:
         
         st.markdown("---")
         
-        # Progresso rápido
         if not df.empty:
             st.markdown("### 📊 Progresso")
             
             df_progresso = df.copy()
             if empresas:
                 df_progresso = df_progresso[df_progresso['Empresa'].isin(empresas)]
-            if tipos_equip:
-                df_progresso = df_progresso[df_progresso['Tipo Equipamento'].isin(tipos_equip)]
             
             total = len(df_progresso)
             desenvolvidos = len(df_progresso[df_progresso['Status Detalhado'] == 'Desenvolvido'])
@@ -863,7 +820,7 @@ if df is not None:
         col1, col2 = st.columns(2)
         with col1:
             if st.button("🔄 Limpar filtros", use_container_width=True):
-                for key in ['empresas_filter', 'tipos_filter', 'status_filter', 
+                for key in ['empresas_filter', 'tipos_filter', 'status_filter', 'unidades_filter',
                            'resp_dev_filter', 'resp_com_filter', 'resp_audit_filter', 
                            'data_inicio', 'data_fim']:
                     if key in st.session_state:
@@ -880,6 +837,8 @@ if df is not None:
         df_filtrado = df_filtrado[df_filtrado['Empresa'].isin(empresas)]
     if tipos_equip:
         df_filtrado = df_filtrado[df_filtrado['Tipo Equipamento'].isin(tipos_equip)]
+    if unidades:
+        df_filtrado = df_filtrado[df_filtrado['Unidade'].isin(unidades)]
     if status_opcoes:
         df_filtrado = df_filtrado[df_filtrado['Status Detalhado'].isin(status_opcoes)]
     if responsaveis_dev:
@@ -894,16 +853,14 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-        # MÉTRICAS PRINCIPAIS
+    # MÉTRICAS PRINCIPAIS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
-        # Calcular métricas
         total_equip = len(df_filtrado)
         qtd_emt = len(df_filtrado[df_filtrado['Empresa'] == 'EMT'])
         qtd_eto = len(df_filtrado[df_filtrado['Empresa'] == 'ETO'])
         
-        # Calcular percentuais das empresas
         percent_emt = (qtd_emt/total_equip*100) if total_equip > 0 else 0
         percent_eto = (qtd_eto/total_equip*100) if total_equip > 0 else 0
         
@@ -917,7 +874,6 @@ if df is not None:
         percent_valid = (qtd_validados/total_equip*100) if total_equip > 0 else 0
         percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
         
-        # Cards
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
@@ -934,7 +890,7 @@ if df is not None:
             <div class="metric-card-simple" style="border-left: 4px solid #2a5298;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">⚡ EMT</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#2a5298;">{qtd_emt}</div>
-                <div style="font-size:0.8rem; color:#718096;">{percent_emt:.1f}% do total</div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_emt:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -943,7 +899,7 @@ if df is not None:
             <div class="metric-card-simple" style="border-left: 4px solid #4a7ab0;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">🔧 ETO</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#4a7ab0;">{qtd_eto}</div>
-                <div style="font-size:0.8rem; color:#718096;">{percent_eto:.1f}% do total</div>
+                <div style="font-size:0.8rem; color:#718096;">{percent_eto:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -974,7 +930,6 @@ if df is not None:
             </div>
             """, unsafe_allow_html=True)
         
-        # Segunda linha de cards
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
@@ -987,31 +942,29 @@ if df is not None:
             """, unsafe_allow_html=True)
 
         # TABS
-        tab1, tab2, tab3, tab4 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Visão Geral", 
-            "📈 Análise de Desempenho", 
-            "👥 Alocação de Recursos",
-            "📋 Dados Completos"
+            "📈 Evolução Temporal",
+            "📊 Análise por Empresa",
+            "👥 Performance por Responsável",
+            "🏭 Comissionamento por Unidade"
         ])
 
         with tab1:
+            st.markdown("### 📊 Desenvolvimento e Comissionamento por Empresa")
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                # Gráfico de pizza
-                status_counts = df_filtrado['Status Detalhado'].dropna().value_counts().reset_index()
-                status_counts.columns = ['Status', 'Quantidade']
+                st.markdown("#### ⚡ EMT")
+                df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
                 
-                ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Pendente']
-                status_counts = status_counts[status_counts['Status'].isin(ordem_status)]
-                
-                if not status_counts.empty:
-                    status_counts['Status'] = pd.Categorical(
-                        status_counts['Status'], 
-                        categories=ordem_status, 
-                        ordered=True
-                    )
-                    status_counts = status_counts.sort_values('Status')
+                if not df_emt.empty:
+                    status_emt = df_emt['Status Detalhado'].value_counts().reset_index()
+                    status_emt.columns = ['Status', 'Quantidade']
+                    
+                    ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Pendente']
+                    status_emt = status_emt[status_emt['Status'].isin(ordem_status)]
                     
                     cores_status = {
                         'Desenvolvido': '#28a745',
@@ -1020,49 +973,128 @@ if df is not None:
                         'Pendente': '#dc3545'
                     }
                     
-                    fig_status = px.pie(
-                        status_counts, 
+                    fig_emt = px.pie(
+                        status_emt, 
                         values='Quantidade', 
                         names='Status',
                         color='Status',
                         color_discrete_map=cores_status
                     )
-                    
-                    fig_status = configurar_grafico_corporativo(fig_status, "Distribuição por Status", 400)
-                    fig_status.update_traces(
-                        textposition='inside', 
-                        textinfo='percent+label+value',
-                        texttemplate='%{label}<br>%{percent}<br>(%{value})'
-                    )
-                    st.plotly_chart(fig_status, use_container_width=True)
+                    fig_emt = configurar_grafico_corporativo(fig_emt, "EMT", 350)
+                    fig_emt.update_traces(textposition='inside', textinfo='percent+label')
+                    st.plotly_chart(fig_emt, use_container_width=True)
+                else:
+                    st.info("Sem dados para EMT")
             
             with col2:
-                tipo_counts = df_filtrado['Tipo Equipamento'].value_counts().reset_index()
-                tipo_counts.columns = ['Tipo Equipamento', 'Quantidade']
-                tipo_counts = tipo_counts.sort_values('Quantidade', ascending=True)
+                st.markdown("#### 🔧 ETO")
+                df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
                 
-                fig_tipo = px.bar(
-                    tipo_counts, 
-                    x='Quantidade', 
-                    y='Tipo Equipamento',
-                    orientation='h',
-                    color='Quantidade',
-                    color_continuous_scale='Blues',
+                if not df_eto.empty:
+                    status_eto = df_eto['Status Detalhado'].value_counts().reset_index()
+                    status_eto.columns = ['Status', 'Quantidade']
+                    
+                    ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Pendente']
+                    status_eto = status_eto[status_eto['Status'].isin(ordem_status)]
+                    
+                    cores_status = {
+                        'Desenvolvido': '#28a745',
+                        'Comissionado': '#17a2b8',
+                        'Validado': '#007bff',
+                        'Pendente': '#dc3545'
+                    }
+                    
+                    fig_eto = px.pie(
+                        status_eto, 
+                        values='Quantidade', 
+                        names='Status',
+                        color='Status',
+                        color_discrete_map=cores_status
+                    )
+                    fig_eto = configurar_grafico_corporativo(fig_eto, "ETO", 350)
+                    fig_eto.update_traces(textposition='inside', textinfo='percent+label')
+                    st.plotly_chart(fig_eto, use_container_width=True)
+                else:
+                    st.info("Sem dados para ETO")
+            
+            # Gráfico comparativo
+            st.markdown("### 📊 Comparativo EMT vs ETO")
+            
+            comparativo = df_filtrado.groupby(['Empresa', 'Status Detalhado']).size().reset_index(name='Quantidade')
+            
+            if not comparativo.empty:
+                fig_comp = px.bar(
+                    comparativo,
+                    x='Empresa',
+                    y='Quantidade',
+                    color='Status Detalhado',
+                    barmode='group',
+                    color_discrete_map=cores_status,
                     text='Quantidade'
                 )
-                fig_tipo = configurar_grafico_corporativo(fig_tipo, "Distribuição por Tipo", 400)
-                fig_tipo.update_traces(textposition='outside')
-                st.plotly_chart(fig_tipo, use_container_width=True)
+                fig_comp = configurar_grafico_corporativo(fig_comp, "Comparativo por Empresa", 400)
+                fig_comp.update_traces(textposition='outside')
+                st.plotly_chart(fig_comp, use_container_width=True)
+
+        with tab2:
+            st.markdown("### 📈 Evolução Temporal")
             
-            # Evolução temporal
             if 'Criado' in df_filtrado.columns and not df_filtrado['Criado'].isna().all():
-                st.markdown("### 📅 Evolução Temporal")
+                col1, col2 = st.columns([1, 2])
                 
+                with col1:
+                    agregacao = st.radio(
+                        "Agrupar por:",
+                        options=['Dia', 'Semana', 'Mês', 'Ano'],
+                        index=2,
+                        horizontal=True,
+                        key='agreg_temporal'
+                    )
+                    
+                    tipo_grafico = st.radio(
+                        "Tipo de gráfico:",
+                        options=['Barras Empilhadas', 'Linhas'],
+                        index=0,
+                        horizontal=True,
+                        key='tipo_grafico'
+                    )
+                    
+                    incluir_empresa = st.checkbox("Separar por empresa", value=True, key='separar_empresa')
+                
+                with col2:
+                    st.markdown("#### Configurações de visualização")
+                    
+                    if agregacao == 'Dia':
+                        periodo_col = 'Dia'
+                        titulo_periodo = 'Dia'
+                    elif agregacao == 'Semana':
+                        periodo_col = 'Semana'
+                        titulo_periodo = 'Semana'
+                    elif agregacao == 'Mês':
+                        periodo_col = 'Mês/Ano'
+                        titulo_periodo = 'Mês'
+                    else:
+                        periodo_col = 'Ano'
+                        titulo_periodo = 'Ano'
+                
+                # Preparar dados
                 df_temp = df_filtrado.copy()
-                df_temp['Mês'] = df_temp['Criado'].dt.to_period('M').astype(str)
                 
-                evolucao = df_temp.groupby(['Mês', 'Status Detalhado']).size().reset_index(name='Quantidade')
-                evolucao = evolucao.sort_values('Mês')
+                if incluir_empresa:
+                    evolucao = df_temp.groupby([periodo_col, 'Empresa', 'Status Detalhado']).size().reset_index(name='Quantidade')
+                else:
+                    evolucao = df_temp.groupby([periodo_col, 'Status Detalhado']).size().reset_index(name='Quantidade')
+                
+                # Ordenar
+                if agregacao == 'Mês':
+                    evolucao = evolucao.sort_values(periodo_col)
+                elif agregacao == 'Semana':
+                    evolucao['Ano_Semana'] = evolucao[periodo_col].apply(
+                        lambda x: (int(str(x).split('-')[0]), int(str(x).split('-')[1])) if '-' in str(x) else (0, 0)
+                    )
+                    evolucao = evolucao.sort_values('Ano_Semana')
+                else:
+                    evolucao = evolucao.sort_values(periodo_col)
                 
                 cores_status = {
                     'Desenvolvido': '#28a745',
@@ -1072,129 +1104,427 @@ if df is not None:
                 }
                 
                 if not evolucao.empty:
-                    fig_evolucao = px.bar(
-                        evolucao, 
-                        x='Mês', 
-                        y='Quantidade', 
-                        color='Status Detalhado',
-                        color_discrete_map=cores_status,
-                        text='Quantidade',
-                        barmode='stack'
-                    )
+                    if tipo_grafico == 'Barras Empilhadas':
+                        if incluir_empresa:
+                            fig_evolucao = px.bar(
+                                evolucao,
+                                x=periodo_col,
+                                y='Quantidade',
+                                color='Status Detalhado',
+                                facet_col='Empresa',
+                                barmode='stack',
+                                color_discrete_map=cores_status,
+                                text='Quantidade'
+                            )
+                            fig_evolucao.for_each_annotation(lambda a: a.update(text=a.text.split('=')[-1]))
+                        else:
+                            fig_evolucao = px.bar(
+                                evolucao,
+                                x=periodo_col,
+                                y='Quantidade',
+                                color='Status Detalhado',
+                                barmode='stack',
+                                color_discrete_map=cores_status,
+                                text='Quantidade'
+                            )
+                        
+                        fig_evolucao.update_traces(textposition='inside')
+                        
+                    else:  # Linhas
+                        if incluir_empresa:
+                            fig_evolucao = px.line(
+                                evolucao,
+                                x=periodo_col,
+                                y='Quantidade',
+                                color='Status Detalhado',
+                                line_dash='Empresa',
+                                markers=True,
+                                color_discrete_map=cores_status
+                            )
+                        else:
+                            fig_evolucao = px.line(
+                                evolucao,
+                                x=periodo_col,
+                                y='Quantidade',
+                                color='Status Detalhado',
+                                markers=True,
+                                color_discrete_map=cores_status
+                            )
                     
-                    fig_evolucao.update_traces(textposition='inside')
-                    fig_evolucao = configurar_grafico_corporativo(fig_evolucao, "Evolução por Mês", 450)
-                    fig_evolucao.update_layout(xaxis_tickangle=45)
+                    titulo = f"Evolução por {agregacao}"
+                    if incluir_empresa:
+                        titulo += " - Separado por Empresa"
+                    
+                    fig_evolucao = configurar_grafico_corporativo(fig_evolucao, titulo, 500)
+                    
+                    if agregacao == 'Dia':
+                        fig_evolucao.update_layout(xaxis_tickangle=45)
                     
                     st.plotly_chart(fig_evolucao, use_container_width=True)
-
-        with tab2:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                cross_tab = pd.crosstab(
-                    df_filtrado['Empresa'], 
-                    df_filtrado['Status Detalhado'],
-                    margins=True,
-                    margins_name='Total'
-                )
-                st.markdown("### 📊 Empresa vs Status")
-                st.dataframe(cross_tab, use_container_width=True)
-            
-            with col2:
-                cross_tab_tipo = pd.crosstab(
-                    df_filtrado['Tipo Equipamento'], 
-                    df_filtrado['Status Detalhado'],
-                    margins=True,
-                    margins_name='Total'
-                )
-                st.markdown("### 📊 Tipo vs Status")
-                st.dataframe(cross_tab_tipo, use_container_width=True)
+                    
+                    # Tabela resumo
+                    with st.expander("📊 Ver dados detalhados"):
+                        if incluir_empresa:
+                            tabela = evolucao.pivot_table(
+                                index=periodo_col,
+                                columns=['Empresa', 'Status Detalhado'],
+                                values='Quantidade',
+                                fill_value=0
+                            ).reset_index()
+                        else:
+                            tabela = evolucao.pivot_table(
+                                index=periodo_col,
+                                columns='Status Detalhado',
+                                values='Quantidade',
+                                fill_value=0
+                            ).reset_index()
+                        
+                        st.dataframe(tabela, use_container_width=True)
+            else:
+                st.info("Dados de data não disponíveis para evolução temporal")
 
         with tab3:
-            st.markdown("### 👥 Responsáveis")
+            st.markdown("### 📊 Análise de Desempenho por Empresa")
             
-            tab_resp1, tab_resp2, tab_resp3 = st.tabs([
-                "👨‍💻 Desenvolvimento", 
-                "🔧 Comissionamento", 
-                "📋 Auditoria"
-            ])
-            
-            with tab_resp1:
-                if 'Responsável Desenvolvimento' in df_filtrado.columns:
-                    df_dev = df_filtrado[df_filtrado['Responsável Desenvolvimento'] != 'Não atribuído']
-                    
-                    if not df_dev.empty:
-                        resp_counts = df_dev['Responsável Desenvolvimento'].value_counts().head(10)
-                        
-                        fig = px.bar(
-                            x=resp_counts.values,
-                            y=resp_counts.index,
-                            orientation='h',
-                            title='Top 10 - Desenvolvimento',
-                            color=resp_counts.values,
-                            color_continuous_scale='Viridis',
-                            text=resp_counts.values
-                        )
-                        fig.update_traces(textposition='outside')
-                        fig.update_layout(height=400)
-                        st.plotly_chart(fig, use_container_width=True)
-            
-            with tab_resp2:
-                if 'Responsável Comissionamento' in df_filtrado.columns:
-                    df_com = df_filtrado[df_filtrado['Responsável Comissionamento'] != 'Não atribuído']
-                    
-                    if not df_com.empty:
-                        resp_counts = df_com['Responsável Comissionamento'].value_counts().head(10)
-                        
-                        fig = px.bar(
-                            x=resp_counts.values,
-                            y=resp_counts.index,
-                            orientation='h',
-                            title='Top 10 - Comissionamento',
-                            color=resp_counts.values,
-                            color_continuous_scale='Plasma',
-                            text=resp_counts.values
-                        )
-                        fig.update_traces(textposition='outside')
-                        fig.update_layout(height=400)
-                        st.plotly_chart(fig, use_container_width=True)
-            
-            with tab_resp3:
-                if 'Responsável Auditoria' in df_filtrado.columns:
-                    df_aud = df_filtrado[df_filtrado['Responsável Auditoria'] != 'Não atribuído']
-                    
-                    if not df_aud.empty:
-                        resp_counts = df_aud['Responsável Auditoria'].value_counts().head(10)
-                        
-                        fig = px.bar(
-                            x=resp_counts.values,
-                            y=resp_counts.index,
-                            orientation='h',
-                            title='Top 10 - Auditoria',
-                            color=resp_counts.values,
-                            color_continuous_scale='Magma',
-                            text=resp_counts.values
-                        )
-                        fig.update_traces(textposition='outside')
-                        fig.update_layout(height=400)
-                        st.plotly_chart(fig, use_container_width=True)
-
-        with tab4:
-            st.markdown("### 📋 Dados")
-            
-            colunas_padrao = ['Cód. Equipamento', 'Chamado Desenvolvimento', 'Tipo Equipamento', 
-                             'Responsável Desenvolvimento', 'Responsável Comissionamento',
-                             'Responsável Auditoria', 'Status Detalhado', 'Empresa']
-            
-            colunas = st.multiselect(
-                "Colunas",
-                options=df_filtrado.columns.tolist(),
-                default=[c for c in colunas_padrao if c in df_filtrado.columns]
+            empresa_analise = st.selectbox(
+                "Selecionar Empresa",
+                options=['EMT', 'ETO'] if 'EMT' in df_filtrado['Empresa'].values else df_filtrado['Empresa'].unique(),
+                key='empresa_analise'
             )
             
-            if colunas:
-                st.dataframe(df_filtrado[colunas], use_container_width=True, height=500)
+            df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa_analise]
+            
+            if not df_empresa.empty:
+                st.markdown(f"#### 📈 Indicadores - {empresa_analise}")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    total_emp = len(df_empresa)
+                    st.metric("Total Registros", total_emp)
+                
+                with col2:
+                    desenv_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Desenvolvido'])
+                    st.metric("Desenvolvidos", desenv_emp)
+                
+                with col3:
+                    comiss_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Comissionado'])
+                    st.metric("Comissionados", comiss_emp)
+                
+                with col4:
+                    valid_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Validado'])
+                    st.metric("Validados", valid_emp)
+                
+                st.markdown("#### 👥 Performance por Responsável")
+                
+                tipo_responsavel = st.radio(
+                    "Tipo de Responsável:",
+                    options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
+                    horizontal=True,
+                    key='tipo_resp_empresa'
+                )
+                
+                if tipo_responsavel == 'Desenvolvimento':
+                    col_resp = 'Responsável Desenvolvimento'
+                elif tipo_responsavel == 'Comissionamento':
+                    col_resp = 'Responsável Comissionamento'
+                else:
+                    col_resp = 'Responsável Auditoria'
+                
+                if col_resp in df_empresa.columns:
+                    df_resp = df_empresa[df_empresa[col_resp] != 'Não atribuído']
+                    
+                    if not df_resp.empty:
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Top responsáveis
+                            resp_counts = df_resp[col_resp].value_counts().reset_index()
+                            resp_counts.columns = ['Responsável', 'Quantidade']
+                            
+                            fig_top = px.bar(
+                                resp_counts.head(10),
+                                x='Quantidade',
+                                y='Responsável',
+                                orientation='h',
+                                title=f'Top 10 - {tipo_responsavel}',
+                                color='Quantidade',
+                                color_continuous_scale='Viridis',
+                                text='Quantidade'
+                            )
+                            fig_top.update_traces(textposition='outside')
+                            fig_top.update_layout(height=400)
+                            st.plotly_chart(fig_top, use_container_width=True)
+                        
+                        with col2:
+                            # Distribuição de status por responsável
+                            resp_status = df_resp.groupby([col_resp, 'Status Detalhado']).size().reset_index(name='Quantidade')
+                            
+                            if not resp_status.empty:
+                                fig_stack = px.bar(
+                                    resp_status,
+                                    x=col_resp,
+                                    y='Quantidade',
+                                    color='Status Detalhado',
+                                    title=f'Status por {tipo_responsavel}',
+                                    barmode='stack',
+                                    color_discrete_map=cores_status,
+                                    text='Quantidade'
+                                )
+                                fig_stack.update_traces(textposition='inside')
+                                fig_stack.update_layout(
+                                    xaxis_tickangle=45,
+                                    height=400
+                                )
+                                st.plotly_chart(fig_stack, use_container_width=True)
+                        
+                        # Métricas individuais
+                        st.markdown("#### 📊 Métricas Individuais")
+                        
+                        responsavel_selecionado = st.selectbox(
+                            "Selecionar responsável para detalhes:",
+                            options=sorted(df_resp[col_resp].unique()),
+                            key='resp_detalhe'
+                        )
+                        
+                        if responsavel_selecionado:
+                            df_resp_sel = df_resp[df_resp[col_resp] == responsavel_selecionado]
+                            
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            with col1:
+                                st.metric("Total atribuído", len(df_resp_sel))
+                            
+                            with col2:
+                                desenv_sel = len(df_resp_sel[df_resp_sel['Status Detalhado'] == 'Desenvolvido'])
+                                st.metric("Desenvolvidos", desenv_sel)
+                            
+                            with col3:
+                                comiss_sel = len(df_resp_sel[df_resp_sel['Status Detalhado'] == 'Comissionado'])
+                                st.metric("Comissionados", comiss_sel)
+                            
+                            with col4:
+                                valid_sel = len(df_resp_sel[df_resp_sel['Status Detalhado'] == 'Validado'])
+                                st.metric("Validados", valid_sel)
+                            
+                            # Lista de equipamentos
+                            with st.expander(f"📋 Equipamentos de {responsavel_selecionado}"):
+                                cols_mostrar = ['Cód. Equipamento', 'Tipo Equipamento', 'Status Detalhado', 'Empresa']
+                                cols_existentes = [c for c in cols_mostrar if c in df_resp_sel.columns]
+                                st.dataframe(df_resp_sel[cols_existentes], use_container_width=True)
+                    else:
+                        st.info(f"Nenhum responsável de {tipo_responsavel} atribuído")
+            else:
+                st.info(f"Sem dados para a empresa {empresa_analise}")
+
+        with tab4:
+            st.markdown("### 👥 Performance por Responsável")
+            
+            tipo_geral = st.radio(
+                "Tipo de Responsável:",
+                options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
+                horizontal=True,
+                key='tipo_resp_geral'
+            )
+            
+            if tipo_geral == 'Desenvolvimento':
+                col_resp = 'Responsável Desenvolvimento'
+            elif tipo_geral == 'Comissionamento':
+                col_resp = 'Responsável Comissionamento'
+            else:
+                col_resp = 'Responsável Auditoria'
+            
+            if col_resp in df_filtrado.columns:
+                df_resp_geral = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
+                
+                if not df_resp_geral.empty:
+                    # Visão geral
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"#### 📊 Ranking Geral - {tipo_geral}")
+                        
+                        ranking = df_resp_geral[col_resp].value_counts().reset_index()
+                        ranking.columns = ['Responsável', 'Total']
+                        
+                        fig_ranking = px.bar(
+                            ranking.head(15),
+                            x='Total',
+                            y='Responsável',
+                            orientation='h',
+                            color='Total',
+                            color_continuous_scale='Viridis',
+                            text='Total'
+                        )
+                        fig_ranking.update_traces(textposition='outside')
+                        fig_ranking.update_layout(height=500)
+                        st.plotly_chart(fig_ranking, use_container_width=True)
+                    
+                    with col2:
+                        st.markdown(f"#### 📈 Taxa de Conclusão por Responsável")
+                        
+                        # Calcular taxa de conclusão
+                        conclusao = df_resp_geral.groupby(col_resp).apply(
+                            lambda x: (len(x[x['Status Detalhado'].isin(['Desenvolvido', 'Comissionado', 'Validado'])]) / len(x) * 100)
+                        ).reset_index(name='Taxa de Conclusão (%)')
+                        
+                        conclusao = conclusao.sort_values('Taxa de Conclusão (%)', ascending=False).head(15)
+                        
+                        fig_taxa = px.bar(
+                            conclusao,
+                            x='Taxa de Conclusão (%)',
+                            y=col_resp,
+                            orientation='h',
+                            color='Taxa de Conclusão (%)',
+                            color_continuous_scale='Greens',
+                            text=conclusao['Taxa de Conclusão (%)'].round(1).astype(str) + '%'
+                        )
+                        fig_taxa.update_traces(textposition='outside')
+                        fig_taxa.update_layout(
+                            height=500,
+                            xaxis_range=[0, 100]
+                        )
+                        st.plotly_chart(fig_taxa, use_container_width=True)
+                    
+                    # Comparativo por empresa
+                    st.markdown(f"#### 🔄 Comparativo {tipo_geral} por Empresa")
+                    
+                    if 'Empresa' in df_resp_geral.columns:
+                        comparativo_resp = df_resp_geral.groupby(['Empresa', col_resp]).size().reset_index(name='Quantidade')
+                        
+                        fig_comp_resp = px.bar(
+                            comparativo_resp,
+                            x=col_resp,
+                            y='Quantidade',
+                            color='Empresa',
+                            barmode='group',
+                            title=f'Distribuição de {tipo_geral} por Empresa',
+                            color_discrete_map={'EMT': '#2a5298', 'ETO': '#4a7ab0'}
+                        )
+                        fig_comp_resp.update_layout(
+                            xaxis_tickangle=45,
+                            height=400
+                        )
+                        st.plotly_chart(fig_comp_resp, use_container_width=True)
+                else:
+                    st.info(f"Nenhum responsável de {tipo_geral} atribuído")
+
+        with tab5:
+            st.markdown("### 🏭 Comissionamento por Unidade")
+            
+            if 'Unidade' in df_filtrado.columns:
+                # Filtro de unidades
+                unidades_disponiveis = sorted(df_filtrado['Unidade'].unique())
+                unidades_selecionadas = st.multiselect(
+                    "Selecionar Unidades",
+                    options=unidades_disponiveis,
+                    default=unidades_disponiveis[:min(5, len(unidades_disponiveis))],
+                    key='unidades_comissionamento'
+                )
+                
+                if unidades_selecionadas:
+                    df_unidades = df_filtrado[df_filtrado['Unidade'].isin(unidades_selecionadas)]
+                    
+                    # Visão geral por unidade
+                    st.markdown("#### 📊 Status por Unidade")
+                    
+                    status_unidade = df_unidades.groupby(['Unidade', 'Status Detalhado']).size().reset_index(name='Quantidade')
+                    
+                    fig_unidade = px.bar(
+                        status_unidade,
+                        x='Unidade',
+                        y='Quantidade',
+                        color='Status Detalhado',
+                        barmode='stack',
+                        color_discrete_map=cores_status,
+                        text='Quantidade',
+                        title='Distribuição de Status por Unidade'
+                    )
+                    fig_unidade.update_traces(textposition='inside')
+                    fig_unidade.update_layout(height=400)
+                    st.plotly_chart(fig_unidade, use_container_width=True)
+                    
+                    # Métricas por unidade
+                    st.markdown("#### 📈 Métricas de Comissionamento por Unidade")
+                    
+                    metricas_unidade = []
+                    for unidade in unidades_selecionadas:
+                        df_u = df_unidades[df_unidades['Unidade'] == unidade]
+                        total_u = len(df_u)
+                        desenv_u = len(df_u[df_u['Status Detalhado'] == 'Desenvolvido'])
+                        comiss_u = len(df_u[df_u['Status Detalhado'] == 'Comissionado'])
+                        valid_u = len(df_u[df_u['Status Detalhado'] == 'Validado'])
+                        
+                        metricas_unidade.append({
+                            'Unidade': unidade,
+                            'Total': total_u,
+                            'Desenvolvidos': desenv_u,
+                            'Comissionados': comiss_u,
+                            'Validados': valid_u,
+                            '% Comissionamento': (comiss_u/total_u*100) if total_u > 0 else 0
+                        })
+                    
+                    df_metricas = pd.DataFrame(metricas_unidade)
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Gráfico de comissionamento
+                        fig_comiss = px.bar(
+                            df_metricas,
+                            x='Unidade',
+                            y=['Desenvolvidos', 'Comissionados', 'Validados'],
+                            title='Progresso por Unidade',
+                            barmode='group',
+                            color_discrete_map={
+                                'Desenvolvidos': '#28a745',
+                                'Comissionados': '#17a2b8',
+                                'Validados': '#007bff'
+                            }
+                        )
+                        fig_comiss.update_layout(height=400)
+                        st.plotly_chart(fig_comiss, use_container_width=True)
+                    
+                    with col2:
+                        # Taxa de comissionamento
+                        fig_taxa_unidade = px.bar(
+                            df_metricas,
+                            x='Unidade',
+                            y='% Comissionamento',
+                            title='Taxa de Comissionamento por Unidade (%)',
+                            color='% Comissionamento',
+                            color_continuous_scale='Blues',
+                            text=df_metricas['% Comissionamento'].round(1).astype(str) + '%'
+                        )
+                        fig_taxa_unidade.update_traces(textposition='outside')
+                        fig_taxa_unidade.update_layout(
+                            height=400,
+                            yaxis_range=[0, 100]
+                        )
+                        st.plotly_chart(fig_taxa_unidade, use_container_width=True)
+                    
+                    # Tabela detalhada
+                    st.markdown("#### 📋 Detalhamento por Unidade")
+                    st.dataframe(df_metricas, use_container_width=True)
+                    
+                    # Equipamentos por unidade
+                    with st.expander("🔧 Ver equipamentos por unidade"):
+                        unidade_detalhe = st.selectbox(
+                            "Selecionar unidade para detalhes:",
+                            options=unidades_selecionadas,
+                            key='unidade_detalhe'
+                        )
+                        
+                        if unidade_detalhe:
+                            df_detalhe = df_unidades[df_unidades['Unidade'] == unidade_detalhe]
+                            cols_detalhe = ['Cód. Equipamento', 'Tipo Equipamento', 'Status Detalhado', 
+                                          'Responsável Desenvolvimento', 'Responsável Comissionamento']
+                            cols_existentes = [c for c in cols_detalhe if c in df_detalhe.columns]
+                            st.dataframe(df_detalhe[cols_existentes], use_container_width=True)
+                else:
+                    st.info("Selecione pelo menos uma unidade para visualizar")
+            else:
+                st.info("Coluna 'Unidade' não encontrada nos dados")
 
         # RODAPÉ
         st.markdown("---")
@@ -1205,7 +1535,7 @@ if df is not None:
             st.markdown(
                 "<div style='color:#4a5568; font-size:0.85rem;'>"
                 "<strong>© 2026 Energisa</strong><br>"
-                "Versão 2.0.0"
+                "Versão 3.0.0"
                 "</div>", 
                 unsafe_allow_html=True
             )
@@ -1245,7 +1575,6 @@ if df is not None:
 else:
     st.error("❌ Não foi possível carregar os dados.")
     
-    # Instruções de configuração
     with st.expander("🔧 Configuração do GitHub"):
         texto_instrucoes = (
             "### Para configurar o GitHub:\n\n"
