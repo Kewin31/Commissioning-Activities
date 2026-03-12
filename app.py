@@ -892,7 +892,7 @@ if df is not None:
         with col1:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #1e3c72;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">📦 Total</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">📦 Total Cadastrado</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#1e3c72;">{total_equip}</div>
                 <div style="font-size:0.8rem; color:#718096;">ativos</div>
             </div>
@@ -901,7 +901,7 @@ if df is not None:
         with col2:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #2E7D32;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">✅ Desenvolvidos</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">✅ Total Desenvolvidos</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#2E7D32;">{qtd_desenvolvidos}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_desenv:.1f}%</div>
             </div>
@@ -910,7 +910,7 @@ if df is not None:
         with col3:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #1976D2;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">🔧 Comissionados</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">🔧 Total Comissionados</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#1976D2;">{qtd_comissionados}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_comiss:.1f}%</div>
             </div>
@@ -948,7 +948,7 @@ if df is not None:
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("#### ⚡ EMT")
+                st.markdown("#### EMT")
                 df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
                 
                 if not df_emt.empty:
@@ -982,7 +982,7 @@ if df is not None:
                     st.info("Sem dados para EMT")
             
             with col2:
-                st.markdown("#### 🔧 ETO")
+                st.markdown("#### ETO")
                 df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
                 
                 if not df_eto.empty:
