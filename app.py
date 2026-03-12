@@ -12,6 +12,7 @@ from github import GithubException
 import tempfile
 import time
 import locale
+from dateutil.relativedelta import relativedelta
 
 # Tentar configurar locale para português
 try:
@@ -448,6 +449,26 @@ def configurar_grafico_corporativo(fig, titulo, height=400):
     
     return fig
 
+# Cores executivas para os gráficos
+cores_executivas = {
+    'Desenvolvido': '#2E7D32',  # Verde escuro
+    'Comissionado': '#1976D2',   # Azul
+    'Validado': '#1565C0',       # Azul escuro
+    'Revisão': '#FF8F00',        # Amarelo alaranjado
+    'Pendente': '#C62828',        # Vermelho escuro
+    'EMT': '#1e3c72',             # Azul escuro corporativo
+    'ETO': '#4a7ab0'              # Azul médio corporativo
+}
+
+# Cores para gráficos de linha
+cores_linhas = {
+    'Desenvolvido': '#2E7D32',
+    'Comissionado': '#1976D2',
+    'Validado': '#1565C0',
+    'Revisão': '#FF8F00',
+    'Pendente': '#C62828'
+}
+
 @st.cache_data(ttl=300)
 def load_data(force_github=False):
     """Carrega dados do GitHub ou local"""
@@ -879,36 +900,36 @@ if df is not None:
         
         with col2:
             st.markdown(f"""
-            <div class="metric-card-simple" style="border-left: 4px solid #28a745;">
+            <div class="metric-card-simple" style="border-left: 4px solid #2E7D32;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">✅ Desenvolvidos</span></div>
-                <div style="font-size:2rem; font-weight:700; color:#28a745;">{qtd_desenvolvidos}</div>
+                <div style="font-size:2rem; font-weight:700; color:#2E7D32;">{qtd_desenvolvidos}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_desenv:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
             st.markdown(f"""
-            <div class="metric-card-simple" style="border-left: 4px solid #17a2b8;">
+            <div class="metric-card-simple" style="border-left: 4px solid #1976D2;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">🔧 Comissionados</span></div>
-                <div style="font-size:2rem; font-weight:700; color:#17a2b8;">{qtd_comissionados}</div>
+                <div style="font-size:2rem; font-weight:700; color:#1976D2;">{qtd_comissionados}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_comiss:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col4:
             st.markdown(f"""
-            <div class="metric-card-simple" style="border-left: 4px solid #007bff;">
+            <div class="metric-card-simple" style="border-left: 4px solid #1565C0;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">✅ Validados</span></div>
-                <div style="font-size:2rem; font-weight:700; color:#007bff;">{qtd_validados}</div>
+                <div style="font-size:2rem; font-weight:700; color:#1565C0;">{qtd_validados}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_valid:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
         
         with col5:
             st.markdown(f"""
-            <div class="metric-card-simple" style="border-left: 4px solid #ffc107;">
+            <div class="metric-card-simple" style="border-left: 4px solid #FF8F00;">
                 <div><span style="font-size:0.95rem; color:#4a5568;">📝 Revisão</span></div>
-                <div style="font-size:2rem; font-weight:700; color:#ffc107;">{qtd_revisao}</div>
+                <div style="font-size:2rem; font-weight:700; color:#FF8F00;">{qtd_revisao}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_revisao:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
@@ -937,27 +958,17 @@ if df is not None:
                     ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Revisão', 'Pendente']
                     status_emt = status_emt[status_emt['Status'].isin(ordem_status)]
                     
-                    # Criar coluna de percentual para gradiente
-                    total_emt = len(df_emt)
-                    status_emt['Percentual'] = (status_emt['Quantidade'] / total_emt * 100).round(1)
-                    
-                    # Definir cores com gradiente (vermelho claro para baixo percentual, verde claro para alto)
-                    status_emt['Cor'] = status_emt['Percentual'].apply(
-                        lambda x: f'rgba(220, 53, 69, {0.3 + (x/100)*0.5})' if x < 30 
-                        else f'rgba(40, 167, 69, {0.3 + (x/100)*0.5})'
-                    )
-                    
                     fig_emt = px.pie(
                         status_emt, 
                         values='Quantidade', 
                         names='Status',
                         color='Status',
                         color_discrete_map={
-                            'Desenvolvido': '#90EE90',  # Verde claro
-                            'Comissionado': '#87CEEB',   # Azul claro
-                            'Validado': '#B0C4DE',       # Azul acinzentado claro
-                            'Revisão': '#FFFACD',        # Amarelo claro
-                            'Pendente': '#FAA0A0'         # Vermelho claro
+                            'Desenvolvido': cores_executivas['Desenvolvido'],
+                            'Comissionado': cores_executivas['Comissionado'],
+                            'Validado': cores_executivas['Validado'],
+                            'Revisão': cores_executivas['Revisão'],
+                            'Pendente': cores_executivas['Pendente']
                         }
                     )
                     fig_emt = configurar_grafico_corporativo(fig_emt, "EMT", 350)
@@ -987,11 +998,11 @@ if df is not None:
                         names='Status',
                         color='Status',
                         color_discrete_map={
-                            'Desenvolvido': '#90EE90',  # Verde claro
-                            'Comissionado': '#87CEEB',   # Azul claro
-                            'Validado': '#B0C4DE',       # Azul acinzentado claro
-                            'Revisão': '#FFFACD',        # Amarelo claro
-                            'Pendente': '#FAA0A0'         # Vermelho claro
+                            'Desenvolvido': cores_executivas['Desenvolvido'],
+                            'Comissionado': cores_executivas['Comissionado'],
+                            'Validado': cores_executivas['Validado'],
+                            'Revisão': cores_executivas['Revisão'],
+                            'Pendente': cores_executivas['Pendente']
                         }
                     )
                     fig_eto = configurar_grafico_corporativo(fig_eto, "ETO", 350)
@@ -1017,11 +1028,11 @@ if df is not None:
                     color='Status Detalhado',
                     barmode='group',
                     color_discrete_map={
-                        'Desenvolvido': '#90EE90',  # Verde claro
-                        'Comissionado': '#87CEEB',   # Azul claro
-                        'Validado': '#B0C4DE',       # Azul acinzentado claro
-                        'Revisão': '#FFFACD',        # Amarelo claro
-                        'Pendente': '#FAA0A0'         # Vermelho claro
+                        'Desenvolvido': cores_executivas['Desenvolvido'],
+                        'Comissionado': cores_executivas['Comissionado'],
+                        'Validado': cores_executivas['Validado'],
+                        'Revisão': cores_executivas['Revisão'],
+                        'Pendente': cores_executivas['Pendente']
                     },
                     text='Quantidade'
                 )
@@ -1038,21 +1049,32 @@ if df is not None:
             st.markdown("### 📈 Evolução Temporal")
             
             if 'Criado' in df_filtrado.columns and not df_filtrado['Criado'].isna().all():
-                # Abas para filtros de agregação temporal
-                filtro_temporal_tab, grafico_tipo_tab, opcoes_tab = st.tabs([
+                # Abas para filtros
+                filtro_temporal_tab, grafico_tipo_tab = st.tabs([
                     "📅 Agregação Temporal", 
-                    "📊 Tipo de Gráfico",
-                    "⚙️ Opções"
+                    "📊 Tipo de Gráfico"
                 ])
                 
                 with filtro_temporal_tab:
-                    agregacao = st.radio(
-                        "Selecionar período:",
-                        options=['Dia', 'Semana', 'Mês', 'Ano'],
-                        index=2,
-                        horizontal=True,
-                        key='agreg_temporal'
-                    )
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        dia_selecionado = st.checkbox("Dia", value=False, key="filtro_dia")
+                    with col2:
+                        mes_selecionado = st.checkbox("Mês", value=True, key="filtro_mes")
+                    with col3:
+                        ano_selecionado = st.checkbox("Ano", value=False, key="filtro_ano")
+                    
+                    # Determinar agregação baseada nos checkboxes
+                    if dia_selecionado:
+                        agregacao = 'Dia'
+                    elif mes_selecionado:
+                        agregacao = 'Mês'
+                    elif ano_selecionado:
+                        agregacao = 'Ano'
+                    else:
+                        agregacao = 'Mês'  # Padrão
+                        st.info("Selecione pelo menos uma opção de agregação")
                 
                 with grafico_tipo_tab:
                     tipo_grafico = st.radio(
@@ -1062,16 +1084,12 @@ if df is not None:
                         horizontal=True,
                         key='tipo_grafico'
                     )
-                
-                with opcoes_tab:
+                    
                     incluir_empresa = st.checkbox("Separar por empresa", value=True, key='separar_empresa')
                 
                 if agregacao == 'Dia':
                     periodo_col = 'Dia'
                     titulo_periodo = 'Dia'
-                elif agregacao == 'Semana':
-                    periodo_col = 'Semana'
-                    titulo_periodo = 'Semana'
                 elif agregacao == 'Mês':
                     periodo_col = 'Mês/Ano'
                     titulo_periodo = 'Mês'
@@ -1098,14 +1116,6 @@ if df is not None:
                 else:
                     evolucao = evolucao.sort_values(periodo_col)
                 
-                cores_status_claras = {
-                    'Desenvolvido': '#90EE90',  # Verde claro
-                    'Comissionado': '#87CEEB',   # Azul claro
-                    'Validado': '#B0C4DE',       # Azul acinzentado claro
-                    'Revisão': '#FFFACD',        # Amarelo claro
-                    'Pendente': '#FAA0A0'         # Vermelho claro
-                }
-                
                 if not evolucao.empty:
                     if tipo_grafico == 'Barras Empilhadas':
                         if incluir_empresa:
@@ -1116,7 +1126,7 @@ if df is not None:
                                 color='Status Detalhado',
                                 facet_col='Empresa',
                                 barmode='stack',
-                                color_discrete_map=cores_status_claras,
+                                color_discrete_map=cores_executivas,
                                 text='Quantidade'
                             )
                             fig_evolucao.for_each_annotation(lambda a: a.update(text=a.text.split('=')[-1]))
@@ -1127,7 +1137,7 @@ if df is not None:
                                 y='Quantidade',
                                 color='Status Detalhado',
                                 barmode='stack',
-                                color_discrete_map=cores_status_claras,
+                                color_discrete_map=cores_executivas,
                                 text='Quantidade'
                             )
                         
@@ -1142,7 +1152,7 @@ if df is not None:
                                 color='Status Detalhado',
                                 line_dash='Empresa',
                                 markers=True,
-                                color_discrete_map=cores_status_claras
+                                color_discrete_map=cores_linhas
                             )
                         else:
                             fig_evolucao = px.line(
@@ -1151,7 +1161,7 @@ if df is not None:
                                 y='Quantidade',
                                 color='Status Detalhado',
                                 markers=True,
-                                color_discrete_map=cores_status_claras
+                                color_discrete_map=cores_linhas
                             )
                     
                     titulo = f"Evolução por {agregacao}"
@@ -1210,7 +1220,7 @@ if df is not None:
                 df_resp_geral = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
                 
                 if not df_resp_geral.empty:
-                    # Apenas ranking geral
+                    # Ranking geral
                     st.markdown(f"#### 📊 Ranking Geral - {tipo_geral}")
                     
                     col1, col2 = st.columns([1, 1])
@@ -1234,7 +1244,7 @@ if df is not None:
                         st.plotly_chart(fig_ranking, use_container_width=True)
                     
                     with col2:
-                        # Distribuição por status
+                        # Distribuição de status por responsável - CORES EXECUTIVAS
                         resp_status = df_resp_geral.groupby([col_resp, 'Status Detalhado']).size().reset_index(name='Quantidade')
                         top_responsaveis = ranking.head(10)['Responsável'].tolist()
                         resp_status_top = resp_status[resp_status[col_resp].isin(top_responsaveis)]
@@ -1246,7 +1256,7 @@ if df is not None:
                             color='Status Detalhado',
                             title='Distribuição de Status por Responsável',
                             barmode='stack',
-                            color_discrete_map=cores_status_claras,
+                            color_discrete_map=cores_executivas,
                             text='Quantidade'
                         )
                         fig_dist.update_traces(textposition='inside')
@@ -1256,15 +1266,9 @@ if df is not None:
                         )
                         st.plotly_chart(fig_dist, use_container_width=True)
                     
-                    # Comparativo por empresa (apenas para desenvolvimento e comissionamento)
+                    # Comparativo por empresa
                     if tipo_geral in ['Desenvolvimento', 'Comissionamento'] and 'Empresa' in df_resp_geral.columns:
                         st.markdown(f"#### 🔄 Distribuição de {tipo_geral} por Empresa")
-                        
-                        # Cores específicas para EMT e ETO
-                        cores_empresa = {
-                            'EMT': '#1e3c72',  # Azul escuro
-                            'ETO': '#4a7ab0'    # Azul médio
-                        }
                         
                         comparativo_resp = df_resp_geral.groupby(['Empresa', col_resp]).size().reset_index(name='Quantidade')
                         
@@ -1279,7 +1283,10 @@ if df is not None:
                             color='Empresa',
                             barmode='group',
                             title=f'Top Responsáveis - Distribuição por Empresa',
-                            color_discrete_map=cores_empresa,
+                            color_discrete_map={
+                                'EMT': cores_executivas['EMT'],
+                                'ETO': cores_executivas['ETO']
+                            },
                             text='Quantidade'
                         )
                         fig_comp_resp.update_traces(textposition='outside')
@@ -1329,7 +1336,7 @@ if df is not None:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Distribuição de status
+                    # Distribuição de status - CORES EXECUTIVAS
                     status_emp = df_empresa['Status Detalhado'].value_counts().reset_index()
                     status_emp.columns = ['Status', 'Quantidade']
                     
@@ -1342,13 +1349,7 @@ if df is not None:
                         names='Status',
                         title=f'Distribuição de Status - {empresa_selecionada}',
                         color='Status',
-                        color_discrete_map={
-                            'Desenvolvido': '#90EE90',
-                            'Comissionado': '#87CEEB',
-                            'Validado': '#B0C4DE',
-                            'Revisão': '#FFFACD',
-                            'Pendente': '#FAA0A0'
-                        }
+                        color_discrete_map=cores_executivas
                     )
                     fig_status_emp.update_traces(textposition='inside', textinfo='percent+label')
                     fig_status_emp.update_layout(height=400)
@@ -1434,17 +1435,25 @@ if df is not None:
                     else:
                         st.info("Nenhum responsável de comissionamento atribuído")
                 
-                # Lista de equipamentos pendentes
+                # Equipamentos Pendentes de Comissionamento (CORRIGIDO)
                 with st.expander("📋 Equipamentos Pendentes de Comissionamento"):
-                    pendentes = df_empresa[df_empresa['Status Detalhado'] == 'Pendente']
+                    # Tudo que não é Comissionado ou Validado é considerado pendente de comissionamento
+                    pendentes = df_empresa[~df_empresa['Status Detalhado'].isin(['Comissionado', 'Validado'])]
+                    
                     if not pendentes.empty:
-                        cols_mostrar = ['Cód. Equipamento', 'Tipo Equipamento', 'Responsável Desenvolvimento', 'Responsável Comissionamento']
+                        st.warning(f"**{len(pendentes)} equipamentos** pendentes de comissionamento encontrados")
+                        
+                        cols_mostrar = ['Cód. Equipamento', 'Tipo Equipamento', 'Status Detalhado', 
+                                       'Responsável Desenvolvimento', 'Responsável Comissionamento']
                         cols_existentes = [c for c in cols_mostrar if c in pendentes.columns]
+                        
+                        # Adicionar contagem por status
+                        status_counts = pendentes['Status Detalhado'].value_counts()
+                        st.info("Distribuição dos pendentes: " + ", ".join([f"{k}: {v}" for k, v in status_counts.items()]))
+                        
                         st.dataframe(pendentes[cols_existentes], use_container_width=True)
                     else:
-                        st.success("Nenhum equipamento pendente de comissionamento!")
-            else:
-                st.info(f"Sem dados para a empresa {empresa_selecionada}")
+                        st.success("🎉 Todos os equipamentos estão comissionados ou validados!")
 
         # RODAPÉ
         st.markdown("---")
@@ -1455,7 +1464,7 @@ if df is not None:
             st.markdown(
                 "<div style='color:#4a5568; font-size:0.85rem;'>"
                 "<strong>© 2026 Energisa</strong><br>"
-                "Versão 3.1.0"
+                "Versão 3.2.0"
                 "</div>", 
                 unsafe_allow_html=True
             )
