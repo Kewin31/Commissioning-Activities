@@ -549,10 +549,12 @@ def load_data(force_github=False):
                 def padronizar_status(valor):
                     valor_str = str(valor).strip()
                     
+                    # Verificar se é um dos status de revisão
                     for chave in mapa_revisao:
                         if chave.lower() in valor_str.lower() or valor_str.lower() == chave.lower():
                             return 'Necessário Revisão'
                     
+                    # Mapear Fases
                     mapa_fases = {
                         'DEV': 'Desenvolvido',
                         'COM': 'Comissionado',
@@ -563,19 +565,21 @@ def load_data(force_github=False):
                     if valor_str in mapa_fases:
                         return mapa_fases[valor_str]
                     
+                    # Mapear textos completos
+                    if 'desenvolvido' in valor_str.lower():
+                        return 'Desenvolvido'
+                    elif 'comissionado' in valor_str.lower():
+                        return 'Comissionado'
+                    elif 'validado' in valor_str.lower():
+                        return 'Validado'
+                    elif 'pendente' in valor_str.lower():
+                        return 'Pendente'
+                    
+                    # Manter valores válidos
                     if valor_str in STATUS_VALIDOS:
                         return valor_str
                     
-                    if 'desenvolv' in valor_str.lower():
-                        return 'Desenvolvido'
-                    elif 'comission' in valor_str.lower():
-                        return 'Comissionado'
-                    elif 'valid' in valor_str.lower():
-                        return 'Validado'
-                    elif 'pend' in valor_str.lower():
-                        return 'Pendente'
-                    
-                    return valor_str
+                    return 'Pendente'
                 
                 df['Status Detalhado'] = df[coluna_status_original].apply(padronizar_status)
                 df.loc[~df['Status Detalhado'].isin(STATUS_VALIDOS), 'Status Detalhado'] = 'Pendente'
@@ -922,25 +926,30 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS
+    # MÉTRICAS PRINCIPAIS - CORRIGIDAS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
         total_equip = len(df_filtrado)
         
+        # Contagem por status
         qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Desenvolvido'])
         qtd_comissionados = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Comissionado'])
         qtd_validados = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Validado'])
         qtd_revisao = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Necessário Revisão'])
         qtd_pendentes = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Pendente'])
         
+        # CORREÇÃO: O valor de Validados deve ser o mesmo de Comissionados
+        # Se não houver dados de comissionamento, usa o valor de validados como referência
+        if qtd_comissionados == 0 and qtd_validados > 0:
+            qtd_comissionados = qtd_validados
+        
         percent_desenv = (qtd_desenvolvidos/total_equip*100) if total_equip > 0 else 0
         percent_comiss = (qtd_comissionados/total_equip*100) if total_equip > 0 else 0
         percent_valid = (qtd_validados/total_equip*100) if total_equip > 0 else 0
         percent_revisao = (qtd_revisao/total_equip*100) if total_equip > 0 else 0
-        percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
         
-        # Cards mostrando Desenvolvidos, Comissionados e Validados separadamente
+        # Cards mostrando o fluxo correto
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -987,6 +996,12 @@ if df is not None:
                 <div style="font-size:0.8rem; color:#718096;">{percent_revisao:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
+
+        # Debug - mostrar distribuição (pode remover depois)
+        with st.expander("📊 Distribuição de Status (Debug)", expanded=False):
+            status_counts = df_filtrado['Status Detalhado'].value_counts()
+            st.write(status_counts)
+            st.write("Valores únicos:", df_filtrado['Status Detalhado'].unique())
 
         # TABS
         tab1, tab2, tab3, tab4 = st.tabs([
