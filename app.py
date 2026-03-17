@@ -838,7 +838,7 @@ if df is not None:
             )
         
         with st.expander("📊 Status", expanded=True):
-            # CORREÇÃO: Usar Status Exibição para filtros mais amigáveis
+            # Usar Status Exibição para filtros mais amigáveis
             opcoes_status = sorted(df['Status Exibição'].unique())
             status_opcoes = st.multiselect(
                 "Status",
@@ -895,7 +895,7 @@ if df is not None:
             comissionados = len(df_progresso[df_progresso['Status Detalhado'] == 'Comissionado'])
             validados = len(df_progresso[df_progresso['Status Detalhado'] == 'Validado'])
             revisao = len(df_progresso[df_progresso['Status Detalhado'] == 'Necessário Revisão'])
-            concluidos = desenvolvidos + comissionados + validados
+            concluidos = validados  # CORREÇÃO: Concluídos agora são apenas os validados
             progresso = (concluidos/total*100) if total > 0 else 0
             
             st.progress(progresso/100, text=f"Progresso: **{progresso:.1f}%**")
@@ -904,7 +904,7 @@ if df is not None:
             with col1:
                 st.metric("Total", total)
             with col2:
-                st.metric("Concluídos", concluidos)
+                st.metric("Validados", validados)  # CORREÇÃO: Mudado de Concluídos para Validados
         
         st.markdown("---")
         col1, col2 = st.columns(2)
@@ -928,7 +928,7 @@ if df is not None:
     if tipos_equip:
         df_filtrado = df_filtrado[df_filtrado['Tipo Equipamento'].isin(tipos_equip)]
     if status_opcoes:
-        # CORREÇÃO: Filtrar usando Status Exibição
+        # Filtrar usando Status Exibição
         df_filtrado = df_filtrado[df_filtrado['Status Exibição'].isin(status_opcoes)]
     if responsaveis_dev:
         df_filtrado = df_filtrado[df_filtrado['Responsável Desenvolvimento'].isin(responsaveis_dev)]
@@ -942,7 +942,7 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS
+    # MÉTRICAS PRINCIPAIS - CORRIGIDAS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -960,7 +960,8 @@ if df is not None:
         percent_revisao = (qtd_revisao/total_equip*100) if total_equip > 0 else 0
         percent_pend = (qtd_pendentes/total_equip*100) if total_equip > 0 else 0
         
-        # Cards em uma única linha
+        # CORREÇÃO: Cards corrigidos para mostrar a hierarquia correta
+        # Desenvolvido → Comissionado → Validado (Validado é o estágio final)
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -975,7 +976,7 @@ if df is not None:
         with col2:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #2E7D32;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">✅ Total Desenvolvidos</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">⚙️ Desenvolvidos</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#2E7D32;">{qtd_desenvolvidos}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_desenv:.1f}%</div>
             </div>
@@ -984,7 +985,7 @@ if df is not None:
         with col3:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #1976D2;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">🔧 Total Comissionados</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">🔧 Comissionados</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#1976D2;">{qtd_comissionados}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_comiss:.1f}%</div>
             </div>
@@ -1002,7 +1003,7 @@ if df is not None:
         with col5:
             st.markdown(f"""
             <div class="metric-card-simple" style="border-left: 4px solid #FF8F00;">
-                <div><span style="font-size:0.95rem; color:#4a5568;">📝 Revisão</span></div>
+                <div><span style="font-size:0.95rem; color:#4a5568;">📝 Em Revisão</span></div>
                 <div style="font-size:2rem; font-weight:700; color:#FF8F00;">{qtd_revisao}</div>
                 <div style="font-size:0.8rem; color:#718096;">{percent_revisao:.1f}%</div>
             </div>
@@ -1026,7 +1027,7 @@ if df is not None:
                 df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
                 
                 if not df_emt.empty:
-                    # CORREÇÃO: Usar Status Exibição para os gráficos
+                    # Usar Status Exibição para os gráficos
                     status_emt = df_emt['Status Exibição'].value_counts().reset_index()
                     status_emt.columns = ['Status', 'Quantidade']
                     
@@ -1058,7 +1059,7 @@ if df is not None:
                 df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
                 
                 if not df_eto.empty:
-                    # CORREÇÃO: Usar Status Exibição para os gráficos
+                    # Usar Status Exibição para os gráficos
                     status_eto = df_eto['Status Exibição'].value_counts().reset_index()
                     status_eto.columns = ['Status', 'Quantidade']
                     
@@ -1088,7 +1089,7 @@ if df is not None:
             # Gráfico comparativo
             st.markdown("### 📊 Comparativo EMT vs ETO")
             
-            # CORREÇÃO: Usar Status Exibição para o comparativo
+            # Usar Status Exibição para o comparativo
             comparativo = df_filtrado.groupby(['Empresa', 'Status Exibição']).size().reset_index(name='Quantidade')
             
             if not comparativo.empty:
@@ -1171,7 +1172,7 @@ if df is not None:
                 # Preparar dados
                 df_temp = df_filtrado.copy()
                 
-                # CORREÇÃO: Usar Status Exibição para evolução
+                # Usar Status Exibição para evolução
                 if incluir_empresa:
                     evolucao = df_temp.groupby([periodo_col, 'Empresa', 'Status Exibição']).size().reset_index(name='Quantidade')
                 else:
@@ -1317,7 +1318,7 @@ if df is not None:
                     
                     with col2:
                         # Distribuição de status por responsável
-                        # CORREÇÃO: Usar Status Exibição
+                        # Usar Status Exibição
                         resp_status = df_resp_geral.groupby([col_resp, 'Status Exibição']).size().reset_index(name='Quantidade')
                         top_responsaveis = ranking.head(10)['Responsável'].tolist()
                         resp_status_top = resp_status[resp_status[col_resp].isin(top_responsaveis)]
@@ -1410,7 +1411,7 @@ if df is not None:
                 
                 with col1:
                     # Distribuição de status
-                    # CORREÇÃO: Usar Status Exibição
+                    # Usar Status Exibição
                     status_emp = df_empresa['Status Exibição'].value_counts().reset_index()
                     status_emp.columns = ['Status', 'Quantidade']
                     
@@ -1508,12 +1509,12 @@ if df is not None:
                 
                 # Equipamentos Pendentes de Comissionamento
                 with st.expander("📋 Equipamentos Pendentes de Comissionamento"):
-                    # Tudo que não é Comissionado ou Validado é considerado pendente de comissionamento
-                    pendentes = df_empresa[~df_empresa['Status Detalhado'].isin(['Comissionado', 'Validado'])]
+                    # Tudo que não é Validado é considerado pendente (inclui Comissionado, Revisão, Pendente, Desenvolvido)
+                    pendentes = df_empresa[df_empresa['Status Detalhado'] != 'Validado']
                     
                     if not pendentes.empty:
-                        # CORREÇÃO: Mostrar contagem incluindo "Necessário Revisão"
-                        st.warning(f"**{len(pendentes)} equipamentos** pendentes de comissionamento encontrados")
+                        # Mostrar contagem incluindo todos os status não validados
+                        st.warning(f"**{len(pendentes)} equipamentos** pendentes de validação encontrados")
                         
                         cols_mostrar = ['Cód. Equipamento', 'Tipo Equipamento', 'Status Detalhado', 
                                        'Responsável Desenvolvimento', 'Responsável Comissionamento']
@@ -1526,7 +1527,7 @@ if df is not None:
                         
                         st.dataframe(pendentes[cols_existentes], use_container_width=True)
                     else:
-                        st.success("🎉 Todos os equipamentos estão comissionados ou validados!")
+                        st.success("🎉 Todos os equipamentos estão validados!")
 
         # RODAPÉ
         st.markdown("---")
@@ -1553,11 +1554,10 @@ if df is not None:
             )
         
         with col3:
-            total_concluidos = qtd_desenvolvidos + qtd_comissionados + qtd_validados
             st.markdown(
                 f"<div style='color:#4a5568; font-size:0.85rem;'>"
                 f"<strong>📊 Registros:</strong> {total_equip}<br>"
-                f"<strong>✅ Concluídos:</strong> {total_concluidos}"
+                f"<strong>✅ Validados:</strong> {qtd_validados}"
                 f"</div>", 
                 unsafe_allow_html=True
             )
