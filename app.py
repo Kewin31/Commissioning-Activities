@@ -926,7 +926,7 @@ if df is not None:
             (df_filtrado['Criado'].dt.date <= data_fim)
         ]
 
-    # MÉTRICAS PRINCIPAIS - CORRIGIDAS
+    # MÉTRICAS PRINCIPAIS
     st.markdown("<div class='section-title'>📈 Visão Geral do Portfólio</div>", unsafe_allow_html=True)
     
     if not df_filtrado.empty:
@@ -939,8 +939,7 @@ if df is not None:
         qtd_revisao = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Necessário Revisão'])
         qtd_pendentes = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Pendente'])
         
-        # CORREÇÃO: O valor de Validados deve ser o mesmo de Comissionados
-        # Se não houver dados de comissionamento, usa o valor de validados como referência
+        # CORREÇÃO: Se não houver dados de comissionamento, usa o valor de validados como referência
         if qtd_comissionados == 0 and qtd_validados > 0:
             qtd_comissionados = qtd_validados
         
@@ -996,12 +995,6 @@ if df is not None:
                 <div style="font-size:0.8rem; color:#718096;">{percent_revisao:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
-
-        # Debug - mostrar distribuição (pode remover depois)
-        with st.expander("📊 Distribuição de Status (Debug)", expanded=False):
-            status_counts = df_filtrado['Status Detalhado'].value_counts()
-            st.write(status_counts)
-            st.write("Valores únicos:", df_filtrado['Status Detalhado'].unique())
 
         # TABS
         tab1, tab2, tab3, tab4 = st.tabs([
@@ -1362,6 +1355,7 @@ if df is not None:
             if not df_empresa.empty:
                 st.markdown(f"#### 📊 Status de Comissionamento - {empresa_selecionada}")
                 
+                # CORREÇÃO: Status de Comissionamento considera os responsáveis pelo comissionamento
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
@@ -1369,60 +1363,80 @@ if df is not None:
                     st.metric("Total de Equipamentos", total_emp)
                 
                 with col2:
-                    comiss_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Comissionado'])
+                    # Comissionados - considera equipamentos com status Comissionado OU Validado
+                    # e que têm responsável de comissionamento atribuído
+                    comiss_emp = len(df_empresa[
+                        (df_empresa['Status Detalhado'].isin(['Comissionado', 'Validado'])) &
+                        (df_empresa['Responsável Comissionamento'] != 'Não atribuído')
+                    ])
                     st.metric("Comissionados", comiss_emp)
                 
                 with col3:
-                    valid_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Validado'])
+                    valid_emp = len(df_empresa[
+                        (df_empresa['Status Detalhado'] == 'Validado') &
+                        (df_empresa['Responsável Comissionamento'] != 'Não atribuído')
+                    ])
                     st.metric("Validados", valid_emp)
                 
                 with col4:
-                    revisao_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Necessário Revisão'])
+                    revisao_emp = len(df_empresa[
+                        (df_empresa['Status Detalhado'] == 'Necessário Revisão') &
+                        (df_empresa['Responsável Comissionamento'] != 'Não atribuído')
+                    ])
                     st.metric("Em Revisão", revisao_emp)
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    status_emp = df_empresa['Status Exibição'].value_counts().reset_index()
-                    status_emp.columns = ['Status', 'Quantidade']
-                    
-                    fig_status_emp = px.pie(
-                        status_emp,
-                        values='Quantidade',
-                        names='Status',
-                        title=f'Distribuição de Status - {empresa_selecionada}',
-                        color='Status',
-                        color_discrete_map=cores_executivas
-                    )
-                    fig_status_emp.update_traces(textposition='inside', textinfo='percent+label')
-                    fig_status_emp.update_layout(height=400)
-                    st.plotly_chart(fig_status_emp, use_container_width=True)
+                    # Distribuição de status apenas para equipamentos com responsável de comissionamento
+                    df_comiss = df_empresa[df_empresa['Responsável Comissionamento'] != 'Não atribuído']
+                    if not df_comiss.empty:
+                        status_emp = df_comiss['Status Exibição'].value_counts().reset_index()
+                        status_emp.columns = ['Status', 'Quantidade']
+                        
+                        fig_status_emp = px.pie(
+                            status_emp,
+                            values='Quantidade',
+                            names='Status',
+                            title=f'Distribuição de Status - {empresa_selecionada}',
+                            color='Status',
+                            color_discrete_map=cores_executivas
+                        )
+                        fig_status_emp.update_traces(textposition='inside', textinfo='percent+label')
+                        fig_status_emp.update_layout(height=400)
+                        st.plotly_chart(fig_status_emp, use_container_width=True)
+                    else:
+                        st.info("Nenhum equipamento com responsável de comissionamento atribuído")
                 
                 with col2:
                     if 'Tipo Equipamento' in df_empresa.columns:
-                        tipo_comiss = df_empresa.groupby('Tipo Equipamento').apply(
-                            lambda x: (len(x[x['Status Detalhado'].isin(['Comissionado', 'Validado'])]) / len(x) * 100)
-                        ).reset_index(name='Taxa de Comissionamento (%)')
-                        
-                        tipo_comiss = tipo_comiss.sort_values('Taxa de Comissionamento (%)', ascending=False)
-                        
-                        fig_taxa_tipo = px.bar(
-                            tipo_comiss.head(10),
-                            x='Taxa de Comissionamento (%)',
-                            y='Tipo Equipamento',
-                            orientation='h',
-                            title='Taxa de Comissionamento por Tipo de Equipamento',
-                            color='Taxa de Comissionamento (%)',
-                            color_continuous_scale='Blues',
-                            text=tipo_comiss['Taxa de Comissionamento (%)'].head(10).round(1).astype(str) + '%'
-                        )
-                        fig_taxa_tipo.update_traces(textposition='outside')
-                        fig_taxa_tipo.update_layout(
-                            height=400,
-                            xaxis_range=[0, 100]
-                        )
-                        st.plotly_chart(fig_taxa_tipo, use_container_width=True)
+                        # Taxa de comissionamento considera apenas equipamentos com responsável
+                        df_comiss_tipo = df_empresa[df_empresa['Responsável Comissionamento'] != 'Não atribuído']
+                        if not df_comiss_tipo.empty:
+                            tipo_comiss = df_comiss_tipo.groupby('Tipo Equipamento').apply(
+                                lambda x: (len(x[x['Status Detalhado'].isin(['Comissionado', 'Validado'])]) / len(x) * 100)
+                            ).reset_index(name='Taxa de Comissionamento (%)')
+                            
+                            tipo_comiss = tipo_comiss.sort_values('Taxa de Comissionamento (%)', ascending=False)
+                            
+                            fig_taxa_tipo = px.bar(
+                                tipo_comiss.head(10),
+                                x='Taxa de Comissionamento (%)',
+                                y='Tipo Equipamento',
+                                orientation='h',
+                                title='Taxa de Comissionamento por Tipo de Equipamento',
+                                color='Taxa de Comissionamento (%)',
+                                color_continuous_scale='Blues',
+                                text=tipo_comiss['Taxa de Comissionamento (%)'].head(10).round(1).astype(str) + '%'
+                            )
+                            fig_taxa_tipo.update_traces(textposition='outside')
+                            fig_taxa_tipo.update_layout(
+                                height=400,
+                                xaxis_range=[0, 100]
+                            )
+                            st.plotly_chart(fig_taxa_tipo, use_container_width=True)
                 
+                # Responsáveis pelo comissionamento
                 st.markdown(f"#### 👥 Responsáveis pelo Comissionamento - {empresa_selecionada}")
                 
                 if 'Responsável Comissionamento' in df_empresa.columns:
@@ -1450,6 +1464,7 @@ if df is not None:
                             st.plotly_chart(fig_resp_com, use_container_width=True)
                         
                         with col2:
+                            # Taxa de sucesso por responsável
                             sucesso_resp = df_resp_com.groupby('Responsável Comissionamento').apply(
                                 lambda x: (len(x[x['Status Detalhado'].isin(['Comissionado', 'Validado'])]) / len(x) * 100)
                             ).reset_index(name='Taxa de Sucesso (%)')
@@ -1475,8 +1490,12 @@ if df is not None:
                     else:
                         st.info("Nenhum responsável de comissionamento atribuído")
                 
+                # Equipamentos Pendentes de Validação
                 with st.expander("📋 Equipamentos Pendentes de Validação"):
-                    pendentes = df_empresa[df_empresa['Status Detalhado'] != 'Validado']
+                    pendentes = df_empresa[
+                        (df_empresa['Status Detalhado'] != 'Validado') &
+                        (df_empresa['Responsável Comissionamento'] != 'Não atribuído')
+                    ]
                     
                     if not pendentes.empty:
                         st.warning(f"**{len(pendentes)} equipamentos** pendentes de validação encontrados")
