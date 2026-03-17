@@ -449,12 +449,13 @@ def configurar_grafico_corporativo(fig, titulo, height=400):
     
     return fig
 
-# Cores executivas para os gráficos
+# CORES EXECUTIVAS PARA OS GRÁFICOS - Atualizado com Necessário Revisão
 cores_executivas = {
     'Desenvolvido': '#2E7D32',  # Verde escuro
     'Comissionado': '#1976D2',   # Azul
     'Validado': '#1565C0',       # Azul escuro
-    'Revisão': '#FF8F00',        # Amarelo alaranjado
+    'Revisão': '#FF8F00',        # Amarelo alaranjado (para exibição)
+    'Necessário Revisão': '#FF8F00',  # Amarelo alaranjado (para correspondência)
     'Pendente': '#C62828',        # Vermelho escuro
     'EMT': '#1e3c72',             # Azul escuro corporativo
     'ETO': '#4a7ab0'              # Azul médio corporativo
@@ -466,7 +467,14 @@ cores_linhas = {
     'Comissionado': '#1976D2',
     'Validado': '#1565C0',
     'Revisão': '#FF8F00',
+    'Necessário Revisão': '#FF8F00',
     'Pendente': '#C62828'
+}
+
+# Lista de status válidos para referência
+STATUS_VALIDOS = ['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão', 'Pendente']
+STATUS_PARA_EXIBICAO = {
+    'Necessário Revisão': 'Revisão',  # Mapeia para exibição mais amigável
 }
 
 @st.cache_data(ttl=300)
@@ -499,7 +507,7 @@ def load_data(force_github=False):
                     'Responsável Comissionamento': np.random.choice(['Roberto Lima', 'Carla Mendes', 'Paulo Ferreira', 'Não atribuído'], 100),
                     'Responsável Auditoria': np.random.choice(['Fernando Alves', 'Lucia Santos', 'Marcos Paulo', 'Não atribuído'], 100),
                     'Fase': np.random.choice(['DEV', 'COM', 'VAL', 'PEN', 'REV'], 100, p=[0.25, 0.2, 0.15, 0.25, 0.15]),
-                    'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente', 'Revisão'], 100, p=[0.35, 0.3, 0.2, 0.15]),
+                    'Status': np.random.choice(['Desenvolvido', 'Em andamento', 'Pendente', 'Necessário Revisão'], 100, p=[0.35, 0.3, 0.2, 0.15]),
                     'Empresa': np.random.choice(['EMT', 'ETO'], 100),
                     'Criado': pd.date_range(start='2024-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M'),
                     'Modificado': pd.date_range(start='2024-02-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
@@ -507,6 +515,7 @@ def load_data(force_github=False):
                 df = pd.DataFrame(dados_exemplo)
         
         if df is not None:
+            # CORREÇÃO PRINCIPAL: Processar corretamente o status de revisão
             colunas_responsaveis = {
                 'Responsável Desenvolvimento': 'Não atribuído',
                 'Responsável Comissionamento': 'Não atribuído',
@@ -519,23 +528,85 @@ def load_data(force_github=False):
                 else:
                     df[col] = df[col].fillna(valor_padrao)
             
-            if 'Status' in df.columns:
-                df['Status'] = df['Status'].fillna('Pendente')
-                df['Status'] = df['Status'].str.strip()
+            # CORREÇÃO: Identificar e padronizar a coluna de status
+            # Primeiro, verificar qual coluna de status existe
+            coluna_status_original = None
+            for col in ['Status', 'Fase', 'Status Detalhado']:
+                if col in df.columns:
+                    coluna_status_original = col
+                    break
             
-            if 'Status Detalhado' not in df.columns:
-                if 'Fase' in df.columns:
+            if coluna_status_original:
+                # Limpar e padronizar a coluna de status
+                df[coluna_status_original] = df[coluna_status_original].fillna('Pendente')
+                df[coluna_status_original] = df[coluna_status_original].astype(str).str.strip()
+                
+                # CORREÇÃO: Mapear "Necessário Revisão" para o formato correto
+                # Vamos manter o valor original mas criar uma coluna padronizada
+                df['Status Original'] = df[coluna_status_original]
+                
+                # Mapear variações do status de revisão
+                mapa_revisao = {
+                    'Necessário Revisão': 'Necessário Revisão',
+                    'Necessario Revisão': 'Necessário Revisão',
+                    'Revisão': 'Necessário Revisão',
+                    'Revisao': 'Necessário Revisão',
+                    'REV': 'Necessário Revisão'
+                }
+                
+                # Função para padronizar status
+                def padronizar_status(valor):
+                    valor_str = str(valor).strip()
+                    
+                    # Verificar se é um dos status de revisão
+                    for chave in mapa_revisao:
+                        if chave.lower() in valor_str.lower() or valor_str.lower() == chave.lower():
+                            return 'Necessário Revisão'
+                    
+                    # Mapear Fases
                     mapa_fases = {
                         'DEV': 'Desenvolvido',
                         'COM': 'Comissionado',
                         'VAL': 'Validado',
-                        'PEN': 'Pendente',
-                        'REV': 'Revisão'
+                        'PEN': 'Pendente'
                     }
-                    df['Status Detalhado'] = df['Fase'].map(mapa_fases).fillna('Pendente')
-                else:
-                    df['Status Detalhado'] = df['Status']
+                    
+                    if valor_str in mapa_fases:
+                        return mapa_fases[valor_str]
+                    
+                    # Manter outros valores se forem válidos
+                    if valor_str in STATUS_VALIDOS:
+                        return valor_str
+                    
+                    # Valores comuns que podem aparecer
+                    if 'desenvolv' in valor_str.lower():
+                        return 'Desenvolvido'
+                    elif 'comission' in valor_str.lower():
+                        return 'Comissionado'
+                    elif 'valid' in valor_str.lower():
+                        return 'Validado'
+                    elif 'pend' in valor_str.lower():
+                        return 'Pendente'
+                    
+                    # Se não identificou, retornar original
+                    return valor_str
+                
+                # Aplicar padronização
+                df['Status Detalhado'] = df[coluna_status_original].apply(padronizar_status)
+                
+                # Garantir que todos os status estão na lista válida
+                df.loc[~df['Status Detalhado'].isin(STATUS_VALIDOS), 'Status Detalhado'] = 'Pendente'
             
+            else:
+                # Se não tem coluna de status, criar uma padrão
+                df['Status Detalhado'] = 'Pendente'
+            
+            # CORREÇÃO: Para exibição nos gráficos, podemos usar um nome mais curto
+            df['Status Exibição'] = df['Status Detalhado'].apply(
+                lambda x: 'Revisão' if x == 'Necessário Revisão' else x
+            )
+            
+            # Processar datas
             if 'Criado' in df.columns:
                 df['Criado'] = pd.to_datetime(df['Criado'], format='%d/%m/%Y %H:%M', errors='coerce')
             if 'Modificado' in df.columns:
@@ -767,10 +838,12 @@ if df is not None:
             )
         
         with st.expander("📊 Status", expanded=True):
+            # CORREÇÃO: Usar Status Exibição para filtros mais amigáveis
+            opcoes_status = sorted(df['Status Exibição'].unique())
             status_opcoes = st.multiselect(
                 "Status",
-                options=sorted(df['Status Detalhado'].unique()),
-                default=sorted(df['Status Detalhado'].unique()),
+                options=opcoes_status,
+                default=opcoes_status,
                 key="status_filter"
             )
         
@@ -821,7 +894,7 @@ if df is not None:
             desenvolvidos = len(df_progresso[df_progresso['Status Detalhado'] == 'Desenvolvido'])
             comissionados = len(df_progresso[df_progresso['Status Detalhado'] == 'Comissionado'])
             validados = len(df_progresso[df_progresso['Status Detalhado'] == 'Validado'])
-            revisao = len(df_progresso[df_progresso['Status Detalhado'] == 'Revisão'])
+            revisao = len(df_progresso[df_progresso['Status Detalhado'] == 'Necessário Revisão'])
             concluidos = desenvolvidos + comissionados + validados
             progresso = (concluidos/total*100) if total > 0 else 0
             
@@ -855,7 +928,8 @@ if df is not None:
     if tipos_equip:
         df_filtrado = df_filtrado[df_filtrado['Tipo Equipamento'].isin(tipos_equip)]
     if status_opcoes:
-        df_filtrado = df_filtrado[df_filtrado['Status Detalhado'].isin(status_opcoes)]
+        # CORREÇÃO: Filtrar usando Status Exibição
+        df_filtrado = df_filtrado[df_filtrado['Status Exibição'].isin(status_opcoes)]
     if responsaveis_dev:
         df_filtrado = df_filtrado[df_filtrado['Responsável Desenvolvimento'].isin(responsaveis_dev)]
     if responsaveis_com:
@@ -877,7 +951,7 @@ if df is not None:
         qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Desenvolvido'])
         qtd_comissionados = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Comissionado'])
         qtd_validados = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Validado'])
-        qtd_revisao = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Revisão'])
+        qtd_revisao = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Necessário Revisão'])
         qtd_pendentes = len(df_filtrado[df_filtrado['Status Detalhado'] == 'Pendente'])
         
         percent_desenv = (qtd_desenvolvidos/total_equip*100) if total_equip > 0 else 0
@@ -952,11 +1026,9 @@ if df is not None:
                 df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
                 
                 if not df_emt.empty:
-                    status_emt = df_emt['Status Detalhado'].value_counts().reset_index()
+                    # CORREÇÃO: Usar Status Exibição para os gráficos
+                    status_emt = df_emt['Status Exibição'].value_counts().reset_index()
                     status_emt.columns = ['Status', 'Quantidade']
-                    
-                    ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Revisão', 'Pendente']
-                    status_emt = status_emt[status_emt['Status'].isin(ordem_status)]
                     
                     fig_emt = px.pie(
                         status_emt, 
@@ -986,11 +1058,9 @@ if df is not None:
                 df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
                 
                 if not df_eto.empty:
-                    status_eto = df_eto['Status Detalhado'].value_counts().reset_index()
+                    # CORREÇÃO: Usar Status Exibição para os gráficos
+                    status_eto = df_eto['Status Exibição'].value_counts().reset_index()
                     status_eto.columns = ['Status', 'Quantidade']
-                    
-                    ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Revisão', 'Pendente']
-                    status_eto = status_eto[status_eto['Status'].isin(ordem_status)]
                     
                     fig_eto = px.pie(
                         status_eto, 
@@ -1018,14 +1088,15 @@ if df is not None:
             # Gráfico comparativo
             st.markdown("### 📊 Comparativo EMT vs ETO")
             
-            comparativo = df_filtrado.groupby(['Empresa', 'Status Detalhado']).size().reset_index(name='Quantidade')
+            # CORREÇÃO: Usar Status Exibição para o comparativo
+            comparativo = df_filtrado.groupby(['Empresa', 'Status Exibição']).size().reset_index(name='Quantidade')
             
             if not comparativo.empty:
                 fig_comp = px.bar(
                     comparativo,
                     x='Empresa',
                     y='Quantidade',
-                    color='Status Detalhado',
+                    color='Status Exibição',
                     barmode='group',
                     color_discrete_map={
                         'Desenvolvido': cores_executivas['Desenvolvido'],
@@ -1100,10 +1171,11 @@ if df is not None:
                 # Preparar dados
                 df_temp = df_filtrado.copy()
                 
+                # CORREÇÃO: Usar Status Exibição para evolução
                 if incluir_empresa:
-                    evolucao = df_temp.groupby([periodo_col, 'Empresa', 'Status Detalhado']).size().reset_index(name='Quantidade')
+                    evolucao = df_temp.groupby([periodo_col, 'Empresa', 'Status Exibição']).size().reset_index(name='Quantidade')
                 else:
-                    evolucao = df_temp.groupby([periodo_col, 'Status Detalhado']).size().reset_index(name='Quantidade')
+                    evolucao = df_temp.groupby([periodo_col, 'Status Exibição']).size().reset_index(name='Quantidade')
                 
                 # Ordenar
                 if agregacao == 'Mês':
@@ -1123,7 +1195,7 @@ if df is not None:
                                 evolucao,
                                 x=periodo_col,
                                 y='Quantidade',
-                                color='Status Detalhado',
+                                color='Status Exibição',
                                 facet_col='Empresa',
                                 barmode='stack',
                                 color_discrete_map=cores_executivas,
@@ -1135,7 +1207,7 @@ if df is not None:
                                 evolucao,
                                 x=periodo_col,
                                 y='Quantidade',
-                                color='Status Detalhado',
+                                color='Status Exibição',
                                 barmode='stack',
                                 color_discrete_map=cores_executivas,
                                 text='Quantidade'
@@ -1149,7 +1221,7 @@ if df is not None:
                                 evolucao,
                                 x=periodo_col,
                                 y='Quantidade',
-                                color='Status Detalhado',
+                                color='Status Exibição',
                                 line_dash='Empresa',
                                 markers=True,
                                 color_discrete_map=cores_linhas
@@ -1159,7 +1231,7 @@ if df is not None:
                                 evolucao,
                                 x=periodo_col,
                                 y='Quantidade',
-                                color='Status Detalhado',
+                                color='Status Exibição',
                                 markers=True,
                                 color_discrete_map=cores_linhas
                             )
@@ -1180,14 +1252,14 @@ if df is not None:
                         if incluir_empresa:
                             tabela = evolucao.pivot_table(
                                 index=periodo_col,
-                                columns=['Empresa', 'Status Detalhado'],
+                                columns=['Empresa', 'Status Exibição'],
                                 values='Quantidade',
                                 fill_value=0
                             ).reset_index()
                         else:
                             tabela = evolucao.pivot_table(
                                 index=periodo_col,
-                                columns='Status Detalhado',
+                                columns='Status Exibição',
                                 values='Quantidade',
                                 fill_value=0
                             ).reset_index()
@@ -1244,8 +1316,9 @@ if df is not None:
                         st.plotly_chart(fig_ranking, use_container_width=True)
                     
                     with col2:
-                        # Distribuição de status por responsável - CORES EXECUTIVAS
-                        resp_status = df_resp_geral.groupby([col_resp, 'Status Detalhado']).size().reset_index(name='Quantidade')
+                        # Distribuição de status por responsável
+                        # CORREÇÃO: Usar Status Exibição
+                        resp_status = df_resp_geral.groupby([col_resp, 'Status Exibição']).size().reset_index(name='Quantidade')
                         top_responsaveis = ranking.head(10)['Responsável'].tolist()
                         resp_status_top = resp_status[resp_status[col_resp].isin(top_responsaveis)]
                         
@@ -1253,7 +1326,7 @@ if df is not None:
                             resp_status_top,
                             x=col_resp,
                             y='Quantidade',
-                            color='Status Detalhado',
+                            color='Status Exibição',
                             title='Distribuição de Status por Responsável',
                             barmode='stack',
                             color_discrete_map=cores_executivas,
@@ -1329,19 +1402,17 @@ if df is not None:
                     st.metric("Validados", valid_emp)
                 
                 with col4:
-                    revisao_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Revisão'])
+                    revisao_emp = len(df_empresa[df_empresa['Status Detalhado'] == 'Necessário Revisão'])
                     st.metric("Em Revisão", revisao_emp)
                 
                 # Gráficos de comissionamento
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Distribuição de status - CORES EXECUTIVAS
-                    status_emp = df_empresa['Status Detalhado'].value_counts().reset_index()
+                    # Distribuição de status
+                    # CORREÇÃO: Usar Status Exibição
+                    status_emp = df_empresa['Status Exibição'].value_counts().reset_index()
                     status_emp.columns = ['Status', 'Quantidade']
-                    
-                    ordem_status = ['Desenvolvido', 'Comissionado', 'Validado', 'Revisão', 'Pendente']
-                    status_emp = status_emp[status_emp['Status'].isin(ordem_status)]
                     
                     fig_status_emp = px.pie(
                         status_emp,
@@ -1435,12 +1506,13 @@ if df is not None:
                     else:
                         st.info("Nenhum responsável de comissionamento atribuído")
                 
-                # Equipamentos Pendentes de Comissionamento (CORRIGIDO)
+                # Equipamentos Pendentes de Comissionamento
                 with st.expander("📋 Equipamentos Pendentes de Comissionamento"):
                     # Tudo que não é Comissionado ou Validado é considerado pendente de comissionamento
                     pendentes = df_empresa[~df_empresa['Status Detalhado'].isin(['Comissionado', 'Validado'])]
                     
                     if not pendentes.empty:
+                        # CORREÇÃO: Mostrar contagem incluindo "Necessário Revisão"
                         st.warning(f"**{len(pendentes)} equipamentos** pendentes de comissionamento encontrados")
                         
                         cols_mostrar = ['Cód. Equipamento', 'Tipo Equipamento', 'Status Detalhado', 
@@ -1449,7 +1521,8 @@ if df is not None:
                         
                         # Adicionar contagem por status
                         status_counts = pendentes['Status Detalhado'].value_counts()
-                        st.info("Distribuição dos pendentes: " + ", ".join([f"{k}: {v}" for k, v in status_counts.items()]))
+                        status_counts_display = status_counts.rename(index={'Necessário Revisão': 'Revisão'})
+                        st.info("Distribuição dos pendentes: " + ", ".join([f"{k}: {v}" for k, v in status_counts_display.items()]))
                         
                         st.dataframe(pendentes[cols_existentes], use_container_width=True)
                     else:
