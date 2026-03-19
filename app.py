@@ -775,8 +775,8 @@ if not df_filtrado.empty:
     # Calcular tendências
     tendencias = calcular_tendencias(df_filtrado)
     
-    # MÉTRICAS PRINCIPAIS - VISÃO DO FLUXO
-    st.markdown("### 📈 Indicadores de Performance")
+    # VISUALIZAÇÃO DO FLUXO
+    st.markdown("### 🔄 Fluxo de Validação")
     
     # Contagens por status
     qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
@@ -790,72 +790,6 @@ if not df_filtrado.empty:
     taxa_comissao = (qtd_comissionados / total_processados * 100) if total_processados > 0 else 0
     taxa_validacao = (qtd_validados / total_processados * 100) if total_processados > 0 else 0
     taxa_revisao = (qtd_revisao / total_processados * 100) if total_processados > 0 else 0
-    
-    # Primeira linha de métricas
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card-executivo">
-            <div class="metric-titulo">📦 Total Cadastrado</div>
-            <div class="metric-valor">{total}</div>
-            <div class="metric-sub">ativos na base</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        variacao_dev = tendencias.get('Desenvolvido', {}).get('variacao', 0)
-        cor_tendencia = 'tendencia-positiva' if variacao_dev >= 0 else 'tendencia-negativa'
-        st.markdown(f"""
-        <div class="metric-card-executivo">
-            <div class="metric-titulo">⚙️ Desenvolvidos</div>
-            <div class="metric-valor">{qtd_desenvolvidos}</div>
-            <div class="metric-sub">{taxa_comissao:.1f}% do fluxo</div>
-            <div class="metric-tendencia {cor_tendencia}">
-                {variacao_dev:+.1f}%
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        variacao_com = tendencias.get('Comissionado', {}).get('variacao', 0)
-        cor_tendencia = 'tendencia-positiva' if variacao_com >= 0 else 'tendencia-negativa'
-        st.markdown(f"""
-        <div class="metric-card-executivo">
-            <div class="metric-titulo">🔧 Comissionados</div>
-            <div class="metric-valor">{qtd_comissionados}</div>
-            <div class="metric-sub">{taxa_validacao:.1f}% do fluxo</div>
-            <div class="metric-tendencia {cor_tendencia}">
-                {variacao_com:+.1f}%
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        variacao_val = tendencias.get('Validado', {}).get('variacao', 0)
-        cor_tendencia = 'tendencia-positiva' if variacao_val >= 0 else 'tendencia-negativa'
-        st.markdown(f"""
-        <div class="metric-card-executivo">
-            <div class="metric-titulo">✅ Validados</div>
-            <div class="metric-valor">{qtd_validados}</div>
-            <div class="metric-sub">{taxa_validacao:.1f}% do fluxo</div>
-            <div class="metric-tendencia {cor_tendencia}">
-                {variacao_val:+.1f}%
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col5:
-        st.markdown(f"""
-        <div class="metric-card-executivo">
-            <div class="metric-titulo">📝 Em Revisão</div>
-            <div class="metric-valor">{qtd_revisao}</div>
-            <div class="metric-sub">{taxa_revisao:.1f}% do fluxo</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Fluxo de Validação")
     
     col1, col2, col3, col4 = st.columns(4)
     
