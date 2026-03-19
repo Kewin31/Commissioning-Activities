@@ -42,6 +42,34 @@ def formatar_data_portugues(data, formato='completo'):
     else:
         return data.strftime('%d/%m/%Y')
 
+def get_logo_base64():
+    """Converte a logo para base64 para exibição"""
+    possiveis_nomes = [
+        "Logo_Energisa.png",
+        "logo_energisa.png",
+        "Logo_Energisa.gif",
+        "Selo120_Azul_GIF_FundoTransparente novo.gif",
+        "energisa.png"
+    ]
+    
+    for logo_path in possiveis_nomes:
+        try:
+            if os.path.exists(logo_path):
+                with open(logo_path, "rb") as f:
+                    logo_bytes = f.read()
+                if logo_path.lower().endswith('.png'):
+                    mime_type = "image/png"
+                elif logo_path.lower().endswith('.gif'):
+                    mime_type = "image/gif"
+                else:
+                    mime_type = "image/png"
+                
+                return base64.b64encode(logo_bytes).decode(), mime_type
+        except:
+            continue
+    
+    return None, None
+
 # ============================================
 # CONFIGURAÇÕES DO GITHUB
 # ============================================
@@ -169,7 +197,7 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
-    /* Header executivo */
+    /* Header executivo com logo */
     .header-executivo {
         background: linear-gradient(135deg, #0B2A4A 0%, #1E3A5F 100%);
         padding: 1.5rem 2rem;
@@ -196,6 +224,12 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .header-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
     }
     
     .header-titulo h1 {
@@ -587,12 +621,19 @@ if df is None or df.empty:
     st.error("❌ Não foi possível carregar os dados.")
     st.stop()
 
-# HEADER EXECUTIVO
+# HEADER EXECUTIVO COM LOGO
+logo_base64, mime_type = get_logo_base64()
+
+if logo_base64:
+    header_logo_html = f'<img src="data:{mime_type};base64,{logo_base64}" alt="Logo Energisa">'
+else:
+    header_logo_html = '<div style="font-size: 35px;">⚡</div>'
+
 st.markdown(f"""
 <div class="header-executivo">
     <div class="header-conteudo">
         <div class="header-logo">
-            ⚡
+            {header_logo_html}
         </div>
         <div class="header-titulo">
             <h1>Radar de Comissionamento SCADA</h1>
@@ -659,11 +700,14 @@ with st.sidebar:
     )
     
     st.markdown("**🔧 Tipo de Equipamento**")
-    tipos = st.multiselect(
-        "Selecionar tipos:",
-        options=sorted(df['Tipo'].unique()) if 'Tipo' in df.columns else [],
-        default=[]
-    )
+    if 'Tipo' in df.columns:
+        tipos = st.multiselect(
+            "Selecionar tipos:",
+            options=sorted(df['Tipo'].unique()),
+            default=[]
+        )
+    else:
+        tipos = []
     
     # Aplicar filtros
     df_filtrado = df.copy()
@@ -1211,7 +1255,10 @@ if not df_filtrado.empty:
         with col2:
             st.metric("Empresas", len(df_filtrado['Empresa'].unique()))
         with col3:
-            st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()) if 'Tipo' in df_filtrado.columns else 0)
+            if 'Tipo' in df_filtrado.columns:
+                st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()))
+            else:
+                st.metric("Tipos de Equipamento", 0)
         with col4:
             st.metric("Responsáveis", len(df_filtrado['Resp_Dev'].unique()))
         
@@ -1219,41 +1266,31 @@ if not df_filtrado.empty:
         colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
         colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
         
-        df_display = df_filtrado[colunas_existentes].copy()
+        if colunas_existentes:
+            df_display = df_filtrado[colunas_existentes].copy()
+            st.dataframe(df_display, use_container_width=True)
         
-        # Adicionar coluna de badges para status
-        def get_badge(status):
-            cores_badge = {
-                'Desenvolvido': 'badge-desenvolvido',
-                'Comissionado': 'badge-comissionado',
-                'Validado': 'badge-validado',
-                'Necessário Revisão': 'badge-revisao',
-                'Pendente': 'badge-pendente'
-            }
-            return f'<span class="badge-status {cores_badge.get(status, "")}">{status}</span>'
-        
-        # Aplicar badges
-        if 'Status' in df_display.columns:
-            df_display['Status'] = df_display['Status'].apply(get_badge)
-        
-        st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-        
-        # Estatísticas descritivas
+        # Estatísticas descritivas - CORRIGIDO
         with st.expander("📊 Estatísticas Detalhadas"):
             st.markdown("**Distribuição por Status:**")
-            st.dataframe(
-                df_filtrado['Status'].value_counts().reset_index()
-                .rename(columns={'index': 'Status', 'Status': 'Quantidade'})
-                .assign(Percentual=lambda x: (x['Quantidade'] / len(df_filtrado) * 100).round(1).astype(str) + '%')
-            )
+            status_counts = df_filtrado['Status'].value_counts().reset_index()
+            status_counts.columns = ['Status', 'Quantidade']
+            total_linhas = len(df_filtrado)
+            
+            # Calcular percentual separadamente para evitar erro
+            percentuais = []
+            for qtd in status_counts['Quantidade']:
+                percentual = (qtd / total_linhas * 100) if total_linhas > 0 else 0
+                percentuais.append(f"{percentual:.1f}%")
+            
+            status_counts['Percentual'] = percentuais
+            st.dataframe(status_counts)
             
             if 'Tipo' in df_filtrado.columns:
                 st.markdown("**Distribuição por Tipo de Equipamento:**")
-                st.dataframe(
-                    df_filtrado['Tipo'].value_counts().reset_index()
-                    .rename(columns={'index': 'Tipo', 'Tipo': 'Quantidade'})
-                    .head(15)
-                )
+                tipo_counts = df_filtrado['Tipo'].value_counts().reset_index()
+                tipo_counts.columns = ['Tipo', 'Quantidade']
+                st.dataframe(tipo_counts.head(15))
     
     # FOOTER
     st.markdown(f"""
