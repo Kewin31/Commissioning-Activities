@@ -11,1044 +11,1266 @@ from github import Github
 from github import GithubException
 import tempfile
 import time
+from dateutil.relativedelta import relativedelta
 
-# ============================================================
-# CONFIGURAÇÃO DA PÁGINA
-# ============================================================
+# Configuração da página
 st.set_page_config(
-    page_title="Radar de Comissionamento | Fábrica SCADA",
+    page_title="Dashboard Executivo | Fábrica SCADA",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ============================================================
-# PALETA EXECUTIVA
-# ============================================================
-COR_PRIMARIA   = "#0F2044"   # Azul navy profundo
-COR_ACCENT     = "#1A6BCC"   # Azul royal
-COR_DEV        = "#0D7377"   # Teal — Desenvolvido
-COR_COM        = "#1A6BCC"   # Azul — Comissionado
-COR_REV        = "#E07B00"   # Âmbar — Revisão
-COR_VAL        = "#16A34A"   # Verde — Validado
-COR_PEN        = "#9B1C1C"   # Vermelho escuro — Pendente
-COR_EMT        = "#0F2044"
-COR_ETO        = "#1A6BCC"
+# ============================================
+# FUNÇÕES DE FORMATAÇÃO
+# ============================================
+def formatar_data_portugues(data, formato='completo'):
+    """Formata datas em português"""
+    if pd.isna(data):
+        return ""
+    
+    meses_pt = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+    
+    if formato == 'mes_ano':
+        return f"{meses_pt[data.month]}/{data.year}"
+    elif formato == 'ano_mes':
+        return f"{data.year}/{data.month:02d}"
+    else:
+        return data.strftime('%d/%m/%Y')
 
-MAPA_CORES = {
-    "Desenvolvido":      COR_DEV,
-    "Comissionado":      COR_COM,
-    "Necessário Revisão": COR_REV,
-    "Revisão":           COR_REV,
-    "Validado":          COR_VAL,
-    "Pendente":          COR_PEN,
-    "EMT":               COR_EMT,
-    "ETO":               COR_ETO,
-}
-
-STATUS_ORDEM = ["Desenvolvido", "Comissionado", "Necessário Revisão", "Validado", "Pendente"]
-
-MESES_PT = {
-    1:"Jan", 2:"Fev", 3:"Mar", 4:"Abr", 5:"Mai", 6:"Jun",
-    7:"Jul", 8:"Ago", 9:"Set", 10:"Out", 11:"Nov", 12:"Dez"
-}
-
-# ============================================================
-# CSS EXECUTIVO
-# ============================================================
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background: #F5F7FA;
-}
-
-/* ---- HEADER ---- */
-.exec-header {
-    background: linear-gradient(135deg, #0F2044 0%, #1A3A6B 60%, #1A6BCC 100%);
-    border-radius: 20px;
-    padding: 2rem 2.5rem;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-    box-shadow: 0 8px 32px rgba(15,32,68,0.18);
-}
-.exec-header-text h1 {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: white;
-    margin: 0;
-    letter-spacing: -0.03em;
-}
-.exec-header-text p {
-    color: rgba(255,255,255,0.7);
-    font-size: 0.88rem;
-    margin: 0.3rem 0 0 0;
-    font-weight: 400;
-}
-.exec-badge {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
-    padding: 0.3rem 0.8rem;
-    color: rgba(255,255,255,0.85);
-    font-size: 0.78rem;
-    font-weight: 500;
-    display: inline-block;
-    margin-top: 0.5rem;
-}
-
-/* ---- PIPELINE BANNER ---- */
-.pipeline-wrap {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(15,32,68,0.07);
-    margin-bottom: 2rem;
-}
-.pipeline-step {
-    flex: 1;
-    padding: 1.4rem 1rem;
-    text-align: center;
-    position: relative;
-    transition: background 0.2s;
-}
-.pipeline-step::after {
-    content: '›';
-    position: absolute;
-    right: -10px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.6rem;
-    color: #CBD5E0;
-    z-index: 2;
-}
-.pipeline-step:last-child::after { display: none; }
-.pipeline-icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
-.pipeline-label {
-    font-family: 'Syne', sans-serif;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    color: #718096;
-    margin-bottom: 0.3rem;
-}
-.pipeline-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 2.2rem;
-    font-weight: 800;
-    line-height: 1;
-}
-.pipeline-pct {
-    font-size: 0.78rem;
-    color: #718096;
-    margin-top: 0.15rem;
-}
-
-/* ---- KPI CARDS ---- */
-.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-.kpi-card {
-    background: white;
-    border-radius: 14px;
-    padding: 1.4rem;
-    box-shadow: 0 2px 12px rgba(15,32,68,0.06);
-    border-top: 3px solid var(--c);
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-.kpi-title { font-size: 0.78rem; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.06em; }
-.kpi-value { font-family: 'Syne', sans-serif; font-size: 2.2rem; font-weight: 800; color: var(--c); }
-.kpi-sub { font-size: 0.78rem; color: #A0AEC0; }
-
-/* ---- SECTION TITLE ---- */
-.sec-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #0F2044;
-    letter-spacing: -0.01em;
-    margin: 1.8rem 0 1rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.sec-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #E2E8F0;
-    margin-left: 0.5rem;
-}
-
-/* ---- PROGRESS BAR ---- */
-.prog-bar-outer {
-    background: #EDF2F7;
-    border-radius: 99px;
-    height: 10px;
-    overflow: hidden;
-    margin: 0.5rem 0;
-}
-.prog-bar-inner {
-    height: 100%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, #0D7377, #16A34A);
-    transition: width 0.5s ease;
-}
-
-/* ---- TABLE ---- */
-.exec-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.exec-table th {
-    background: #F7FAFC;
-    color: #4A5568;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    padding: 0.75rem 1rem;
-    border-bottom: 2px solid #E2E8F0;
-    text-align: left;
-}
-.exec-table td { padding: 0.7rem 1rem; border-bottom: 1px solid #EDF2F7; color: #2D3748; }
-.exec-table tr:hover td { background: #F7FAFC; }
-
-/* ---- STATUS PILL ---- */
-.pill {
-    display: inline-block;
-    padding: 0.2rem 0.7rem;
-    border-radius: 99px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-.pill-dev  { background:#E6F4F4; color:#0D7377; }
-.pill-com  { background:#E8F1FB; color:#1A6BCC; }
-.pill-rev  { background:#FEF3E2; color:#E07B00; }
-.pill-val  { background:#DCFCE7; color:#16A34A; }
-.pill-pen  { background:#FEE2E2; color:#9B1C1C; }
-
-/* ---- SIDEBAR ---- */
-[data-testid="stSidebar"] { background: #0F2044 !important; }
-[data-testid="stSidebar"] * { color: rgba(255,255,255,0.85) !important; }
-[data-testid="stSidebar"] .stMultiSelect > div, 
-[data-testid="stSidebar"] .stSelectbox > div { background: rgba(255,255,255,0.07) !important; border-radius: 8px; }
-[data-testid="stSidebar"] h3 {
-    font-family: 'Syne', sans-serif;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(255,255,255,0.4) !important;
-    margin: 1.5rem 0 0.5rem 0;
-}
-[data-testid="stSidebar"] .stButton > button {
-    background: rgba(255,255,255,0.1) !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
-    color: white !important;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.2) !important;
-}
-
-/* ---- PLOTLY override ---- */
-.js-plotly-plot { border-radius: 14px; }
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# GITHUB HELPERS (mantidos do original)
-# ============================================================
+# ============================================
+# CONFIGURAÇÕES DO GITHUB
+# ============================================
 def get_github_config():
+    """Obtém configurações do GitHub do Streamlit Secrets"""
     try:
-        if "GITHUB_TOKEN" not in st.secrets: return None, None, None
+        if "GITHUB_TOKEN" not in st.secrets:
+            return None, None, None
+            
         token = st.secrets["GITHUB_TOKEN"]
-        if "GITHUB_REPO" not in st.secrets: return token, None, None
+        
+        if "GITHUB_REPO" not in st.secrets:
+            return token, None, None
+            
         repo = st.secrets["GITHUB_REPO"]
-        if '/' not in repo: return token, None, None
+        
+        if '/' not in repo:
+            return token, None, None
+            
         file_path = st.secrets.get("GITHUB_FILE_PATH", "data/Dados/Comissionamento AD - UNs.csv")
+        
         return token, repo, file_path
-    except:
+        
+    except Exception as e:
         return None, None, None
 
 def test_github_connection():
+    """Testa a conexão com o GitHub"""
     try:
         token, repo_name, _ = get_github_config()
-        if not token or not repo_name: return False, "Configurações incompletas"
+        
+        if not token or not repo_name:
+            return False, "Configurações incompletas"
+        
         g = Github(token)
         user = g.get_user()
         repo = g.get_repo(repo_name)
+        
         return True, f"Conectado como {user.login}"
-    except GithubException as e:
-        if e.status == 401: return False, "Token inválido ou expirado"
-        elif e.status == 404: return False, "Repositório não encontrado"
-        else: return False, f"Erro GitHub: {e.status}"
+        
     except Exception as e:
-        return False, f"Erro: {str(e)}"
+        return False, f"Erro de conexão: {str(e)}"
 
 def load_data_from_github():
+    """Carrega dados do GitHub"""
     try:
         token, repo_name, file_path = get_github_config()
-        if not token or not repo_name: return None
+        
+        if not token or not repo_name:
+            return None
+        
         g = Github(token)
         repo = g.get_repo(repo_name)
         contents = repo.get_contents(file_path)
+        
         file_content = base64.b64decode(contents.content).decode('utf-8')
+        
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
             f.write(file_content)
             temp_file = f.name
+        
         df = pd.read_csv(temp_file, encoding='utf-8-sig')
         os.unlink(temp_file)
+        
         return df
-    except:
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar do GitHub: {str(e)}")
         return None
 
 def atualizar_dados_github(arquivo_upload, branch="main"):
+    """Atualiza o arquivo no GitHub"""
     try:
         token, repo_name, file_path = get_github_config()
-        if not token or not repo_name: st.error("❌ Configurações do GitHub incompletas."); return False
-        if arquivo_upload is None: st.error("❌ Nenhum arquivo selecionado."); return False
-        if not arquivo_upload.name.endswith('.csv'): st.error("❌ O arquivo deve ser CSV."); return False
+        
+        if not token or not repo_name:
+            st.error("❌ Configurações do GitHub incompletas.")
+            return False
+        
+        if arquivo_upload is None:
+            st.error("❌ Nenhum arquivo selecionado.")
+            return False
+        
         g = Github(token)
-        try:
-            repo = g.get_repo(repo_name)
-        except GithubException as e:
-            st.error(f"❌ Erro ao acessar repositório: {e.status}"); return False
+        repo = g.get_repo(repo_name)
+        
         file_content = arquivo_upload.read()
-        try:
-            df_temp = pd.read_csv(io.BytesIO(file_content), encoding='utf-8-sig')
-            st.success(f"✅ CSV válido com {len(df_temp)} linhas")
-        except Exception as e:
-            st.error(f"❌ Arquivo CSV inválido: {str(e)}"); return False
+        
         try:
             contents = repo.get_contents(file_path, ref=branch)
             repo.update_file(
                 path=file_path,
-                message=f"Atualização {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                message=f"📦 Atualização - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
                 content=file_content,
                 sha=contents.sha,
                 branch=branch
             )
         except GithubException as e:
             if e.status == 404:
-                repo.create_file(path=file_path,
-                    message=f"Criação {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-                    content=file_content, branch=branch)
+                repo.create_file(
+                    path=file_path,
+                    message=f"📦 Criação - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                    content=file_content,
+                    branch=branch
+                )
             else:
-                st.error(f"❌ Erro GitHub: {e.status}"); return False
-        st.cache_data.clear()
+                raise e
+        
+        st.success(f"✅ Arquivo atualizado no GitHub!")
         return True
+        
     except Exception as e:
-        st.error(f"❌ Erro: {str(e)}"); return False
+        st.error(f"❌ Erro ao atualizar GitHub: {str(e)}")
+        return False
 
-# ============================================================
-# LÓGICA DE FLUXO DA ESTEIRA
-# ============================================================
-STATUS_VALIDOS = ["Desenvolvido", "Comissionado", "Necessário Revisão", "Validado", "Pendente"]
+# ============================================
+# CSS PERSONALIZADO - ESTILO EXECUTIVO
+# ============================================
+st.markdown("""
+<style>
+    /* Fontes e reset */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    .stApp {
+        background-color: #f8fafc;
+    }
+    
+    /* Header executivo */
+    .header-executivo {
+        background: linear-gradient(135deg, #0B2A4A 0%, #1E3A5F 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 0 0 20px 20px;
+        margin: -1rem -1rem 2rem -1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .header-conteudo {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .header-logo {
+        background: white;
+        padding: 0.5rem;
+        border-radius: 12px;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .header-titulo h1 {
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .header-titulo p {
+        color: rgba(255,255,255,0.8);
+        margin: 0.2rem 0 0 0;
+        font-size: 0.95rem;
+    }
+    
+    .header-data {
+        margin-left: auto;
+        background: rgba(255,255,255,0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        color: white;
+        font-size: 0.9rem;
+        backdrop-filter: blur(5px);
+    }
+    
+    /* Cards de métricas - Estilo executivo */
+    .metric-card-executivo {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,20,40,0.05);
+        border: 1px solid #eef2f6;
+        transition: all 0.2s ease;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .metric-card-executivo:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,40,80,0.1);
+        border-color: #cbd5e0;
+    }
+    
+    .metric-titulo {
+        color: #4a5568;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-valor {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+    
+    .metric-sub {
+        color: #718096;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+    }
+    
+    .metric-tendencia {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .tendencia-positiva {
+        background: #e6f7e6;
+        color: #2e7d32;
+    }
+    
+    .tendencia-negativa {
+        background: #ffe6e6;
+        color: #c62828;
+    }
+    
+    /* Cards de fluxo */
+    .fluxo-container {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,20,40,0.05);
+        margin-bottom: 2rem;
+    }
+    
+    .etapa-fluxo {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    
+    .etapa-fluxo:hover {
+        background: #f8fafc;
+    }
+    
+    .etapa-numero {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .etapa-label {
+        font-size: 0.9rem;
+        color: #4a5568;
+        margin-top: 0.3rem;
+    }
+    
+    .etapa-taxa {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-top: 0.3rem;
+    }
+    
+    .badge-status {
+        display: inline-block;
+        padding: 0.3rem 0.8rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .badge-desenvolvido { background: #E8F5E9; color: #2E7D32; }
+    .badge-comissionado { background: #E3F2FD; color: #1976D2; }
+    .badge-validado { background: #E8EAF6; color: #283593; }
+    .badge-revisao { background: #FFF3E0; color: #F57C00; }
+    .badge-pendente { background: #FFEBEE; color: #C62828; }
+    
+    /* Tabs personalizadas */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+        background-color: white;
+        padding: 0.5rem 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 500;
+        color: #4a5568;
+    }
+    
+    /* KPIs */
+    .kpi-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .kpi-item {
+        flex: 1;
+        background: white;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        text-align: center;
+    }
+    
+    .kpi-label {
+        color: #718096;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #0B2A4A;
+        margin: 0.3rem 0;
+    }
+    
+    .kpi-trend {
+        font-size: 0.8rem;
+    }
+    
+    /* Footer */
+    .footer {
+        background: white;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        margin-top: 3rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+        font-size: 0.85rem;
+        color: #718096;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-MAPA_FASES = {
-    "DEV": "Desenvolvido",
-    "COM": "Comissionado",
-    "VAL": "Validado",
-    "PEN": "Pendente",
-    "REV": "Necessário Revisão",
+# ============================================
+# CORES EXECUTIVAS
+# ============================================
+CORES = {
+    'Desenvolvido': '#2E7D32',      # Verde escuro
+    'Comissionado': '#1976D2',      # Azul
+    'Validado': '#283593',           # Azul escuro
+    'Necessário Revisão': '#F57C00', # Laranja
+    'Pendente': '#C62828',           # Vermelho
+    'EMT': '#0B2A4A',
+    'ETO': '#1E3A5F',
+    'background': '#f8fafc',
+    'card': 'white',
+    'texto': '#2d3748',
+    'texto_secundario': '#718096'
 }
 
-def padronizar_status(valor):
-    v = str(valor).strip()
-    if v in MAPA_FASES:
-        return MAPA_FASES[v]
-    vl = v.lower()
-    if "revisão" in vl or "revisao" in vl or "rev" == vl:
-        return "Necessário Revisão"
-    if "desenvolvido" in vl or "dev" == vl:
-        return "Desenvolvido"
-    if "comissionado" in vl or "com" == vl:
-        return "Comissionado"
-    if "validado" in vl or "val" == vl:
-        return "Validado"
-    if "pendente" in vl or "pen" == vl:
-        return "Pendente"
-    if v in STATUS_VALIDOS:
-        return v
-    return "Pendente"
+# ============================================
+# FUNÇÕES DE PROCESSAMENTO
+# ============================================
+def processar_dados(df):
+    """Processa e padroniza os dados"""
+    if df is None or df.empty:
+        return df
+    
+    # Padronizar nomes das colunas (remover acentos e espaços extras)
+    df.columns = df.columns.str.strip()
+    
+    # Mapeamento de colunas
+    mapeamento_colunas = {
+        'Cód.Equipamento': 'Codigo',
+        'Cód. Equipamento': 'Codigo',
+        'Tipo Equipamento': 'Tipo',
+        'Empresa': 'Empresa',
+        'Chamado de Desenvolvimento': 'Chamado',
+        'Responsável Desenvolvimento': 'Resp_Dev',
+        'Responsável Comissionamento': 'Resp_Com',
+        'Responsável Auditoria': 'Resp_Audit'
+    }
+    
+    # Renomear colunas se existirem
+    for col_antiga, col_nova in mapeamento_colunas.items():
+        if col_antiga in df.columns and col_nova not in df.columns:
+            df.rename(columns={col_antiga: col_nova}, inplace=True)
+    
+    # Preencher responsáveis não atribuídos
+    for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
+        if col in df.columns:
+            df[col] = df[col].fillna('Não atribuído')
+        else:
+            df[col] = 'Não atribuído'
+    
+    # Padronizar status
+    status_map = {
+        'desenvolvido': 'Desenvolvido',
+        'desenv': 'Desenvolvido',
+        'comissionado': 'Comissionado',
+        'comiss': 'Comissionado',
+        'validado': 'Validado',
+        'valid': 'Validado',
+        'revisão': 'Necessário Revisão',
+        'revisao': 'Necessário Revisão',
+        'revisar': 'Necessário Revisão',
+        'necessario revisão': 'Necessário Revisão',
+        'necessario revisao': 'Necessário Revisão',
+        'pendente': 'Pendente',
+        'pend': 'Pendente'
+    }
+    
+    # Identificar coluna de status
+    col_status = None
+    for col in ['Status', 'Fase', 'Situação', 'Situacao']:
+        if col in df.columns:
+            col_status = col
+            break
+    
+    if col_status:
+        df[col_status] = df[col_status].astype(str).str.lower().str.strip()
+        df['Status'] = df[col_status].map(lambda x: next(
+            (v for k, v in status_map.items() if k in x), 
+            'Pendente'
+        ))
+    else:
+        df['Status'] = 'Pendente'
+    
+    # Processar datas
+    for col in ['Criado', 'Modificado']:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], format='%d/%m/%Y %H:%M', errors='coerce')
+    
+    # Criar colunas de tempo
+    if 'Criado' in df.columns:
+        df['Ano'] = df['Criado'].dt.year
+        df['Mes'] = df['Criado'].dt.month
+        df['Mes_Ano'] = df['Criado'].dt.strftime('%Y-%m')
+        df['Data'] = df['Criado'].dt.date
+    
+    return df
 
-# Ordem do pipeline para cálculo de progresso individual
-PIPELINE_ORDEM = {"Pendente": 0, "Desenvolvido": 1, "Comissionado": 2, "Necessário Revisão": 2, "Validado": 3}
+def calcular_tendencias(df, periodo='mes'):
+    """Calcula tendências para os KPIs"""
+    if df.empty or 'Criado' not in df.columns:
+        return {}
+    
+    hoje = datetime.now()
+    
+    if periodo == 'mes':
+        inicio_periodo = hoje - relativedelta(months=1)
+        inicio_periodo_anterior = hoje - relativedelta(months=2)
+    else:  # semana
+        inicio_periodo = hoje - timedelta(days=7)
+        inicio_periodo_anterior = hoje - timedelta(days=14)
+    
+    df_periodo = df[df['Criado'] >= inicio_periodo]
+    df_anterior = df[
+        (df['Criado'] >= inicio_periodo_anterior) & 
+        (df['Criado'] < inicio_periodo)
+    ]
+    
+    tendencias = {}
+    
+    for status in ['Desenvolvido', 'Comissionado', 'Validado']:
+        qtd_periodo = len(df_periodo[df_periodo['Status'] == status])
+        qtd_anterior = len(df_anterior[df_anterior['Status'] == status])
+        
+        if qtd_anterior > 0:
+            variacao = ((qtd_periodo - qtd_anterior) / qtd_anterior) * 100
+        else:
+            variacao = 100 if qtd_periodo > 0 else 0
+        
+        tendencias[status] = {
+            'atual': qtd_periodo,
+            'anterior': qtd_anterior,
+            'variacao': variacao
+        }
+    
+    return tendencias
 
 @st.cache_data(ttl=300)
-def load_data(force_github=False):
-    df = None
-    fonte = "local"
-    if force_github:
+def load_data():
+    """Carrega dados do GitHub ou local"""
+    try:
+        # Tentar carregar do GitHub primeiro
         df = load_data_from_github()
-        if df is not None: fonte = "github"
-    if df is None:
-        caminho = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
-        if os.path.exists(caminho):
-            df = pd.read_csv(caminho, encoding='utf-8-sig')
-            fonte = "local"
-        else:
-            # Dados de exemplo para demonstração
-            n = 150
-            np.random.seed(42)
-            status_pool = np.random.choice(
-                ["Desenvolvido","Comissionado","Necessário Revisão","Validado","Pendente"],
-                n, p=[0.20, 0.25, 0.15, 0.30, 0.10]
-            )
-            criados = pd.date_range("2025-01-01", periods=n, freq="3D")
-            df = pd.DataFrame({
-                "Cód. Equipamento":           [f"EQ{i:04d}" for i in range(1, n+1)],
-                "Chamado Desenvolvimento":    [f"CHDEV-{1000+i}" for i in range(n)],
-                "Tipo Equipamento":           np.random.choice(["Inversor","Transformador","Painel","Disjuntor","Relé","Medidor"], n),
-                "Empresa":                    np.random.choice(["EMT","ETO"], n, p=[0.55,0.45]),
-                "Fase":                       status_pool,
-                "Responsável Desenvolvimento":np.random.choice(["João Silva","Maria Santos","Pedro Costa","Ana Oliveira","Carlos Souza"], n),
-                "Responsável Comissionamento":np.random.choice(["Roberto Lima","Carla Mendes","Paulo Ferreira","Não atribuído"], n),
-                "Responsável Auditoria":      np.random.choice(["Fernando Alves","Lucia Santos","Marcos Paulo","Não atribuído"], n),
-                "Criado":                     criados.strftime("%d/%m/%Y %H:%M"),
-                "Modificado":                 (criados + pd.to_timedelta(np.random.randint(1,30,n), unit="D")).strftime("%d/%m/%Y %H:%M"),
-            })
-            fonte = "exemplo"
-    if df is not None:
-        # Responsáveis padrão
-        for col in ["Responsável Desenvolvimento","Responsável Comissionamento","Responsável Auditoria"]:
-            if col not in df.columns: df[col] = "Não atribuído"
-            else: df[col] = df[col].fillna("Não atribuído")
-        # Empresa
-        if "Empresa" not in df.columns: df["Empresa"] = "EMT"
-        # Status
-        col_status = next((c for c in ["Fase","Status","Status Detalhado"] if c in df.columns), None)
-        if col_status:
-            df["Status Detalhado"] = df[col_status].apply(padronizar_status)
-        else:
-            df["Status Detalhado"] = "Pendente"
-        df.loc[~df["Status Detalhado"].isin(STATUS_VALIDOS), "Status Detalhado"] = "Pendente"
-        # Datas
-        for col in ["Criado","Modificado"]:
-            if col in df.columns:
-                df[col] = pd.to_datetime(df[col], format="%d/%m/%Y %H:%M", errors="coerce")
-        if "Criado" in df.columns:
-            df["Ano"]    = df["Criado"].dt.year
-            df["Mês"]    = df["Criado"].dt.month
-            df["Mês/Ano"]= df["Criado"].dt.to_period("M").astype(str)
-            df["Mês Nome"]= df["Criado"].dt.month.map(MESES_PT)
-            df["Semana"] = df["Criado"].dt.isocalendar().week.astype(int)
-            df["Dia"]    = df["Criado"].dt.date
-        # Nível no pipeline
-        df["Pipeline Nível"] = df["Status Detalhado"].map(PIPELINE_ORDEM).fillna(0)
-    return df, fonte
+        
+        if df is not None:
+            return processar_dados(df), "github"
+        
+        # Fallback para arquivo local
+        caminho_local = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
+        if os.path.exists(caminho_local):
+            df = pd.read_csv(caminho_local, encoding='utf-8-sig')
+            return processar_dados(df), "local"
+        
+        # Dados de exemplo se nada funcionar
+        st.warning("⚠️ Nenhum arquivo encontrado. Usando dados de exemplo.")
+        
+        dados_exemplo = {
+            'Cód.Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
+            'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
+            'Empresa': np.random.choice(['EMT', 'ETO'], 100),
+            'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa'], 100),
+            'Responsável Comissionamento': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
+            'Responsável Auditoria': np.random.choice(['Fernando Costa', 'Lucia Santos'], 100),
+            'Status': np.random.choice(['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão'], 100, 
+                                      p=[0.3, 0.25, 0.25, 0.2]),
+            'Criado': pd.date_range(start='2025-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
+        }
+        df = pd.DataFrame(dados_exemplo)
+        return processar_dados(df), "exemplo"
+        
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar dados: {str(e)}")
+        return None, "erro"
 
-# ============================================================
-# HELPERS DE VISUALIZAÇÃO
-# ============================================================
-def layout_exec(fig, titulo="", height=380):
-    fig.update_layout(
-        title=dict(text=titulo, font=dict(family="Syne, sans-serif", size=14, color="#0F2044"), x=0.5, xanchor="center") if titulo else dict(text=""),
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="DM Sans, sans-serif", size=12, color="#4A5568"),
-        margin=dict(l=40, r=20, t=50 if titulo else 30, b=40),
-        height=height,
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11)),
-        hoverlabel=dict(bgcolor="white", font_size=12, font_family="DM Sans, sans-serif"),
-    )
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="#F0F4F8", linecolor="#E2E8F0", tickfont=dict(size=11))
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="#F0F4F8", linecolor="#E2E8F0", tickfont=dict(size=11))
-    return fig
+# ============================================
+# INTERFACE PRINCIPAL
+# ============================================
 
-def pill_html(status):
-    classes = {
-        "Desenvolvido": "pill-dev",
-        "Comissionado": "pill-com",
-        "Necessário Revisão": "pill-rev",
-        "Validado": "pill-val",
-        "Pendente": "pill-pen",
-    }
-    cls = classes.get(status, "pill-pen")
-    label = "Revisão" if status == "Necessário Revisão" else status
-    return f"<span class='pill {cls}'>{label}</span>"
+# Carregar dados
+if 'df' not in st.session_state:
+    with st.spinner("🔄 Carregando dados..."):
+        df, fonte = load_data()
+        st.session_state.df = df
+        st.session_state.fonte = fonte
+else:
+    df = st.session_state.df
+    fonte = st.session_state.fonte
 
-# ============================================================
-# SIDEBAR
-# ============================================================
-with st.sidebar:
-    st.markdown("""
-    <div style='padding:1.5rem 0 1rem 0; text-align:center;'>
-        <div style='font-family:Syne,sans-serif; font-size:1.2rem; font-weight:800; color:white; letter-spacing:-0.02em;'>
-            ⚡ Fábrica SCADA
-        </div>
-        <div style='font-size:0.75rem; color:rgba(255,255,255,0.45); margin-top:0.2rem;'>Radar de Comissionamento</div>
-    </div>
-    <hr style='border-color:rgba(255,255,255,0.1); margin-bottom:1rem;'>
-    """, unsafe_allow_html=True)
-
-    if "df" not in st.session_state:
-        with st.spinner("Carregando..."):
-            df_raw, fonte_raw = load_data()
-            st.session_state.df   = df_raw
-            st.session_state.fonte = fonte_raw
-
-    df_all  = st.session_state.df
-    fonte   = st.session_state.fonte
-
-    st.markdown("### FONTE")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("↻ GitHub", use_container_width=True):
-            with st.spinner("Sincronizando..."):
-                df_n, f_n = load_data(force_github=True)
-                if df_n is not None:
-                    st.session_state.df = df_n; st.session_state.fonte = f_n
-                    st.rerun()
-    with col2:
-        if st.button("↻ Local", use_container_width=True):
-            st.cache_data.clear()
-            df_n, f_n = load_data()
-            st.session_state.df = df_n; st.session_state.fonte = f_n
-            st.rerun()
-
-    fonte_icon = {"github":"🟢 GitHub","local":"🔵 Local","exemplo":"🟡 Demo"}.get(fonte, fonte)
-    st.markdown(f"<div style='font-size:0.75rem; color:rgba(255,255,255,0.4); margin-bottom:1rem;'>{fonte_icon}</div>", unsafe_allow_html=True)
-
-    with st.expander("📤 Upload CSV"):
-        branch = st.selectbox("Branch", ["main","master"])
-        arq = st.file_uploader("Arquivo CSV", type=["csv"])
-        if arq and st.button("Enviar ao GitHub"):
-            with st.spinner("Enviando..."):
-                if atualizar_dados_github(arq, branch):
-                    time.sleep(1); st.rerun()
-
-    st.markdown("### FILTROS")
-
-    if df_all is not None:
-        empresas = st.multiselect("Empresa", sorted(df_all["Empresa"].unique()),
-                                   default=sorted(df_all["Empresa"].unique()))
-        tipos = st.multiselect("Tipo de Equipamento",
-                                sorted(df_all["Tipo Equipamento"].unique()),
-                                default=sorted(df_all["Tipo Equipamento"].unique()))
-        status_opts = st.multiselect("Status",
-                                      STATUS_VALIDOS, default=STATUS_VALIDOS)
-        resp_dev = st.multiselect("Resp. Desenvolvimento",
-                                   sorted(df_all["Responsável Desenvolvimento"].unique()), default=[])
-        data_range = None
-        if "Criado" in df_all.columns and not df_all["Criado"].isna().all():
-            st.markdown("**Período**")
-            d_min = df_all["Criado"].min().date()
-            d_max = df_all["Criado"].max().date()
-            d_ini = st.date_input("De", d_min)
-            d_fim = st.date_input("Até", d_max)
-            data_range = (d_ini, d_fim)
-
-        if st.button("Limpar Filtros", use_container_width=True):
-            st.rerun()
-
-    st.markdown("""
-    <hr style='border-color:rgba(255,255,255,0.1); margin:1.5rem 0 1rem 0;'>
-    <div style='font-size:0.7rem; color:rgba(255,255,255,0.3); text-align:center;'>
-        v4.0 · © 2026 Energisa
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============================================================
-# DADOS FILTRADOS
-# ============================================================
-if df_all is None:
+if df is None or df.empty:
     st.error("❌ Não foi possível carregar os dados.")
     st.stop()
 
-df = df_all.copy()
-if empresas:  df = df[df["Empresa"].isin(empresas)]
-if tipos:     df = df[df["Tipo Equipamento"].isin(tipos)]
-if status_opts: df = df[df["Status Detalhado"].isin(status_opts)]
-if resp_dev:  df = df[df["Responsável Desenvolvimento"].isin(resp_dev)]
-if data_range and "Criado" in df.columns:
-    df = df[(df["Criado"].dt.date >= data_range[0]) & (df["Criado"].dt.date <= data_range[1])]
-
-# ============================================================
-# MÉTRICAS BASE
-# ============================================================
-total  = len(df)
-n_dev  = len(df[df["Status Detalhado"] == "Desenvolvido"])
-n_com  = len(df[df["Status Detalhado"] == "Comissionado"])
-n_rev  = len(df[df["Status Detalhado"] == "Necessário Revisão"])
-n_val  = len(df[df["Status Detalhado"] == "Validado"])
-n_pen  = len(df[df["Status Detalhado"] == "Pendente"])
-
-# Taxa de conclusão = Validados / Total
-taxa_conclusao = (n_val / total * 100) if total > 0 else 0
-# Taxa de comissionamento = (Comissionados + Validados) / Total
-taxa_comiss    = ((n_com + n_val) / total * 100) if total > 0 else 0
-# Em andamento = tudo menos Pendente
-em_andamento   = n_dev + n_com + n_rev + n_val
-
-pct = lambda v: f"{v/total*100:.1f}%" if total > 0 else "—"
-
-# ============================================================
-# HEADER
-# ============================================================
-data_ref = datetime.now().strftime("%d/%m/%Y %H:%M")
+# HEADER EXECUTIVO
 st.markdown(f"""
-<div class="exec-header">
-    <div style="background:rgba(255,255,255,0.15); border-radius:12px; width:64px; height:64px;
-                display:flex; align-items:center; justify-content:center; font-size:2rem; flex-shrink:0;">⚡</div>
-    <div class="exec-header-text">
-        <h1>Radar de Comissionamento</h1>
-        <p>Acompanhamento da Esteira de Desenvolvimento · Fábrica SCADA · EMT | ETO</p>
-        <span class="exec-badge">📅 {data_ref} &nbsp;·&nbsp; {total} registros &nbsp;·&nbsp; {fonte.upper()}</span>
+<div class="header-executivo">
+    <div class="header-conteudo">
+        <div class="header-logo">
+            ⚡
+        </div>
+        <div class="header-titulo">
+            <h1>Radar de Comissionamento SCADA</h1>
+            <p>Acompanhamento Executivo • Desenvolvimento → Validação</p>
+        </div>
+        <div class="header-data">
+            📅 {datetime.now().strftime('%d/%m/%Y')} • Fonte: {fonte.upper()}
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# PIPELINE VISUAL — FLUXO DA ESTEIRA
-# ============================================================
-st.markdown("<div class='sec-title'>🔄 Fluxo da Esteira</div>", unsafe_allow_html=True)
-st.markdown(f"""
-<div class="pipeline-wrap">
-    <div class="pipeline-step" style="background:#F0FAF9;">
-        <div class="pipeline-icon">⚙️</div>
-        <div class="pipeline-label">Desenvolvidos</div>
-        <div class="pipeline-value" style="color:{COR_DEV};">{n_dev}</div>
-        <div class="pipeline-pct">{pct(n_dev)}</div>
-    </div>
-    <div class="pipeline-step" style="background:#EBF4FF;">
-        <div class="pipeline-icon">🔧</div>
-        <div class="pipeline-label">Comissionados</div>
-        <div class="pipeline-value" style="color:{COR_COM};">{n_com}</div>
-        <div class="pipeline-pct">{pct(n_com)}</div>
-    </div>
-    <div class="pipeline-step" style="background:#FFF8ED;">
-        <div class="pipeline-icon">🔁</div>
-        <div class="pipeline-label">Em Revisão</div>
-        <div class="pipeline-value" style="color:{COR_REV};">{n_rev}</div>
-        <div class="pipeline-pct">{pct(n_rev)}</div>
-    </div>
-    <div class="pipeline-step" style="background:#F0FDF4;">
-        <div class="pipeline-icon">✅</div>
-        <div class="pipeline-label">Validados</div>
-        <div class="pipeline-value" style="color:{COR_VAL};">{n_val}</div>
-        <div class="pipeline-pct">{pct(n_val)}</div>
-    </div>
-    <div class="pipeline-step" style="background:#FFF5F5;">
-        <div class="pipeline-icon">⏳</div>
-        <div class="pipeline-label">Pendentes</div>
-        <div class="pipeline-value" style="color:{COR_PEN};">{n_pen}</div>
-        <div class="pipeline-pct">{pct(n_pen)}</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# BARRA DE PROGRESSO GLOBAL
-# ============================================================
-st.markdown(f"""
-<div style="background:white; border-radius:14px; padding:1.4rem 1.8rem;
-            box-shadow:0 2px 12px rgba(15,32,68,0.06); margin-bottom:1.5rem;">
-    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.6rem;">
-        <span style="font-family:Syne,sans-serif; font-weight:700; color:#0F2044; font-size:0.95rem;">
-            Progresso Geral da Esteira
-        </span>
-        <span style="font-family:Syne,sans-serif; font-weight:800; font-size:1.5rem; color:#16A34A;">
-            {taxa_conclusao:.1f}%
-        </span>
-    </div>
-    <div class="prog-bar-outer">
-        <div class="prog-bar-inner" style="width:{taxa_conclusao:.1f}%;"></div>
-    </div>
-    <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.78rem; color:#A0AEC0;">
-        <span>0%</span>
-        <span style="color:#4A5568;">{n_val} de {total} equipamentos validados</span>
-        <span>100%</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# KPI SECUNDÁRIOS
-# ============================================================
-st.markdown(f"""
-<div class="kpi-grid">
-    <div class="kpi-card" style="--c:{COR_ACCENT};">
-        <div class="kpi-title">Total Cadastrado</div>
-        <div class="kpi-value">{total}</div>
-        <div class="kpi-sub">equipamentos na esteira</div>
-    </div>
-    <div class="kpi-card" style="--c:{COR_COM};">
-        <div class="kpi-title">Taxa de Comissionamento</div>
-        <div class="kpi-value">{taxa_comiss:.1f}%</div>
-        <div class="kpi-sub">{n_com + n_val} comissionados ou validados</div>
-    </div>
-    <div class="kpi-card" style="--c:{COR_VAL};">
-        <div class="kpi-title">Taxa de Validação</div>
-        <div class="kpi-value">{taxa_conclusao:.1f}%</div>
-        <div class="kpi-sub">{n_val} equipamentos concluídos</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# ABAS PRINCIPAIS
-# ============================================================
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📊 Visão Executiva",
-    "📈 Evolução Temporal",
-    "👥 Responsáveis",
-    "🏢 Por Empresa",
-])
-
-# ──────────────────────────────────────────────
-# TAB 1 — VISÃO EXECUTIVA
-# ──────────────────────────────────────────────
-with tab1:
-    col_a, col_b = st.columns(2)
-
-    # Donut — Distribuição geral
-    with col_a:
-        st.markdown("<div class='sec-title'>Distribuição por Status</div>", unsafe_allow_html=True)
-        dist = df["Status Detalhado"].value_counts().reindex(STATUS_VALIDOS).dropna().reset_index()
-        dist.columns = ["Status","Qtd"]
-        fig_donut = go.Figure(go.Pie(
-            labels=dist["Status"],
-            values=dist["Qtd"],
-            hole=0.55,
-            marker_colors=[MAPA_CORES.get(s, "#CBD5E0") for s in dist["Status"]],
-            textinfo="label+percent",
-            textfont=dict(family="DM Sans, sans-serif", size=11),
-            hovertemplate="<b>%{label}</b><br>Qtd: %{value}<br>%{percent}<extra></extra>",
-        ))
-        fig_donut.add_annotation(
-            text=f"<b>{total}</b><br><span style='font-size:10px'>Total</span>",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(family="Syne, sans-serif", size=20, color="#0F2044")
-        )
-        fig_donut = layout_exec(fig_donut, height=360)
-        fig_donut.update_layout(showlegend=True, legend=dict(orientation="h", y=-0.1))
-        st.plotly_chart(fig_donut, use_container_width=True)
-
-    # Barras — EMT vs ETO
-    with col_b:
-        st.markdown("<div class='sec-title'>EMT × ETO por Status</div>", unsafe_allow_html=True)
-        comp = df.groupby(["Empresa","Status Detalhado"]).size().reset_index(name="Qtd")
-        fig_comp = px.bar(
-            comp, x="Empresa", y="Qtd", color="Status Detalhado",
-            barmode="group",
-            color_discrete_map=MAPA_CORES,
-            text="Qtd",
-            category_orders={"Status Detalhado": STATUS_VALIDOS},
-        )
-        fig_comp.update_traces(textposition="outside", textfont_size=11)
-        fig_comp = layout_exec(fig_comp, height=360)
-        fig_comp.update_layout(xaxis_title="", yaxis_title="Equipamentos", legend_title="")
-        st.plotly_chart(fig_comp, use_container_width=True)
-
-    # Funil do pipeline
-    st.markdown("<div class='sec-title'>Funil do Pipeline de Validação</div>", unsafe_allow_html=True)
-    # Funil acumulativo: cada etapa inclui os que passaram por ela
-    funil_vals = [
-        ("1. Cadastrados",          total,            COR_PRIMARIA),
-        ("2. Desenvolvidos",        n_dev + n_com + n_rev + n_val, COR_DEV),
-        ("3. Comissionados",        n_com + n_val,    COR_COM),
-        ("4. Em Revisão",           n_rev,            COR_REV),
-        ("5. Validados (Concluído)",n_val,             COR_VAL),
-    ]
-    fig_funil = go.Figure(go.Funnel(
-        y=[f[0] for f in funil_vals],
-        x=[f[1] for f in funil_vals],
-        marker_color=[f[2] for f in funil_vals],
-        textposition="inside",
-        textinfo="value+percent initial",
-        connector=dict(line=dict(color="#E2E8F0", dash="dot", width=1)),
-    ))
-    fig_funil = layout_exec(fig_funil, "Funil da Esteira — Progressão Acumulada", height=380)
-    st.plotly_chart(fig_funil, use_container_width=True)
-
-    # Tabela resumo por tipo de equipamento
-    st.markdown("<div class='sec-title'>Resumo por Tipo de Equipamento</div>", unsafe_allow_html=True)
-    if "Tipo Equipamento" in df.columns:
-        tbl = df.groupby("Tipo Equipamento")["Status Detalhado"].value_counts().unstack(fill_value=0)
-        for col in STATUS_VALIDOS:
-            if col not in tbl.columns: tbl[col] = 0
-        tbl = tbl[STATUS_VALIDOS]
-        tbl["Total"] = tbl.sum(axis=1)
-        tbl["% Validado"] = (tbl.get("Validado", 0) / tbl["Total"] * 100).round(1).astype(str) + "%"
-        tbl = tbl.sort_values("Total", ascending=False).reset_index()
-        st.dataframe(
-            tbl.rename(columns={"Tipo Equipamento":"Tipo","Necessário Revisão":"Revisão"}),
-            use_container_width=True, hide_index=True
-        )
-
-# ──────────────────────────────────────────────
-# TAB 2 — EVOLUÇÃO TEMPORAL
-# ──────────────────────────────────────────────
-with tab2:
-    if "Criado" not in df.columns or df["Criado"].isna().all():
-        st.info("Dados de data não disponíveis.")
+# SIDEBAR
+with st.sidebar:
+    st.markdown("### 🎯 Painel de Controle")
+    
+    # Fonte de dados
+    st.markdown("**📊 Conexão GitHub**")
+    conectado, msg = test_github_connection()
+    if conectado:
+        st.success("✅ " + msg)
     else:
-        col_ag, col_tp = st.columns([1,1])
-        with col_ag:
-            agregacao = st.radio("Agregação", ["Mês","Semana","Dia"], horizontal=True)
-        with col_tp:
-            tipo_viz = st.radio("Tipo", ["Barras","Linhas"], horizontal=True)
-
-        col_map = {"Mês":"Mês/Ano","Semana":"Semana","Dia":"Dia"}
-        p_col = col_map[agregacao]
-
-        # Evolução por status
-        st.markdown("<div class='sec-title'>Novos Cadastros por Período e Status</div>", unsafe_allow_html=True)
-        evol = df.groupby([p_col,"Status Detalhado"]).size().reset_index(name="Qtd")
-        evol = evol.sort_values(p_col)
-
-        if tipo_viz == "Barras":
-            fig_ev = px.bar(evol, x=p_col, y="Qtd", color="Status Detalhado",
-                            barmode="stack", color_discrete_map=MAPA_CORES,
-                            category_orders={"Status Detalhado": STATUS_VALIDOS})
-            fig_ev.update_traces(textposition="inside")
-        else:
-            fig_ev = px.line(evol, x=p_col, y="Qtd", color="Status Detalhado",
-                             markers=True, color_discrete_map=MAPA_CORES,
-                             category_orders={"Status Detalhado": STATUS_VALIDOS})
-        fig_ev = layout_exec(fig_ev, height=380)
-        fig_ev.update_layout(xaxis_tickangle=30, xaxis_title="", yaxis_title="Equipamentos", legend_title="")
-        st.plotly_chart(fig_ev, use_container_width=True)
-
-        # Acumulado de validações
-        st.markdown("<div class='sec-title'>Validações Acumuladas no Tempo</div>", unsafe_allow_html=True)
-        df_val_temp = df[df["Status Detalhado"] == "Validado"].copy()
-        if not df_val_temp.empty:
-            val_grp = df_val_temp.groupby(p_col).size().reset_index(name="Validados")
-            val_grp = val_grp.sort_values(p_col)
-            val_grp["Acumulado"] = val_grp["Validados"].cumsum()
-
-            fig_acum = go.Figure()
-            fig_acum.add_trace(go.Bar(
-                x=val_grp[p_col], y=val_grp["Validados"],
-                name="No período", marker_color=COR_VAL, opacity=0.5,
-                text=val_grp["Validados"], textposition="outside"
-            ))
-            fig_acum.add_trace(go.Scatter(
-                x=val_grp[p_col], y=val_grp["Acumulado"],
-                name="Acumulado", mode="lines+markers",
-                line=dict(color=COR_PRIMARIA, width=2.5),
-                marker=dict(size=7)
-            ))
-            fig_acum = layout_exec(fig_acum, height=360)
-            fig_acum.update_layout(xaxis_tickangle=30, legend_title="")
-            st.plotly_chart(fig_acum, use_container_width=True)
-        else:
-            st.info("Nenhum equipamento validado no período filtrado.")
-
-        # Separado por empresa
-        st.markdown("<div class='sec-title'>Evolução por Empresa</div>", unsafe_allow_html=True)
-        evol_emp = df.groupby([p_col,"Empresa","Status Detalhado"]).size().reset_index(name="Qtd")
-        evol_emp = evol_emp.sort_values(p_col)
-        fig_emp = px.bar(evol_emp, x=p_col, y="Qtd", color="Status Detalhado",
-                         facet_col="Empresa", barmode="stack",
-                         color_discrete_map=MAPA_CORES,
-                         category_orders={"Status Detalhado": STATUS_VALIDOS})
-        fig_emp.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-        fig_emp = layout_exec(fig_emp, height=360)
-        fig_emp.update_layout(xaxis_tickangle=30, legend_title="")
-        st.plotly_chart(fig_emp, use_container_width=True)
-
-# ──────────────────────────────────────────────
-# TAB 3 — RESPONSÁVEIS
-# ──────────────────────────────────────────────
-with tab3:
-    tipo_resp = st.radio(
-        "Visão por responsável de:",
-        ["Desenvolvimento","Comissionamento","Auditoria"],
+        st.warning("⚠️ Modo local")
+    
+    st.markdown("---")
+    
+    # Filtros principais
+    st.markdown("### 🔍 Filtros")
+    
+    # Período
+    st.markdown("**📅 Período**")
+    
+    opcao_periodo = st.radio(
+        "Selecionar período:",
+        options=['Últimos 30 dias', 'Últimos 90 dias', 'Ano atual', 'Todos', 'Personalizado'],
+        index=0,
         horizontal=True
     )
-    col_r = {
-        "Desenvolvimento":"Responsável Desenvolvimento",
-        "Comissionamento":"Responsável Comissionamento",
-        "Auditoria":"Responsável Auditoria"
-    }[tipo_resp]
-
-    if col_r not in df.columns:
-        st.info(f"Coluna '{col_r}' não encontrada.")
-    else:
-        df_r = df[df[col_r] != "Não atribuído"].copy()
-
-        if df_r.empty:
-            st.info("Nenhum responsável atribuído.")
-        else:
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown(f"<div class='sec-title'>Ranking — {tipo_resp}</div>", unsafe_allow_html=True)
-                rank = df_r[col_r].value_counts().head(15).reset_index()
-                rank.columns = ["Responsável","Total"]
-                fig_rank = px.bar(rank, x="Total", y="Responsável", orientation="h",
-                                  color="Total", color_continuous_scale=["#93C5FD","#1A6BCC","#0F2044"],
-                                  text="Total")
-                fig_rank.update_traces(textposition="outside")
-                fig_rank = layout_exec(fig_rank, height=420)
-                fig_rank.update_layout(yaxis=dict(autorange="reversed"), coloraxis_showscale=False)
-                st.plotly_chart(fig_rank, use_container_width=True)
-
-            with col2:
-                st.markdown(f"<div class='sec-title'>Status por Responsável</div>", unsafe_allow_html=True)
-                top10 = rank.head(10)["Responsável"].tolist()
-                dist_r = df_r[df_r[col_r].isin(top10)].groupby([col_r,"Status Detalhado"]).size().reset_index(name="Qtd")
-                fig_dr = px.bar(dist_r, x=col_r, y="Qtd", color="Status Detalhado",
-                                barmode="stack", color_discrete_map=MAPA_CORES,
-                                category_orders={"Status Detalhado": STATUS_VALIDOS})
-                fig_dr.update_traces(textposition="inside")
-                fig_dr = layout_exec(fig_dr, height=420)
-                fig_dr.update_layout(xaxis_tickangle=35, legend_title="", xaxis_title="")
-                st.plotly_chart(fig_dr, use_container_width=True)
-
-            # Taxa de sucesso
-            st.markdown("<div class='sec-title'>Taxa de Conclusão por Responsável</div>", unsafe_allow_html=True)
-            taxa_r = (
-                df_r.groupby(col_r)
-                .apply(lambda x: len(x[x["Status Detalhado"] == "Validado"]) / len(x) * 100)
-                .reset_index(name="Taxa (%)")
-                .sort_values("Taxa (%)", ascending=False)
-                .head(15)
-            )
-            taxa_r.columns = ["Responsável","Taxa (%)"]
-            fig_taxa = px.bar(taxa_r, x="Taxa (%)", y="Responsável", orientation="h",
-                              color="Taxa (%)", color_continuous_scale=["#BBF7D0","#16A34A","#14532D"],
-                              text=taxa_r["Taxa (%)"].round(1).astype(str) + "%")
-            fig_taxa.update_traces(textposition="outside")
-            fig_taxa = layout_exec(fig_taxa, height=400)
-            fig_taxa.update_layout(yaxis=dict(autorange="reversed"),
-                                   xaxis_range=[0, 105], coloraxis_showscale=False)
-            st.plotly_chart(fig_taxa, use_container_width=True)
-
-# ──────────────────────────────────────────────
-# TAB 4 — POR EMPRESA
-# ──────────────────────────────────────────────
-with tab4:
-    empresa_sel = st.selectbox("Empresa", sorted(df["Empresa"].unique()))
-    df_e = df[df["Empresa"] == empresa_sel]
-
-    if df_e.empty:
-        st.info("Sem dados para esta empresa.")
-    else:
-        t_e   = len(df_e)
-        n_dev_e = len(df_e[df_e["Status Detalhado"] == "Desenvolvido"])
-        n_com_e = len(df_e[df_e["Status Detalhado"] == "Comissionado"])
-        n_rev_e = len(df_e[df_e["Status Detalhado"] == "Necessário Revisão"])
-        n_val_e = len(df_e[df_e["Status Detalhado"] == "Validado"])
-        n_pen_e = len(df_e[df_e["Status Detalhado"] == "Pendente"])
-        taxa_e  = (n_val_e / t_e * 100) if t_e > 0 else 0
-
-        # Mini pipeline
-        st.markdown(f"""
-        <div class="pipeline-wrap" style="margin-top:1rem;">
-            <div class="pipeline-step" style="background:#F0FAF9;">
-                <div class="pipeline-icon">⚙️</div>
-                <div class="pipeline-label">Desenvolvidos</div>
-                <div class="pipeline-value" style="color:{COR_DEV};">{n_dev_e}</div>
-            </div>
-            <div class="pipeline-step" style="background:#EBF4FF;">
-                <div class="pipeline-icon">🔧</div>
-                <div class="pipeline-label">Comissionados</div>
-                <div class="pipeline-value" style="color:{COR_COM};">{n_com_e}</div>
-            </div>
-            <div class="pipeline-step" style="background:#FFF8ED;">
-                <div class="pipeline-icon">🔁</div>
-                <div class="pipeline-label">Em Revisão</div>
-                <div class="pipeline-value" style="color:{COR_REV};">{n_rev_e}</div>
-            </div>
-            <div class="pipeline-step" style="background:#F0FDF4;">
-                <div class="pipeline-icon">✅</div>
-                <div class="pipeline-label">Validados</div>
-                <div class="pipeline-value" style="color:{COR_VAL};">{n_val_e}</div>
-            </div>
-            <div class="pipeline-step" style="background:#FFF5F5;">
-                <div class="pipeline-icon">⏳</div>
-                <div class="pipeline-label">Pendentes</div>
-                <div class="pipeline-value" style="color:{COR_PEN};">{n_pen_e}</div>
-            </div>
+    
+    data_inicio = None
+    data_fim = None
+    
+    if opcao_periodo == 'Personalizado':
+        col1, col2 = st.columns(2)
+        with col1:
+            data_inicio = st.date_input("De", value=datetime.now() - timedelta(days=30))
+        with col2:
+            data_fim = st.date_input("Até", value=datetime.now())
+    elif opcao_periodo == 'Últimos 30 dias':
+        data_inicio = datetime.now() - timedelta(days=30)
+        data_fim = datetime.now()
+    elif opcao_periodo == 'Últimos 90 dias':
+        data_inicio = datetime.now() - timedelta(days=90)
+        data_fim = datetime.now()
+    elif opcao_periodo == 'Ano atual':
+        data_inicio = datetime(datetime.now().year, 1, 1)
+        data_fim = datetime.now()
+    
+    st.markdown("**🏢 Empresa**")
+    empresas = st.multiselect(
+        "Selecionar empresas:",
+        options=sorted(df['Empresa'].unique()),
+        default=sorted(df['Empresa'].unique())
+    )
+    
+    st.markdown("**🔧 Tipo de Equipamento**")
+    tipos = st.multiselect(
+        "Selecionar tipos:",
+        options=sorted(df['Tipo'].unique()) if 'Tipo' in df.columns else [],
+        default=[]
+    )
+    
+    # Aplicar filtros
+    df_filtrado = df.copy()
+    
+    if empresas:
+        df_filtrado = df_filtrado[df_filtrado['Empresa'].isin(empresas)]
+    
+    if tipos:
+        df_filtrado = df_filtrado[df_filtrado['Tipo'].isin(tipos)]
+    
+    if data_inicio and data_fim and 'Criado' in df_filtrado.columns:
+        df_filtrado = df_filtrado[
+            (df_filtrado['Criado'].dt.date >= data_inicio.date()) &
+            (df_filtrado['Criado'].dt.date <= data_fim.date())
+        ]
+    
+    # Estatísticas rápidas
+    st.markdown("---")
+    st.markdown("### 📊 Visão Rápida")
+    
+    total = len(df_filtrado)
+    em_andamento = len(df_filtrado[df_filtrado['Status'].isin(['Desenvolvido', 'Comissionado'])])
+    finalizados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
+    revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
+    
+    st.markdown(f"""
+    <div style="background: white; padding: 1rem; border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>📦 Total:</span> <strong>{total}</strong>
         </div>
-        <div style="background:white; border-radius:12px; padding:1rem 1.5rem; margin:1rem 0 1.5rem 0;
-                    box-shadow:0 2px 10px rgba(15,32,68,0.06);">
-            <div style="display:flex; justify-content:space-between; margin-bottom:0.4rem;">
-                <span style="font-family:Syne,sans-serif; font-weight:700; color:#0F2044;">
-                    Progresso {empresa_sel}
-                </span>
-                <span style="font-family:Syne,sans-serif; font-weight:800; color:#16A34A;">{taxa_e:.1f}%</span>
-            </div>
-            <div class="prog-bar-outer">
-                <div class="prog-bar-inner" style="width:{taxa_e:.1f}%;"></div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>⚙️ Em andamento:</span> <strong>{em_andamento}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>✅ Finalizados:</span> <strong>{finalizados}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>📝 Em revisão:</span> <strong>{revisao}</strong>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Limpar Filtros", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("📥 Exportar", use_container_width=True):
+            csv = df_filtrado.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📊 Download CSV",
+                csv,
+                f"dados_scada_{datetime.now().strftime('%Y%m%d')}.csv",
+                "text/csv",
+                use_container_width=True
+            )
+
+# ============================================
+# PAINEL PRINCIPAL
+# ============================================
+
+if not df_filtrado.empty:
+    # Calcular tendências
+    tendencias = calcular_tendencias(df_filtrado)
+    
+    # MÉTRICAS PRINCIPAIS - VISÃO DO FLUXO
+    st.markdown("### 📈 Indicadores de Performance")
+    
+    # Contagens por status
+    qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
+    qtd_comissionados = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
+    qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
+    qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
+    qtd_pendentes = len(df_filtrado[df_filtrado['Status'] == 'Pendente'])
+    
+    # Taxas de conversão
+    total_processados = qtd_desenvolvidos + qtd_comissionados + qtd_validados + qtd_revisao
+    taxa_comissao = (qtd_comissionados / total_processados * 100) if total_processados > 0 else 0
+    taxa_validacao = (qtd_validados / total_processados * 100) if total_processados > 0 else 0
+    taxa_revisao = (qtd_revisao / total_processados * 100) if total_processados > 0 else 0
+    
+    # Primeira linha de métricas
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card-executivo">
+            <div class="metric-titulo">📦 Total Cadastrado</div>
+            <div class="metric-valor">{total}</div>
+            <div class="metric-sub">ativos na base</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        variacao_dev = tendencias.get('Desenvolvido', {}).get('variacao', 0)
+        cor_tendencia = 'tendencia-positiva' if variacao_dev >= 0 else 'tendencia-negativa'
+        st.markdown(f"""
+        <div class="metric-card-executivo">
+            <div class="metric-titulo">⚙️ Desenvolvidos</div>
+            <div class="metric-valor">{qtd_desenvolvidos}</div>
+            <div class="metric-sub">{taxa_comissao:.1f}% do fluxo</div>
+            <div class="metric-tendencia {cor_tendencia}">
+                {variacao_dev:+.1f}%
             </div>
         </div>
         """, unsafe_allow_html=True)
-
+    
+    with col3:
+        variacao_com = tendencias.get('Comissionado', {}).get('variacao', 0)
+        cor_tendencia = 'tendencia-positiva' if variacao_com >= 0 else 'tendencia-negativa'
+        st.markdown(f"""
+        <div class="metric-card-executivo">
+            <div class="metric-titulo">🔧 Comissionados</div>
+            <div class="metric-valor">{qtd_comissionados}</div>
+            <div class="metric-sub">{taxa_validacao:.1f}% do fluxo</div>
+            <div class="metric-tendencia {cor_tendencia}">
+                {variacao_com:+.1f}%
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        variacao_val = tendencias.get('Validado', {}).get('variacao', 0)
+        cor_tendencia = 'tendencia-positiva' if variacao_val >= 0 else 'tendencia-negativa'
+        st.markdown(f"""
+        <div class="metric-card-executivo">
+            <div class="metric-titulo">✅ Validados</div>
+            <div class="metric-valor">{qtd_validados}</div>
+            <div class="metric-sub">{taxa_validacao:.1f}% do fluxo</div>
+            <div class="metric-tendencia {cor_tendencia}">
+                {variacao_val:+.1f}%
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col5:
+        st.markdown(f"""
+        <div class="metric-card-executivo">
+            <div class="metric-titulo">📝 Em Revisão</div>
+            <div class="metric-valor">{qtd_revisao}</div>
+            <div class="metric-sub">{taxa_revisao:.1f}% do fluxo</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # VISUALIZAÇÃO DO FLUXO
+    st.markdown("### 🔄 Fluxo de Validação")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #718096;">ETAPA 1</div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos}</div>
+                <div style="font-weight: 500;">Desenvolvidos</div>
+                <div style="font-size: 0.85rem; color: #718096;">Aguardando comissionamento</div>
+                <div style="margin-top: 0.5rem; background: #f1f8f1; border-radius: 20px; padding: 0.3rem;">
+                    → {(qtd_comissionados/(qtd_desenvolvidos+1)*100):.0f}% para comissionar
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #718096;">ETAPA 2</div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados}</div>
+                <div style="font-weight: 500;">Comissionados</div>
+                <div style="font-size: 0.85rem; color: #718096;">Aguardando validação</div>
+                <div style="margin-top: 0.5rem; background: #e3f2fd; border-radius: 20px; padding: 0.3rem;">
+                    → {(qtd_validados/(qtd_comissionados+1)*100):.0f}% validados
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #718096;">ETAPA 3</div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados}</div>
+                <div style="font-weight: 500;">Validados</div>
+                <div style="font-size: 0.85rem; color: #718096;">Processo concluído</div>
+                <div style="margin-top: 0.5rem; background: #e8eaf6; border-radius: 20px; padding: 0.3rem;">
+                    ✓ {taxa_validacao:.1f}% do total
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9rem; color: #718096;">GARGALO</div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
+                <div style="font-weight: 500;">Em Revisão</div>
+                <div style="font-size: 0.85rem; color: #718096;">Aguardando correções</div>
+                <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
+                    ⚠️ {taxa_revisao:.1f}% em revisão
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # TABS PARA ANÁLISES DETALHADAS
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Visão Executiva", 
+        "📈 Evolução Temporal",
+        "👥 Performance por Responsável",
+        "📋 Detalhamento"
+    ])
+    
+    with tab1:
+        st.markdown("### 📊 Análise Comparativa por Empresa")
+        
         col1, col2 = st.columns(2)
-
+        
+        for idx, empresa in enumerate(['EMT', 'ETO']):
+            with col1 if idx == 0 else col2:
+                df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
+                
+                if not df_emp.empty:
+                    # Contagens
+                    total_emp = len(df_emp)
+                    dev_emp = len(df_emp[df_emp['Status'] == 'Desenvolvido'])
+                    com_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
+                    val_emp = len(df_emp[df_emp['Status'] == 'Validado'])
+                    rev_emp = len(df_emp[df_emp['Status'] == 'Necessário Revisão'])
+                    
+                    st.markdown(f"""
+                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <h4 style="margin: 0 0 1rem 0; color: {CORES[empresa]};">{empresa}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.8rem; font-weight: 700;">{total_emp}</div>
+                                <div style="font-size: 0.85rem; color: #718096;">Total</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{com_emp}</div>
+                                <div style="font-size: 0.85rem; color: #718096;">Comissionados</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{val_emp}</div>
+                                <div style="font-size: 0.85rem; color: #718096;">Validados</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <div style="background: #f1f5f9; border-radius: 20px; padding: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>Progresso:</span>
+                                    <strong>{((com_emp+val_emp)/total_emp*100):.1f}%</strong>
+                                </div>
+                                <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
+                                    <div style="width: {((com_emp+val_emp)/total_emp*100)}%; background: {CORES['Comissionado']}; height: 6px; border-radius: 3px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Gráfico de distribuição
+        st.markdown("### 📊 Distribuição do Portfólio")
+        
+        col1, col2 = st.columns(2)
+        
         with col1:
-            st.markdown("<div class='sec-title'>Distribuição de Status</div>", unsafe_allow_html=True)
-            dist_e = df_e["Status Detalhado"].value_counts().reindex(STATUS_VALIDOS).dropna().reset_index()
-            dist_e.columns = ["Status","Qtd"]
-            fig_de = px.pie(dist_e, values="Qtd", names="Status", hole=0.5,
-                            color="Status", color_discrete_map=MAPA_CORES)
-            fig_de.update_traces(textinfo="label+percent", textfont_size=11)
-            fig_de = layout_exec(fig_de, height=340)
-            st.plotly_chart(fig_de, use_container_width=True)
-
+            # Distribuição por status
+            status_counts = df_filtrado['Status'].value_counts().reset_index()
+            status_counts.columns = ['Status', 'Quantidade']
+            
+            fig_status = px.pie(
+                status_counts,
+                values='Quantidade',
+                names='Status',
+                title='Distribuição por Status',
+                color='Status',
+                color_discrete_map=CORES,
+                hole=0.4
+            )
+            fig_status.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                texttemplate='%{label}<br>%{percent:.1%}'
+            )
+            fig_status.update_layout(
+                showlegend=False,
+                height=350,
+                margin=dict(t=50, b=10, l=10, r=10)
+            )
+            st.plotly_chart(fig_status, use_container_width=True)
+        
         with col2:
-            st.markdown("<div class='sec-title'>Taxa por Tipo de Equipamento</div>", unsafe_allow_html=True)
-            if "Tipo Equipamento" in df_e.columns:
-                taxa_tipo = (
-                    df_e.groupby("Tipo Equipamento")
-                    .apply(lambda x: len(x[x["Status Detalhado"].isin(["Comissionado","Validado"])]) / len(x) * 100)
-                    .reset_index(name="Taxa Comissionamento (%)")
-                    .sort_values("Taxa Comissionamento (%)", ascending=False)
+            # Top tipos de equipamento
+            if 'Tipo' in df_filtrado.columns:
+                tipo_counts = df_filtrado['Tipo'].value_counts().head(8).reset_index()
+                tipo_counts.columns = ['Tipo', 'Quantidade']
+                
+                fig_tipo = px.bar(
+                    tipo_counts,
+                    x='Quantidade',
+                    y='Tipo',
+                    orientation='h',
+                    title='Top 8 Tipos de Equipamento',
+                    color='Quantidade',
+                    color_continuous_scale='Blues',
+                    text='Quantidade'
                 )
-                taxa_tipo.columns = ["Tipo","Taxa (%)"]
-                fig_tt = px.bar(taxa_tipo, x="Taxa (%)", y="Tipo", orientation="h",
-                                color="Taxa (%)", color_continuous_scale=["#BFDBFE","#1A6BCC"],
-                                text=taxa_tipo["Taxa (%)"].round(1).astype(str) + "%")
-                fig_tt.update_traces(textposition="outside")
-                fig_tt = layout_exec(fig_tt, height=340)
-                fig_tt.update_layout(xaxis_range=[0, 105], coloraxis_showscale=False)
-                st.plotly_chart(fig_tt, use_container_width=True)
-
-        # Pendentes
-        st.markdown("<div class='sec-title'>⚠️ Equipamentos Pendentes de Validação</div>", unsafe_allow_html=True)
-        pendentes_e = df_e[df_e["Status Detalhado"] != "Validado"].sort_values("Pipeline Nível", ascending=False)
-        if not pendentes_e.empty:
-            cols_show = ["Cód. Equipamento","Tipo Equipamento","Status Detalhado",
-                         "Responsável Desenvolvimento","Responsável Comissionamento"]
-            cols_ok = [c for c in cols_show if c in pendentes_e.columns]
-            st.warning(f"**{len(pendentes_e)}** equipamentos ainda não validados na {empresa_sel}.")
-            st.dataframe(pendentes_e[cols_ok], use_container_width=True, hide_index=True)
-        else:
-            st.success(f"🎉 Todos os equipamentos de **{empresa_sel}** estão validados!")
-
-# ============================================================
-# RODAPÉ EXECUTIVO
-# ============================================================
-st.markdown("---")
-c1, c2, c3 = st.columns(3)
-with c1:
+                fig_tipo.update_traces(textposition='outside')
+                fig_tipo.update_layout(
+                    height=350,
+                    margin=dict(t=50, b=10, l=10, r=10),
+                    xaxis_title="Quantidade",
+                    yaxis_title=""
+                )
+                st.plotly_chart(fig_tipo, use_container_width=True)
+    
+    with tab2:
+        st.markdown("### 📈 Evolução do Fluxo")
+        
+        if 'Criado' in df_filtrado.columns:
+            # Agregação por mês
+            df_filtrado['Mes_Ano_Label'] = df_filtrado['Criado'].dt.strftime('%b/%Y')
+            df_filtrado['Ano_Mes'] = df_filtrado['Criado'].dt.strftime('%Y-%m')
+            
+            evolucao = df_filtrado.groupby(['Ano_Mes', 'Mes_Ano_Label', 'Status']).size().reset_index(name='Quantidade')
+            evolucao = evolucao.sort_values('Ano_Mes')
+            
+            # Gráfico de linhas
+            fig_evolucao = px.line(
+                evolucao,
+                x='Mes_Ano_Label',
+                y='Quantidade',
+                color='Status',
+                markers=True,
+                title='Evolução Mensal por Status',
+                color_discrete_map=CORES
+            )
+            fig_evolucao.update_layout(
+                height=400,
+                xaxis_title="Mês",
+                yaxis_title="Quantidade",
+                hovermode='x unified'
+            )
+            st.plotly_chart(fig_evolucao, use_container_width=True)
+            
+            # Gráfico de barras empilhadas
+            fig_barras = px.bar(
+                evolucao,
+                x='Mes_Ano_Label',
+                y='Quantidade',
+                color='Status',
+                title='Distribuição Mensal por Status',
+                color_discrete_map=CORES,
+                barmode='stack',
+                text='Quantidade'
+            )
+            fig_barras.update_traces(textposition='inside')
+            fig_barras.update_layout(
+                height=400,
+                xaxis_title="Mês",
+                yaxis_title="Quantidade"
+            )
+            st.plotly_chart(fig_barras, use_container_width=True)
+            
+            # Taxas de conversão ao longo do tempo
+            st.markdown("### 📊 Taxas de Conversão")
+            
+            # Calcular taxas por mês
+            taxa_mensal = []
+            for mes in evolucao['Ano_Mes'].unique():
+                df_mes = df_filtrado[df_filtrado['Ano_Mes'] == mes]
+                total_mes = len(df_mes)
+                if total_mes > 0:
+                    taxa_mensal.append({
+                        'Mês': mes,
+                        'Taxa Comissionamento': len(df_mes[df_mes['Status'] == 'Comissionado']) / total_mes * 100,
+                        'Taxa Validação': len(df_mes[df_mes['Status'] == 'Validado']) / total_mes * 100,
+                        'Taxa Revisão': len(df_mes[df_mes['Status'] == 'Necessário Revisão']) / total_mes * 100
+                    })
+            
+            if taxa_mensal:
+                df_taxas = pd.DataFrame(taxa_mensal)
+                df_taxas = df_taxas.sort_values('Mês')
+                
+                fig_taxas = go.Figure()
+                fig_taxas.add_trace(go.Scatter(
+                    x=df_taxas['Mês'],
+                    y=df_taxas['Taxa Comissionamento'],
+                    name='Comissionamento',
+                    line=dict(color=CORES['Comissionado'], width=3),
+                    mode='lines+markers'
+                ))
+                fig_taxas.add_trace(go.Scatter(
+                    x=df_taxas['Mês'],
+                    y=df_taxas['Taxa Validação'],
+                    name='Validação',
+                    line=dict(color=CORES['Validado'], width=3),
+                    mode='lines+markers'
+                ))
+                fig_taxas.add_trace(go.Scatter(
+                    x=df_taxas['Mês'],
+                    y=df_taxas['Taxa Revisão'],
+                    name='Revisão',
+                    line=dict(color=CORES['Necessário Revisão'], width=3),
+                    mode='lines+markers'
+                ))
+                
+                fig_taxas.update_layout(
+                    title='Evolução das Taxas de Conversão',
+                    xaxis_title="Mês",
+                    yaxis_title="Taxa (%)",
+                    yaxis=dict(range=[0, 100]),
+                    height=400,
+                    hovermode='x unified'
+                )
+                
+                st.plotly_chart(fig_taxas, use_container_width=True)
+    
+    with tab3:
+        st.markdown("### 👥 Performance por Responsável")
+        
+        tipo_resp = st.radio(
+            "Selecionar tipo:",
+            options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
+            horizontal=True,
+            key='tipo_resp'
+        )
+        
+        mapa_colunas = {
+            'Desenvolvimento': 'Resp_Dev',
+            'Comissionamento': 'Resp_Com',
+            'Auditoria': 'Resp_Audit'
+        }
+        
+        col_resp = mapa_colunas[tipo_resp]
+        
+        if col_resp in df_filtrado.columns:
+            df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
+            
+            if not df_resp.empty:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Ranking de quantidade
+                    ranking = df_resp[col_resp].value_counts().head(10).reset_index()
+                    ranking.columns = ['Responsável', 'Quantidade']
+                    
+                    fig_ranking = px.bar(
+                        ranking,
+                        x='Quantidade',
+                        y='Responsável',
+                        orientation='h',
+                        title=f'Top 10 Responsáveis - {tipo_resp}',
+                        color='Quantidade',
+                        color_continuous_scale='Blues',
+                        text='Quantidade'
+                    )
+                    fig_ranking.update_traces(textposition='outside')
+                    fig_ranking.update_layout(
+                        height=400,
+                        xaxis_title="Quantidade",
+                        yaxis_title=""
+                    )
+                    st.plotly_chart(fig_ranking, use_container_width=True)
+                
+                with col2:
+                    # Taxa de sucesso (itens que chegaram à validação)
+                    sucesso = []
+                    for resp in ranking['Responsável'].head(10):
+                        df_resp_item = df_resp[df_resp[col_resp] == resp]
+                        total = len(df_resp_item)
+                        if total > 0:
+                            validados = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
+                            taxa = (validados / total) * 100
+                            sucesso.append({
+                                'Responsável': resp,
+                                'Taxa de Sucesso': taxa,
+                                'Validados': validados,
+                                'Total': total
+                            })
+                    
+                    if sucesso:
+                        df_sucesso = pd.DataFrame(sucesso).sort_values('Taxa de Sucesso', ascending=False)
+                        
+                        fig_sucesso = px.bar(
+                            df_sucesso,
+                            x='Taxa de Sucesso',
+                            y='Responsável',
+                            orientation='h',
+                            title='Taxa de Sucesso por Responsável',
+                            color='Taxa de Sucesso',
+                            color_continuous_scale='Greens',
+                            text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
+                        )
+                        fig_sucesso.update_traces(textposition='outside')
+                        fig_sucesso.update_layout(
+                            height=400,
+                            xaxis_title="Taxa de Sucesso (%)",
+                            xaxis_range=[0, 100],
+                            yaxis_title=""
+                        )
+                        st.plotly_chart(fig_sucesso, use_container_width=True)
+                
+                # Distribuição de status por responsável
+                st.markdown("#### 📊 Distribuição de Status")
+                
+                top_resp = ranking['Responsável'].head(8).tolist()
+                df_top = df_resp[df_resp[col_resp].isin(top_resp)]
+                
+                dist_status = df_top.groupby([col_resp, 'Status']).size().reset_index(name='Quantidade')
+                
+                fig_dist = px.bar(
+                    dist_status,
+                    x=col_resp,
+                    y='Quantidade',
+                    color='Status',
+                    title='Distribuição de Status por Responsável',
+                    barmode='stack',
+                    color_discrete_map=CORES,
+                    text='Quantidade'
+                )
+                fig_dist.update_traces(textposition='inside')
+                fig_dist.update_layout(
+                    height=450,
+                    xaxis_tickangle=45,
+                    xaxis_title=""
+                )
+                st.plotly_chart(fig_dist, use_container_width=True)
+    
+    with tab4:
+        st.markdown("### 📋 Detalhamento dos Registros")
+        
+        # Métricas rápidas
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total de Registros", len(df_filtrado))
+        with col2:
+            st.metric("Empresas", len(df_filtrado['Empresa'].unique()))
+        with col3:
+            st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()) if 'Tipo' in df_filtrado.columns else 0)
+        with col4:
+            st.metric("Responsáveis", len(df_filtrado['Resp_Dev'].unique()))
+        
+        # Tabela de dados
+        colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
+        colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
+        
+        df_display = df_filtrado[colunas_existentes].copy()
+        
+        # Adicionar coluna de badges para status
+        def get_badge(status):
+            cores_badge = {
+                'Desenvolvido': 'badge-desenvolvido',
+                'Comissionado': 'badge-comissionado',
+                'Validado': 'badge-validado',
+                'Necessário Revisão': 'badge-revisao',
+                'Pendente': 'badge-pendente'
+            }
+            return f'<span class="badge-status {cores_badge.get(status, "")}">{status}</span>'
+        
+        # Aplicar badges
+        if 'Status' in df_display.columns:
+            df_display['Status'] = df_display['Status'].apply(get_badge)
+        
+        st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+        
+        # Estatísticas descritivas
+        with st.expander("📊 Estatísticas Detalhadas"):
+            st.markdown("**Distribuição por Status:**")
+            st.dataframe(
+                df_filtrado['Status'].value_counts().reset_index()
+                .rename(columns={'index': 'Status', 'Status': 'Quantidade'})
+                .assign(Percentual=lambda x: (x['Quantidade'] / len(df_filtrado) * 100).round(1).astype(str) + '%')
+            )
+            
+            if 'Tipo' in df_filtrado.columns:
+                st.markdown("**Distribuição por Tipo de Equipamento:**")
+                st.dataframe(
+                    df_filtrado['Tipo'].value_counts().reset_index()
+                    .rename(columns={'index': 'Tipo', 'Tipo': 'Quantidade'})
+                    .head(15)
+                )
+    
+    # FOOTER
     st.markdown(f"""
-    <div style="font-size:0.78rem; color:#A0AEC0;">
-        <strong style="color:#4A5568;">© 2026 Energisa</strong><br>
-        Fábrica SCADA · v4.0
-    </div>""", unsafe_allow_html=True)
-with c2:
-    st.markdown(f"""
-    <div style="font-size:0.78rem; color:#A0AEC0; text-align:center;">
-        <strong style="color:#4A5568;">🕒 {data_ref}</strong><br>
-        Fonte: {fonte.upper()} · {total} registros
-    </div>""", unsafe_allow_html=True)
-with c3:
-    st.markdown("""
-    <div style="font-size:0.78rem; color:#A0AEC0; text-align:right;">
-        <strong style="color:#4A5568;">📞 Suporte</strong><br>
-        kewin.ferreira@energisa.com.br
-    </div>""", unsafe_allow_html=True)
+    <div class="footer">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.0
+            </div>
+            <div>
+                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            </div>
+            <div style="color: {CORES['texto_secundario']};">
+                {len(df_filtrado)} registros • {fonte.upper()}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+else:
+    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
