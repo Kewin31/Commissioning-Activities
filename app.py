@@ -637,8 +637,8 @@ st.markdown(f"""
             {header_logo_html}
         </div>
         <div class="header-titulo">
-            <h1>Radar de Comissionamento SCADA</h1>
-            <p>Cliente é tudo pra gente • Acompanhamento Executivo • Desenvolvimento → Comissionamento → Validação</p>
+            <h1>Monitoring Center</h1>
+            <p>Acompanhamento de Comissionamento por Unidades</p>
         </div>
         <div class="header-data">
             📅 {datetime.now().strftime('%d/%m/%Y')} • Fonte: {fonte.upper()}
@@ -810,10 +810,10 @@ if not df_filtrado.empty:
     taxa_revisao_sobre_total = (qtd_revisao / total_fluxo * 100) if total_fluxo > 0 else 0
     
     # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Fluxo de Validação")
+    st.markdown("### 🔄 Progress Tracker")
     
     # Botão de informação com popup
-    with st.expander("ℹ️ Entenda os cálculos", expanded=False):
+    with st.expander("ℹ️ Detalhes dos cálculos", expanded=False):
         st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
@@ -975,7 +975,7 @@ if not df_filtrado.empty:
                     x='Quantidade',
                     y='Tipo',
                     orientation='h',
-                    title='Top 8 Tipos de Equipamento',
+                    title='Tipos de Equipamento',
                     color='Quantidade',
                     color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
                     text='Quantidade'
