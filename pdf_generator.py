@@ -1,7 +1,6 @@
 # pdf_generator.py
 """
 Módulo para geração de relatório PDF executivo do Comissionamento SCADA
-Uso: from pdf_generator import gerar_relatorio_pdf, adicionar_botao_pdf
 """
 
 from fpdf import FPDF
@@ -10,7 +9,6 @@ import os
 from datetime import datetime, timezone, timedelta
 import streamlit as st
 import pandas as pd
-import base64
 
 # Cores no formato RGB para o PDF
 CORES_PDF = {
@@ -32,7 +30,6 @@ class PDFRelatorioExecutivo(FPDF):
         
     def header(self):
         """Cabeçalho do relatório"""
-        # Tentar adicionar logo se existir
         try:
             logo_path = "Logo_Energisa.png"
             if os.path.exists(logo_path):
@@ -40,21 +37,17 @@ class PDFRelatorioExecutivo(FPDF):
         except:
             pass
         
-        # Título principal
         self.set_font('Arial', 'B', 16)
         self.set_text_color(*CORES_PDF['azul_energisa'])
         self.cell(0, 10, 'RELATÓRIO EXECUTIVO - COMISSIONAMENTO SCADA', 0, 1, 'C')
         
-        # Subtítulo
         self.set_font('Arial', 'I', 10)
         self.set_text_color(*CORES_PDF['cinza'])
         self.cell(0, 5, 'Unidades EMT | ETO', 0, 1, 'C')
         
-        # Linha separadora
         self.set_draw_color(*CORES_PDF['azul_energisa'])
         self.line(10, 30, 200, 30)
         
-        # Data
         self.set_y(35)
         self.set_font('Arial', '', 9)
         self.set_text_color(*CORES_PDF['cinza'])
@@ -83,15 +76,12 @@ class PDFRelatorioExecutivo(FPDF):
         x = self.get_x()
         y = self.get_y()
         
-        # Fundo
         self.set_fill_color(*CORES_PDF['cinza_claro'])
         self.rect(x, y, width, height, 'F')
         
-        # Progresso
         self.set_fill_color(*CORES_PDF['azul_claro'])
         self.rect(x, y, width * (percentage / 100), height, 'F')
         
-        # Porcentagem
         self.set_font('Arial', '', 8)
         self.set_text_color(0, 0, 0)
         self.set_xy(x + width + 5, y - 2)
@@ -112,12 +102,6 @@ class PDFRelatorioExecutivo(FPDF):
 def gerar_relatorio_pdf(df_filtrado):
     """
     Gera o relatório PDF executivo a partir dos dados filtrados
-    
-    Args:
-        df_filtrado (pd.DataFrame): DataFrame com os dados já filtrados
-    
-    Returns:
-        str: Caminho do arquivo PDF gerado
     """
     
     if df_filtrado.empty:
@@ -131,14 +115,13 @@ def gerar_relatorio_pdf(df_filtrado):
     # ============================================
     pdf.section_title('RESUMO EXECUTIVO', '📊')
     
-    # Métricas
     total = len(df_filtrado)
     desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
     comissionados = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
     validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
     revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
     
-    # Exibir métricas em cards
+    # Exibir métricas
     pdf.set_font('Arial', '', 10)
     pdf.set_fill_color(245, 245, 245)
     
@@ -184,7 +167,6 @@ def gerar_relatorio_pdf(df_filtrado):
     # ============================================
     pdf.section_title('PONTOS CRÍTICOS', '⚠️')
     
-    # Equipamentos em revisão
     df_criticos = df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'].copy()
     df_criticos = df_criticos.head(8)
     
@@ -218,7 +200,6 @@ def gerar_relatorio_pdf(df_filtrado):
         pdf.set_text_color(0, 128, 0)
         pdf.cell(0, 10, '✅ Nenhum equipamento em revisão no momento.', 0, 1, 'L')
     
-    # Gargalos
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(200, 80, 80)
@@ -279,7 +260,6 @@ def gerar_relatorio_pdf(df_filtrado):
     if pendentes_validacao > 0:
         recomendacoes.append(f'2. Acelerar validação dos {pendentes_validacao} equipamentos comissionados pendentes')
     
-    # Verificar unidade com mais problemas
     df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
     df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
     pct_revisao_eto = (len(df_eto[df_eto['Status'] == 'Necessário Revisão']) / len(df_eto) * 100) if len(df_eto) > 0 else 0
@@ -330,7 +310,7 @@ def gerar_relatorio_pdf(df_filtrado):
     pdf.ln(5)
     
     # ============================================
-    # 6. TIPOS DE EQUIPAMENTO (se disponível)
+    # 6. TIPOS DE EQUIPAMENTO
     # ============================================
     if 'Tipo' in df_filtrado.columns:
         pdf.section_title('TIPOS DE EQUIPAMENTO', '🔧')
@@ -355,9 +335,6 @@ def gerar_relatorio_pdf(df_filtrado):
 def adicionar_botao_pdf(df_filtrado):
     """
     Adiciona botão no Streamlit para gerar e baixar o PDF
-    
-    Args:
-        df_filtrado (pd.DataFrame): DataFrame com os dados filtrados
     """
     
     if st.button("📄 Gerar Relatório Executivo PDF", use_container_width=True, key="btn_gerar_pdf"):
@@ -367,14 +344,11 @@ def adicionar_botao_pdf(df_filtrado):
         
         with st.spinner("🔄 Gerando relatório PDF... Aguarde um momento."):
             try:
-                # Gerar PDF
                 pdf_path = gerar_relatorio_pdf(df_filtrado)
                 
-                # Ler o arquivo
                 with open(pdf_path, 'rb') as f:
                     pdf_bytes = f.read()
                 
-                # Criar botão de download
                 st.success("✅ Relatório gerado com sucesso!")
                 
                 st.download_button(
@@ -386,7 +360,6 @@ def adicionar_botao_pdf(df_filtrado):
                     key="btn_download_pdf"
                 )
                 
-                # Limpar arquivo temporário
                 os.unlink(pdf_path)
                 
             except ImportError:
@@ -394,4 +367,3 @@ def adicionar_botao_pdf(df_filtrado):
                 st.code("pip install fpdf2", language="bash")
             except Exception as e:
                 st.error(f"❌ Erro ao gerar PDF: {str(e)}")
-                st.info("Verifique se os dados estão corretos e tente novamente.")
