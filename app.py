@@ -71,6 +71,94 @@ def get_logo_base64():
     return None, None
 
 # ============================================
+# FUNÇÃO PARA HORÁRIOS EM TEMPO REAL
+# ============================================
+def get_horarios_regioes():
+    """Retorna os horários atualizados das regiões onde a Energisa atua"""
+    from datetime import datetime, timezone, timedelta
+    
+    # Horário atual em UTC
+    utc_now = datetime.now(timezone.utc)
+    
+    # Definição das regiões com seus fusos horários
+    regioes = {
+        'Brasília, Brasil': {'offset': -3, 'descricao': ''},
+        'Cuiabá, Brasil': {'offset': -4, 'descricao': 'Menos 1 h'},
+        'Porto Velho, Brasil': {'offset': -4, 'descricao': 'Menos 1 h'},
+        'Acre, Brasil': {'offset': -5, 'descricao': 'Menos 2 h'}
+    }
+    
+    horarios = []
+    for regiao, info in regioes.items():
+        # Calcular horário local
+        local_time = utc_now + timedelta(hours=info['offset'])
+        
+        # Formatar data em português
+        dia_semana = local_time.strftime('%A').lower()
+        dias_semana_pt = {
+            'monday': 'segunda-feira', 'tuesday': 'terça-feira', 'wednesday': 'quarta-feira',
+            'thursday': 'quinta-feira', 'friday': 'sexta-feira', 'saturday': 'sábado', 'sunday': 'domingo'
+        }
+        
+        dia_semana_pt = dias_semana_pt.get(dia_semana, dia_semana)
+        data_formatada = local_time.strftime(f'{dia_semana_pt}, %d/%m/%Y')
+        hora_formatada = local_time.strftime('%H:%M')
+        
+        horarios.append({
+            'regiao': regiao,
+            'hora': hora_formatada,
+            'descricao': info['descricao'],
+            'data': data_formatada
+        })
+    
+    return horarios
+
+def criar_componente_horarios():
+    """Cria o componente visual com os horários das regiões"""
+    horarios = get_horarios_regioes()
+    
+    html = f"""
+    <div style="
+        background: white;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        margin-bottom: 1rem;
+        margin-top: 1rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    ">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🕐</span>
+            <span style="font-weight: 600; color: #005973;">Horários em Tempo Real</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+    """
+    
+    for horario in horarios:
+        html += f"""
+        <div style="text-align: center; min-width: 100px;">
+            <div style="font-weight: 600; color: #1f2937; font-size: 0.85rem;">{horario['regiao']}</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #028a9f;">{horario['hora']}</div>
+            <div style="font-size: 0.65rem; color: #6b7280; line-height: 1.3;">
+                {horario['descricao']}<br>
+                {horario['data']}
+            </div>
+        </div>
+        """
+    
+    html += """
+        </div>
+    </div>
+    """
+    
+    return html
+
+# ============================================
 # CONFIGURAÇÕES DO GITHUB
 # ============================================
 def get_github_config():
@@ -338,7 +426,7 @@ st.markdown("""
         background: white;
         padding: 1rem 2rem;
         border-radius: 12px;
-        margin-top: 3rem;
+        margin-top: 2rem;
         box-shadow: 0 -1px 2px rgba(0,0,0,0.02);
         font-size: 0.85rem;
         color: #6b7280;
@@ -1404,6 +1492,12 @@ if not df_filtrado.empty:
                 tipo_counts.columns = ['Tipo', 'Quantidade']
                 st.dataframe(tipo_counts.head(15), use_container_width=True)
     
+    # ============================================
+    # HORÁRIOS EM TEMPO REAL - POSICIONADO NO FINAL
+    # ============================================
+    st.markdown("---")
+    st.markdown(criar_componente_horarios(), unsafe_allow_html=True)
+    
     # FOOTER
     st.markdown(f"""
     <div class="footer">
@@ -1423,3 +1517,20 @@ if not df_filtrado.empty:
 
 else:
     st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
+    
+    # Mesmo sem dados, mostrar horários
+    st.markdown("---")
+    st.markdown(criar_componente_horarios(), unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="footer">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
+            </div>
+            <div>
+                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
