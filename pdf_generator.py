@@ -1,377 +1,152 @@
-# pdf_generator.py
-"""
-Módulo para geração de relatório PDF executivo do Comissionamento SCADA
-"""
-
-from fpdf import FPDF
-import tempfile
-import os
-from datetime import datetime, timezone, timedelta
+# pdf_generator.py - Versão Simplificada
 import streamlit as st
 import pandas as pd
+import tempfile
+import os
+from datetime import datetime
+from fpdf import FPDF
 
-# Cores no formato RGB para o PDF
-CORES_PDF = {
-    'azul_energisa': (0, 89, 115),
-    'azul_claro': (2, 138, 159),
-    'verde': (46, 125, 50),
-    'laranja': (245, 124, 0),
-    'vermelho': (198, 40, 40),
-    'cinza': (100, 100, 100),
-    'cinza_claro': (230, 230, 230)
-}
-
-class PDFRelatorioExecutivo(FPDF):
-    """Classe personalizada para o relatório executivo da Energisa"""
-    
+class PDFRelatorio(FPDF):
     def __init__(self):
         super().__init__()
         self.set_auto_page_break(auto=True, margin=15)
-        # Adicionar fonte que suporta Unicode (usar Arial como fallback)
-        # O FPDF2 já tem suporte melhor a Unicode, mas precisamos configurar
-        
+    
     def header(self):
-        """Cabeçalho do relatório"""
-        # Tentar adicionar logo se existir
-        try:
-            logo_path = "Logo_Energisa.png"
-            if os.path.exists(logo_path):
-                self.image(logo_path, x=10, y=8, w=25)
-        except:
-            pass
-        
-        # Usar fonte padrão (sem emojis no cabeçalho)
         self.set_font('Arial', 'B', 16)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
+        self.set_text_color(0, 89, 115)
         self.cell(0, 10, 'RELATORIO EXECUTIVO - COMISSIONAMENTO SCADA', 0, 1, 'C')
         
         self.set_font('Arial', 'I', 10)
-        self.set_text_color(*CORES_PDF['cinza'])
+        self.set_text_color(100, 100, 100)
         self.cell(0, 5, 'Unidades EMT | ETO', 0, 1, 'C')
         
-        self.set_draw_color(*CORES_PDF['azul_energisa'])
         self.line(10, 30, 200, 30)
         
         self.set_y(35)
         self.set_font('Arial', '', 9)
-        self.set_text_color(*CORES_PDF['cinza'])
-        self.cell(0, 5, f'Data de emissao: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
-        
+        self.cell(0, 5, f'Data: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
         self.ln(5)
     
     def footer(self):
-        """Rodapé do relatório"""
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
-        self.set_text_color(*CORES_PDF['cinza'])
-        self.cell(0, 10, f'Energisa - Comissionamento SCADA | Pagina {self.page_no()}', 0, 0, 'C')
+        self.cell(0, 10, f'Energisa - Pagina {self.page_no()}', 0, 0, 'C')
     
-    def section_title(self, title, icon=''):
-        """Título de seção (sem emojis)"""
+    def section_title(self, title):
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
-        
-        # Remove emojis do título se houver
-        title_text = title.replace('📊', '').replace('⚠️', '').replace('🏢', '').replace('🎯', '').replace('🕐', '').replace('🔧', '').strip()
-        
-        self.cell(0, 10, f'{title_text}', 0, 1, 'L')
-        self.set_draw_color(*CORES_PDF['azul_energisa'])
+        self.set_text_color(0, 89, 115)
+        self.cell(0, 10, title, 0, 1, 'L')
         self.line(self.get_x(), self.get_y(), self.get_x() + 190, self.get_y())
         self.ln(5)
     
-    def progress_bar(self, percentage, width=150, height=6):
-        """Barra de progresso"""
+    def progress_bar(self, percent, width=150):
         x = self.get_x()
         y = self.get_y()
         
-        self.set_fill_color(*CORES_PDF['cinza_claro'])
-        self.rect(x, y, width, height, 'F')
+        self.set_fill_color(230, 230, 230)
+        self.rect(x, y, width, 6, 'F')
         
-        self.set_fill_color(*CORES_PDF['azul_claro'])
-        self.rect(x, y, width * (percentage / 100), height, 'F')
+        self.set_fill_color(2, 138, 159)
+        self.rect(x, y, width * (percent / 100), 6, 'F')
         
         self.set_font('Arial', '', 8)
-        self.set_text_color(0, 0, 0)
         self.set_xy(x + width + 5, y - 2)
-        self.cell(20, 10, f'{percentage:.1f}%', 0, 1)
-        
-        self.set_y(y + height + 5)
-    
-    def metric_value(self, value, label):
-        """Exibe um valor com label"""
-        self.set_font('Arial', 'B', 20)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
-        self.cell(45, 15, str(value), 0, 0, 'C')
-        self.set_font('Arial', '', 8)
-        self.set_text_color(*CORES_PDF['cinza'])
-        self.cell(45, 15, label, 0, 1, 'C')
+        self.cell(20, 10, f'{percent:.1f}%', 0, 1)
+        self.set_y(y + 10)
 
 
-def gerar_relatorio_pdf(df_filtrado):
-    """
-    Gera o relatório PDF executivo a partir dos dados filtrados
-    """
+def gerar_relatorio_pdf(df):
+    """Gera PDF com os dados"""
+    if df.empty:
+        raise ValueError("Sem dados")
     
-    if df_filtrado.empty:
-        raise ValueError("Nao ha dados para gerar o relatorio")
-    
-    pdf = PDFRelatorioExecutivo()
+    pdf = PDFRelatorio()
     pdf.add_page()
     
-    # ============================================
-    # 1. RESUMO EXECUTIVO
-    # ============================================
+    # Resumo
     pdf.section_title('RESUMO EXECUTIVO')
     
-    total = len(df_filtrado)
-    desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
-    comissionados = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
-    validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
-    revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
+    total = len(df)
+    dev = len(df[df['Status'] == 'Desenvolvido'])
+    com = len(df[df['Status'] == 'Comissionado'])
+    val = len(df[df['Status'] == 'Validado'])
+    rev = len(df[df['Status'] == 'Necessário Revisão'])
     
-    # Exibir métricas
     pdf.set_font('Arial', '', 10)
-    pdf.set_fill_color(245, 245, 245)
+    pdf.cell(0, 8, f'Total de Equipamentos: {total}', 0, 1)
+    pdf.cell(0, 8, f'Desenvolvidos: {dev}', 0, 1)
+    pdf.cell(0, 8, f'Comissionados: {com}', 0, 1)
+    pdf.cell(0, 8, f'Validados: {val}', 0, 1)
+    pdf.cell(0, 8, f'Em Revisao: {rev}', 0, 1)
+    pdf.ln(5)
     
-    pdf.set_x(10)
-    pdf.metric_value(total, 'Total')
-    pdf.metric_value(desenvolvidos, 'Desenvolvidos')
-    pdf.metric_value(comissionados, 'Comissionados')
-    pdf.metric_value(validados, 'Validados')
-    pdf.metric_value(revisao, 'Em Revisao')
-    
-    pdf.ln(10)
-    
-    # Barras de progresso
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(40, 8, 'Desenvolvidos:', 0, 0)
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(15, 8, f'{desenvolvidos}', 0, 0)
-    pdf.set_x(60)
-    pdf.progress_bar((desenvolvidos / total * 100) if total > 0 else 0, 130)
-    
-    pdf.cell(40, 8, 'Comissionados:', 0, 0)
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(15, 8, f'{comissionados}', 0, 0)
-    pdf.set_x(60)
-    pdf.progress_bar((comissionados / total * 100) if total > 0 else 0, 130)
-    
-    pdf.cell(40, 8, 'Validados:', 0, 0)
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(15, 8, f'{validados}', 0, 0)
-    pdf.set_x(60)
-    pdf.progress_bar((validados / total * 100) if total > 0 else 0, 130)
-    
-    pdf.cell(40, 8, 'Em Revisao:', 0, 0)
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(15, 8, f'{revisao}', 0, 0)
-    pdf.set_x(60)
-    pdf.progress_bar((revisao / total * 100) if total > 0 else 0, 130)
-    
-    pdf.ln(10)
-    
-    # ============================================
-    # 2. PONTOS CRITICOS
-    # ============================================
+    # Pontos Criticos
     pdf.section_title('PONTOS CRITICOS')
     
-    df_criticos = df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'].copy()
-    df_criticos = df_criticos.head(8)
+    df_criticos = df[df['Status'] == 'Necessário Revisão'].head(5)
     
     if not df_criticos.empty:
         pdf.set_font('Arial', 'B', 9)
-        pdf.set_fill_color(255, 240, 230)
-        pdf.cell(25, 10, 'Codigo', 1, 0, 'C', 1)
-        pdf.cell(45, 10, 'Tipo', 1, 0, 'C', 1)
-        pdf.cell(25, 10, 'Empresa', 1, 0, 'C', 1)
-        pdf.cell(45, 10, 'Responsavel', 1, 0, 'C', 1)
-        pdf.cell(40, 10, 'Status', 1, 1, 'C', 1)
+        pdf.cell(30, 8, 'Codigo', 1, 0, 'C')
+        pdf.cell(50, 8, 'Tipo', 1, 0, 'C')
+        pdf.cell(30, 8, 'Empresa', 1, 0, 'C')
+        pdf.cell(50, 8, 'Responsavel', 1, 1, 'C')
         
         pdf.set_font('Arial', '', 8)
-        pdf.set_fill_color(255, 255, 255)
-        
         for _, row in df_criticos.iterrows():
-            codigo = row.get('Codigo', 'N/A')[:12]
-            tipo = row.get('Tipo', 'N/A')[:20]
-            empresa = row.get('Empresa', 'N/A')[:12]
-            responsavel = row.get('Resp_Dev', 'N/A')[:20]
+            cod = str(row.get('Codigo', 'N/A'))[:10]
+            tip = str(row.get('Tipo', 'N/A'))[:20]
+            emp = str(row.get('Empresa', 'N/A'))[:15]
+            resp = str(row.get('Resp_Dev', 'N/A'))[:20]
             
-            pdf.cell(25, 8, str(codigo), 1, 0, 'L')
-            pdf.cell(45, 8, str(tipo), 1, 0, 'L')
-            pdf.cell(25, 8, str(empresa), 1, 0, 'L')
-            pdf.cell(45, 8, str(responsavel), 1, 0, 'L')
-            pdf.cell(40, 8, 'Em Revisao', 1, 1, 'L')
-        
-        pdf.ln(5)
+            pdf.cell(30, 7, cod, 1, 0)
+            pdf.cell(50, 7, tip, 1, 0)
+            pdf.cell(30, 7, emp, 1, 0)
+            pdf.cell(50, 7, resp, 1, 1)
     else:
-        pdf.set_font('Arial', '', 10)
-        pdf.set_text_color(0, 128, 0)
-        pdf.cell(0, 10, 'Nenhum equipamento em revisao no momento.', 0, 1, 'L')
+        pdf.cell(0, 8, 'Nenhum equipamento em revisao', 0, 1)
     
+    # Recomendacoes
     pdf.ln(5)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.set_text_color(200, 80, 80)
-    pdf.cell(0, 8, f'GARGALO: {revisao} equipamentos em revisao', 0, 1, 'L')
-    
-    if comissionados > 0:
-        pendentes_validacao = comissionados - validados
-        pct_pendentes = (pendentes_validacao / comissionados * 100) if comissionados > 0 else 0
-        pdf.set_font('Arial', '', 10)
-        pdf.set_text_color(200, 120, 50)
-        pdf.cell(0, 8, f'ATENCAO: {pendentes_validacao} equipamentos aguardando validacao ({pct_pendentes:.1f}% dos comissionados)', 0, 1, 'L')
-    
-    pdf.ln(10)
-    
-    # ============================================
-    # 3. COMPARACAO ENTRE UNIDADES
-    # ============================================
-    pdf.section_title('COMPARACAO ENTRE UNIDADES')
-    
-    for empresa in ['EMT', 'ETO']:
-        df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
-        
-        if not df_emp.empty:
-            total_emp = len(df_emp)
-            comiss_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
-            valid_emp = len(df_emp[df_emp['Status'] == 'Validado'])
-            revis_emp = len(df_emp[df_emp['Status'] == 'Necessário Revisão'])
-            pct_comiss = (comiss_emp / total_emp * 100) if total_emp > 0 else 0
-            
-            pdf.set_font('Arial', 'B', 11)
-            pdf.set_text_color(*CORES_PDF['azul_energisa'])
-            pdf.cell(0, 8, f'{empresa} - {total_emp} equipamentos', 0, 1, 'L')
-            
-            pdf.set_font('Arial', '', 9)
-            pdf.cell(60, 6, f'Comissionados: {comiss_emp} ({pct_comiss:.0f}%)', 0, 0)
-            pdf.cell(60, 6, f'Validados: {valid_emp}', 0, 0)
-            pdf.cell(60, 6, f'Em Revisao: {revis_emp}', 0, 1)
-            
-            pdf.set_x(10)
-            pdf.progress_bar(pct_comiss, 180)
-            pdf.ln(5)
-    
-    pdf.ln(5)
-    
-    # ============================================
-    # 4. RECOMENDACOES
-    # ============================================
     pdf.section_title('RECOMENDACOES')
     
     pdf.set_font('Arial', '', 10)
+    if rev > 0:
+        pdf.cell(0, 8, f'1. Priorizar correcao dos {rev} equipamentos em revisao', 0, 1)
+    if com - val > 0:
+        pdf.cell(0, 8, f'2. Acelerar validacao dos {com - val} equipamentos pendentes', 0, 1)
     
-    recomendacoes = []
-    
-    if revisao > 0:
-        recomendacoes.append(f'1. Priorizar correcao dos {revisao} equipamentos em revisao')
-    
-    pendentes_validacao = comissionados - validados
-    if pendentes_validacao > 0:
-        recomendacoes.append(f'2. Acelerar validacao dos {pendentes_validacao} equipamentos comissionados pendentes')
-    
-    df_eto = df_filtrado[df_filtrado['Empresa'] == 'ETO']
-    df_emt = df_filtrado[df_filtrado['Empresa'] == 'EMT']
-    pct_revisao_eto = (len(df_eto[df_eto['Status'] == 'Necessário Revisão']) / len(df_eto) * 100) if len(df_eto) > 0 else 0
-    pct_revisao_emt = (len(df_emt[df_emt['Status'] == 'Necessário Revisão']) / len(df_emt) * 100) if len(df_emt) > 0 else 0
-    
-    if pct_revisao_eto > pct_revisao_emt and pct_revisao_eto > 5:
-        recomendacoes.append('3. Foco especial na unidade ETO - maior indice de revisao')
-    
-    if len(recomendacoes) == 0:
-        recomendacoes.append('Todos os indicadores estao dentro da meta! Continue acompanhando.')
-    
-    for rec in recomendacoes:
-        pdf.cell(0, 8, rec, 0, 1, 'L')
-    
-    pdf.ln(10)
-    
-    # ============================================
-    # 5. HORARIOS EM TEMPO REAL
-    # ============================================
-    pdf.section_title('HORARIOS EM TEMPO REAL')
-    
-    utc_now = datetime.now(timezone.utc)
-    regioes = {
-        'Brasilia, Brasil': {'offset': -3, 'desc': ''},
-        'Cuiaba, Brasil': {'offset': -4, 'desc': 'Menos 1 h'},
-        'Porto Velho, Brasil': {'offset': -4, 'desc': 'Menos 1 h'},
-        'Acre, Brasil': {'offset': -5, 'desc': 'Menos 2 h'}
-    }
-    
-    pdf.set_font('Arial', '', 9)
-    
-    for regiao, info in regioes.items():
-        local_time = utc_now + timedelta(hours=info['offset'])
-        hora = local_time.strftime('%H:%M')
-        data = local_time.strftime('%d/%m/%Y')
-        
-        pdf.set_x(10)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(45, 6, regiao, 0, 0)
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(20, 6, hora, 0, 0)
-        if info['desc']:
-            pdf.set_font('Arial', 'I', 8)
-            pdf.cell(25, 6, info['desc'], 0, 0)
-        pdf.set_font('Arial', '', 8)
-        pdf.cell(40, 6, data, 0, 1)
-    
-    pdf.ln(5)
-    
-    # ============================================
-    # 6. TIPOS DE EQUIPAMENTO
-    # ============================================
-    if 'Tipo' in df_filtrado.columns:
-        pdf.section_title('TIPOS DE EQUIPAMENTO')
-        
-        tipo_counts = df_filtrado['Tipo'].value_counts().head(6)
-        
-        for tipo, qtd in tipo_counts.items():
-            pct = (qtd / total * 100) if total > 0 else 0
-            pdf.set_font('Arial', '', 10)
-            pdf.cell(50, 8, str(tipo), 0, 0)
-            pdf.cell(20, 8, f'{qtd} ({pct:.0f}%)', 0, 1)
-            pdf.set_x(10)
-            pdf.progress_bar(pct, 150)
-            pdf.ln(2)
-    
-    # Gerar arquivo temporário
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
-        pdf.output(tmp.name)
-        return tmp.name
+    # Temporario
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    pdf.output(tmp.name)
+    return tmp.name
 
 
 def adicionar_botao_pdf(df_filtrado):
-    """
-    Adiciona botao no Streamlit para gerar e baixar o PDF
-    """
+    """Adiciona botao para gerar PDF"""
     
-    if st.button("Gerar Relatorio Executivo PDF", use_container_width=True, key="btn_gerar_pdf"):
+    if st.button("📄 Gerar Relatorio PDF", use_container_width=True):
         if df_filtrado.empty:
-            st.warning("Nao ha dados para gerar o relatorio com os filtros selecionados.")
+            st.warning("Sem dados para gerar relatorio")
             return
         
-        with st.spinner("Gerando relatorio PDF... Aguarde um momento."):
+        with st.spinner("Gerando PDF..."):
             try:
                 pdf_path = gerar_relatorio_pdf(df_filtrado)
                 
                 with open(pdf_path, 'rb') as f:
                     pdf_bytes = f.read()
                 
-                st.success("Relatorio gerado com sucesso!")
-                
+                st.success("PDF gerado!")
                 st.download_button(
-                    label="Baixar Relatorio PDF",
+                    label="Baixar PDF",
                     data=pdf_bytes,
-                    file_name=f"relatorio_comissionamento_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    file_name=f"relatorio_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                     mime="application/pdf",
-                    use_container_width=True,
-                    key="btn_download_pdf"
+                    use_container_width=True
                 )
                 
                 os.unlink(pdf_path)
                 
-            except ImportError:
-                st.error("Biblioteca 'fpdf2' nao instalada.")
-                st.code("pip install fpdf2", language="bash")
             except Exception as e:
-                st.error(f"Erro ao gerar PDF: {str(e)}")
+                st.error(f"Erro: {str(e)}")
