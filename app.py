@@ -514,7 +514,7 @@ def processar_dados(df):
     if df is None or df.empty:
         return df
     
-    # Padronizar nomes das colunas (remover acentos e espaços extras)
+    # Padronizar nomes das colunas
     df.columns = df.columns.str.strip()
     
     # Mapeamento de colunas
@@ -598,7 +598,7 @@ def calcular_tendencias(df, periodo='mes'):
     if periodo == 'mes':
         inicio_periodo = hoje - relativedelta(months=1)
         inicio_periodo_anterior = hoje - relativedelta(months=2)
-    else:  # semana
+    else:
         inicio_periodo = hoje - timedelta(days=7)
         inicio_periodo_anterior = hoje - timedelta(days=14)
     
@@ -643,7 +643,7 @@ def load_data():
             df = pd.read_csv(caminho_local, encoding='utf-8-sig')
             return processar_dados(df), "local"
         
-        # Dados de exemplo se nada funcionar
+        # Dados de exemplo
         st.info("📊 Usando dados de exemplo para demonstração.")
         
         dados_exemplo = {
@@ -654,7 +654,7 @@ def load_data():
             'Responsável Comissionamento': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
             'Responsável Auditoria': np.random.choice(['Fernando Costa', 'Lucia Santos'], 100),
             'Status': np.random.choice(['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão'], 100, 
-                                      p=[0.3, 0.25, 0.25, 0.2]),
+                                      p=[0.5, 0.15, 0.25, 0.1]),
             'Criado': pd.date_range(start='2025-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
         }
         df = pd.DataFrame(dados_exemplo)
@@ -698,7 +698,7 @@ st.markdown(f"""
         </div>
         <div class="header-titulo">
             <h1>Radar de Comissionamento SCADA</h1>
-            <p>Cliente é tudo pra gente • Acompanhamento Executivo • Desenvolvimento → Validação</p>
+            <p>Cliente é tudo pra gente • Acompanhamento Executivo • Desenvolvimento → Comissionamento → Validação</p>
         </div>
         <div class="header-data">
             📅 {datetime.now().strftime('%d/%m/%Y')} • Fonte: {fonte.upper()}
@@ -718,7 +718,7 @@ with st.sidebar:
         st.success("✅ " + msg)
     else:
         st.warning("⚠️ " + msg)
-        st.info("💡 O dashboard está funcionando com dados locais. Para conectar ao GitHub, configure o token nas Secrets.")
+        st.info("💡 O dashboard está funcionando com dados locais.")
     
     st.markdown("---")
     
@@ -836,16 +836,19 @@ with st.sidebar:
 if not df_filtrado.empty:
     # Contagens por status
     qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
-    qtd_comissionados = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
+    qtd_aguardando_validacao = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
     qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
     qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
     
-    # Total de itens no fluxo (excluindo pendentes)
-    total_fluxo = qtd_desenvolvidos + qtd_comissionados + qtd_validados + qtd_revisao
+    # Total de equipamentos que já passaram pelo comissionamento
+    total_comissionados = qtd_aguardando_validacao + qtd_validados
     
-    # Taxas de conversão CORRIGIDAS
-    taxa_desenv_para_comiss = (qtd_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
-    taxa_comiss_para_valid = (qtd_validados / qtd_comissionados * 100) if qtd_comissionados > 0 else 0
+    # Total de itens no fluxo (excluindo pendentes)
+    total_fluxo = qtd_desenvolvidos + qtd_aguardando_validacao + qtd_validados + qtd_revisao
+    
+    # Taxas de conversão
+    taxa_desenv_para_comiss = (total_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
+    taxa_comiss_para_valid = (qtd_validados / total_comissionados * 100) if total_comissionados > 0 else 0
     taxa_valid_sobre_total = (qtd_validados / total_fluxo * 100) if total_fluxo > 0 else 0
     taxa_revisao_sobre_total = (qtd_revisao / total_fluxo * 100) if total_fluxo > 0 else 0
     
@@ -863,7 +866,7 @@ if not df_filtrado.empty:
                 <div style="font-weight: 500;">Desenvolvidos</div>
                 <div style="font-size: 0.85rem; color: #6b7280;">Aguardando comissionamento</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_desenv_para_comiss:.1f}% para comissionar
+                    → {taxa_desenv_para_comiss:.1f}% já comissionados
                 </div>
             </div>
         </div>
@@ -874,11 +877,11 @@ if not df_filtrado.empty:
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados}</div>
-                <div style="font-weight: 500;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando validação</div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_aguardando_validacao}</div>
+                <div style="font-weight: 500;">Aguardando Validação</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Comissionados pendentes</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_comiss_para_valid:.1f}% validados
+                    → {taxa_comiss_para_valid:.1f}% já validados
                 </div>
             </div>
         </div>
@@ -932,10 +935,10 @@ if not df_filtrado.empty:
                 df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
                 
                 if not df_emp.empty:
-                    # Contagens
                     total_emp = len(df_emp)
-                    com_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
-                    val_emp = len(df_emp[df_emp['Status'] == 'Validado'])
+                    aguardando_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
+                    validados_emp = len(df_emp[df_emp['Status'] == 'Validado'])
+                    comissionados_total_emp = aguardando_emp + validados_emp
                     
                     st.markdown(f"""
                     <div class="company-card">
@@ -946,22 +949,22 @@ if not df_filtrado.empty:
                                 <div class="company-metric-label">Equipamentos cadastrados</div>
                             </div>
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{com_emp}</div>
-                                <div class="company-metric-label">Aguardando validação</div>
+                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{comissionados_total_emp}</div>
+                                <div class="company-metric-label">Comissionados no total</div>
                             </div>
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Validado']};">{val_emp}</div>
-                                <div class="company-metric-label">Processo concluído</div>
+                                <div class="company-metric-value" style="color: {CORES['Validado']};">{validados_emp}</div>
+                                <div class="company-metric-label">Validados (concluídos)</div>
                             </div>
                         </div>
                         <div style="margin-top: 1rem;">
                             <div style="background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span>Progresso do fluxo:</span>
-                                    <strong>{((com_emp+val_emp)/total_emp*100):.1f}%</strong>
+                                    <strong>{((comissionados_total_emp)/total_emp*100):.1f}%</strong>
                                 </div>
                                 <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
-                                    <div style="width: {((com_emp+val_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
+                                    <div style="width: {((comissionados_total_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -974,7 +977,6 @@ if not df_filtrado.empty:
         col1, col2 = st.columns(2)
         
         with col1:
-            # Distribuição por status
             status_counts = df_filtrado['Status'].value_counts().reset_index()
             status_counts.columns = ['Status', 'Quantidade']
             
@@ -1003,7 +1005,6 @@ if not df_filtrado.empty:
             st.plotly_chart(fig_status, use_container_width=True)
         
         with col2:
-            # Top tipos de equipamento
             if 'Tipo' in df_filtrado.columns:
                 tipo_counts = df_filtrado['Tipo'].value_counts().head(8).reset_index()
                 tipo_counts.columns = ['Tipo', 'Quantidade']
@@ -1033,14 +1034,12 @@ if not df_filtrado.empty:
         st.markdown("### 📈 Evolução do Fluxo")
         
         if 'Criado' in df_filtrado.columns:
-            # Agregação por mês
             df_filtrado['Mes_Ano_Label'] = df_filtrado['Criado'].dt.strftime('%b/%Y')
             df_filtrado['Ano_Mes'] = df_filtrado['Criado'].dt.strftime('%Y-%m')
             
             evolucao = df_filtrado.groupby(['Ano_Mes', 'Mes_Ano_Label', 'Status']).size().reset_index(name='Quantidade')
             evolucao = evolucao.sort_values('Ano_Mes')
             
-            # Gráfico de linhas
             fig_evolucao = px.line(
                 evolucao,
                 x='Mes_Ano_Label',
@@ -1060,7 +1059,6 @@ if not df_filtrado.empty:
             )
             st.plotly_chart(fig_evolucao, use_container_width=True)
             
-            # Gráfico de barras empilhadas
             fig_barras = px.bar(
                 evolucao,
                 x='Mes_Ano_Label',
@@ -1081,20 +1079,22 @@ if not df_filtrado.empty:
             )
             st.plotly_chart(fig_barras, use_container_width=True)
             
-            # Taxas de conversão ao longo do tempo
             st.markdown("### 📊 Taxas de Conversão")
             
-            # Calcular taxas por mês
             taxa_mensal = []
             for mes in evolucao['Ano_Mes'].unique():
                 df_mes = df_filtrado[df_filtrado['Ano_Mes'] == mes]
                 total_mes = len(df_mes)
                 if total_mes > 0:
+                    aguardando_mes = len(df_mes[df_mes['Status'] == 'Comissionado'])
+                    validados_mes = len(df_mes[df_mes['Status'] == 'Validado'])
+                    total_comiss_mes = aguardando_mes + validados_mes
+                    
                     taxa_mensal.append({
                         'Mês': mes,
-                        'Taxa Comissionamento': len(df_mes[df_mes['Status'] == 'Comissionado']) / total_mes * 100,
-                        'Taxa Validação': len(df_mes[df_mes['Status'] == 'Validado']) / total_mes * 100,
-                        'Taxa Revisão': len(df_mes[df_mes['Status'] == 'Necessário Revisão']) / total_mes * 100
+                        'Taxa Comissionamento': (total_comiss_mes / total_mes * 100) if total_mes > 0 else 0,
+                        'Taxa Validação': (validados_mes / total_comiss_mes * 100) if total_comiss_mes > 0 else 0,
+                        'Taxa Revisão': len(df_mes[df_mes['Status'] == 'Necessário Revisão']) / total_mes * 100 if total_mes > 0 else 0
                     })
             
             if taxa_mensal:
@@ -1165,7 +1165,6 @@ if not df_filtrado.empty:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Ranking de quantidade
                     ranking = df_resp[col_resp].value_counts().head(10).reset_index()
                     ranking.columns = ['Responsável', 'Quantidade']
                     
@@ -1190,7 +1189,6 @@ if not df_filtrado.empty:
                     st.plotly_chart(fig_ranking, use_container_width=True)
                 
                 with col2:
-                    # Taxa de sucesso (itens que chegaram à validação)
                     sucesso = []
                     for resp in ranking['Responsável'].head(10):
                         df_resp_item = df_resp[df_resp[col_resp] == resp]
@@ -1229,7 +1227,6 @@ if not df_filtrado.empty:
                         )
                         st.plotly_chart(fig_sucesso, use_container_width=True)
                 
-                # Distribuição de status por responsável
                 st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
                 
                 top_resp = ranking['Responsável'].head(8).tolist()
@@ -1262,7 +1259,6 @@ if not df_filtrado.empty:
     with tab4:
         st.markdown("### 📋 Detalhamento dos Registros")
         
-        # Métricas rápidas
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -1277,7 +1273,6 @@ if not df_filtrado.empty:
         with col4:
             st.metric("Responsáveis", len(df_filtrado['Resp_Dev'].unique()))
         
-        # Tabela de dados
         colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
         colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
         
@@ -1285,7 +1280,6 @@ if not df_filtrado.empty:
             df_display = df_filtrado[colunas_existentes].copy()
             st.dataframe(df_display, use_container_width=True)
         
-        # Estatísticas descritivas
         with st.expander("📊 Estatísticas Detalhadas"):
             st.markdown("**Distribuição por Status:**")
             status_counts = df_filtrado['Status'].value_counts().reset_index()
@@ -1311,7 +1305,7 @@ if not df_filtrado.empty:
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.1 • Energisa
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.2 • Energisa
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
