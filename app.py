@@ -97,7 +97,7 @@ def get_github_config():
         return None, None, None
 
 def test_github_connection():
-    """Testa a conexão com o GitHub"""
+    """Testa a conexão com o GitHub com tratamento de erro 401"""
     try:
         token, repo_name, _ = get_github_config()
         
@@ -106,15 +106,28 @@ def test_github_connection():
         
         g = Github(token)
         user = g.get_user()
-        repo = g.get_repo(repo_name)
         
-        return True, f"Conectado como {user.login}"
+        # Tentar acessar o repositório
+        try:
+            repo = g.get_repo(repo_name)
+            return True, f"Conectado como {user.login}"
+        except GithubException as e:
+            if e.status == 401:
+                return False, "❌ Token inválido ou expirado. Configure um novo token."
+            elif e.status == 404:
+                return False, f"❌ Repositório '{repo_name}' não encontrado."
+            else:
+                return False, f"❌ Erro GitHub: {e.status}"
         
+    except GithubException as e:
+        if e.status == 401:
+            return False, "❌ Token inválido ou expirado. Configure um novo token."
+        return False, f"❌ Erro de conexão: {str(e)}"
     except Exception as e:
-        return False, f"Erro de conexão: {str(e)}"
+        return False, f"❌ Erro: {str(e)}"
 
 def load_data_from_github():
-    """Carrega dados do GitHub"""
+    """Carrega dados do GitHub com tratamento de erro 401"""
     try:
         token, repo_name, file_path = get_github_config()
         
@@ -122,22 +135,35 @@ def load_data_from_github():
             return None
         
         g = Github(token)
-        repo = g.get_repo(repo_name)
-        contents = repo.get_contents(file_path)
         
-        file_content = base64.b64decode(contents.content).decode('utf-8')
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            f.write(file_content)
-            temp_file = f.name
-        
-        df = pd.read_csv(temp_file, encoding='utf-8-sig')
-        os.unlink(temp_file)
-        
-        return df
-        
+        try:
+            repo = g.get_repo(repo_name)
+            contents = repo.get_contents(file_path)
+            
+            file_content = base64.b64decode(contents.content).decode('utf-8')
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+                f.write(file_content)
+                temp_file = f.name
+            
+            df = pd.read_csv(temp_file, encoding='utf-8-sig')
+            os.unlink(temp_file)
+            
+            return df
+            
+        except GithubException as e:
+            if e.status == 401:
+                st.warning("⚠️ Token GitHub inválido. Usando dados locais.")
+                return None
+            elif e.status == 404:
+                st.warning("⚠️ Arquivo não encontrado no GitHub. Usando dados locais.")
+                return None
+            else:
+                st.warning(f"⚠️ Erro GitHub: {e.status}. Usando dados locais.")
+                return None
+                
     except Exception as e:
-        st.error(f"❌ Erro ao carregar do GitHub: {str(e)}")
+        st.warning(f"⚠️ Erro ao carregar do GitHub: {str(e)}. Usando dados locais.")
         return None
 
 def atualizar_dados_github(arquivo_upload, branch="main"):
@@ -154,7 +180,19 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
             return False
         
         g = Github(token)
-        repo = g.get_repo(repo_name)
+        
+        try:
+            repo = g.get_repo(repo_name)
+        except GithubException as e:
+            if e.status == 401:
+                st.error("❌ Token inválido ou expirado. Configure um novo token.")
+                return False
+            elif e.status == 404:
+                st.error(f"❌ Repositório '{repo_name}' não encontrado.")
+                return False
+            else:
+                st.error(f"❌ Erro GitHub: {e.status}")
+                return False
         
         file_content = arquivo_upload.read()
         
@@ -325,31 +363,36 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    .etapa-fluxo {
+    /* Cards comparativos com descrição */
+    .company-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        height: 100%;
+    }
+    
+    .company-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .company-metric {
         text-align: center;
-        padding: 1rem;
-        border-radius: 12px;
-        transition: all 0.2s;
+        padding: 0.5rem;
     }
     
-    .etapa-fluxo:hover {
-        background: #f8fafc;
-    }
-    
-    .etapa-numero {
+    .company-metric-value {
         font-size: 2rem;
         font-weight: 700;
     }
     
-    .etapa-label {
-        font-size: 0.9rem;
-        color: #4a5568;
-        margin-top: 0.3rem;
-    }
-    
-    .etapa-taxa {
-        font-size: 0.85rem;
-        font-weight: 600;
+    .company-metric-label {
+        font-size: 0.8rem;
+        color: #718096;
         margin-top: 0.3rem;
     }
     
@@ -379,40 +422,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] {
         font-weight: 500;
         color: #4a5568;
-    }
-    
-    /* KPIs */
-    .kpi-row {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
-    .kpi-item {
-        flex: 1;
-        background: white;
-        padding: 1rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        text-align: center;
-    }
-    
-    .kpi-label {
-        color: #718096;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #0B2A4A;
-        margin: 0.3rem 0;
-    }
-    
-    .kpi-trend {
-        font-size: 0.8rem;
     }
     
     /* Footer */
@@ -583,7 +592,7 @@ def load_data():
             return processar_dados(df), "local"
         
         # Dados de exemplo se nada funcionar
-        st.warning("⚠️ Nenhum arquivo encontrado. Usando dados de exemplo.")
+        st.info("📊 Usando dados de exemplo para demonstração.")
         
         dados_exemplo = {
             'Cód.Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
@@ -656,7 +665,8 @@ with st.sidebar:
     if conectado:
         st.success("✅ " + msg)
     else:
-        st.warning("⚠️ Modo local")
+        st.warning("⚠️ " + msg)
+        st.info("💡 O dashboard está funcionando com dados locais. Para conectar ao GitHub, configure o token nas Secrets.")
     
     st.markdown("---")
     
@@ -772,24 +782,23 @@ with st.sidebar:
 # ============================================
 
 if not df_filtrado.empty:
-    # Calcular tendências
-    tendencias = calcular_tendencias(df_filtrado)
-    
-    # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Fluxo de Validação")
-    
     # Contagens por status
     qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
     qtd_comissionados = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
     qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
     qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
-    qtd_pendentes = len(df_filtrado[df_filtrado['Status'] == 'Pendente'])
     
-    # Taxas de conversão
-    total_processados = qtd_desenvolvidos + qtd_comissionados + qtd_validados + qtd_revisao
-    taxa_comissao = (qtd_comissionados / total_processados * 100) if total_processados > 0 else 0
-    taxa_validacao = (qtd_validados / total_processados * 100) if total_processados > 0 else 0
-    taxa_revisao = (qtd_revisao / total_processados * 100) if total_processados > 0 else 0
+    # Total de itens no fluxo (excluindo pendentes)
+    total_fluxo = qtd_desenvolvidos + qtd_comissionados + qtd_validados + qtd_revisao
+    
+    # Taxas de conversão CORRIGIDAS
+    taxa_desenv_para_comiss = (qtd_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
+    taxa_comiss_para_valid = (qtd_validados / qtd_comissionados * 100) if qtd_comissionados > 0 else 0
+    taxa_valid_sobre_total = (qtd_validados / total_fluxo * 100) if total_fluxo > 0 else 0
+    taxa_revisao_sobre_total = (qtd_revisao / total_fluxo * 100) if total_fluxo > 0 else 0
+    
+    # VISUALIZAÇÃO DO FLUXO
+    st.markdown("### 🔄 Fluxo de Validação")
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -802,7 +811,7 @@ if not df_filtrado.empty:
                 <div style="font-weight: 500;">Desenvolvidos</div>
                 <div style="font-size: 0.85rem; color: #718096;">Aguardando comissionamento</div>
                 <div style="margin-top: 0.5rem; background: #f1f8f1; border-radius: 20px; padding: 0.3rem;">
-                    → {(qtd_comissionados/(qtd_desenvolvidos+1)*100):.0f}% para comissionar
+                    → {taxa_desenv_para_comiss:.1f}% para comissionar
                 </div>
             </div>
         </div>
@@ -817,7 +826,7 @@ if not df_filtrado.empty:
                 <div style="font-weight: 500;">Comissionados</div>
                 <div style="font-size: 0.85rem; color: #718096;">Aguardando validação</div>
                 <div style="margin-top: 0.5rem; background: #e3f2fd; border-radius: 20px; padding: 0.3rem;">
-                    → {(qtd_validados/(qtd_comissionados+1)*100):.0f}% validados
+                    → {taxa_comiss_para_valid:.1f}% validados
                 </div>
             </div>
         </div>
@@ -832,7 +841,7 @@ if not df_filtrado.empty:
                 <div style="font-weight: 500;">Validados</div>
                 <div style="font-size: 0.85rem; color: #718096;">Processo concluído</div>
                 <div style="margin-top: 0.5rem; background: #e8eaf6; border-radius: 20px; padding: 0.3rem;">
-                    ✓ {taxa_validacao:.1f}% do total
+                    ✓ {taxa_valid_sobre_total:.1f}% do total
                 </div>
             </div>
         </div>
@@ -847,7 +856,7 @@ if not df_filtrado.empty:
                 <div style="font-weight: 500;">Em Revisão</div>
                 <div style="font-size: 0.85rem; color: #718096;">Aguardando correções</div>
                 <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
-                    ⚠️ {taxa_revisao:.1f}% em revisão
+                    ⚠️ {taxa_revisao_sobre_total:.1f}% em revisão
                 </div>
             </div>
         </div>
@@ -873,32 +882,30 @@ if not df_filtrado.empty:
                 if not df_emp.empty:
                     # Contagens
                     total_emp = len(df_emp)
-                    dev_emp = len(df_emp[df_emp['Status'] == 'Desenvolvido'])
                     com_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
                     val_emp = len(df_emp[df_emp['Status'] == 'Validado'])
-                    rev_emp = len(df_emp[df_emp['Status'] == 'Necessário Revisão'])
                     
                     st.markdown(f"""
-                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                        <h4 style="margin: 0 0 1rem 0; color: {CORES[empresa]};">{empresa}</h4>
+                    <div class="company-card">
+                        <div class="company-title" style="color: {CORES[empresa]};">{empresa}</div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 1.8rem; font-weight: 700;">{total_emp}</div>
-                                <div style="font-size: 0.85rem; color: #718096;">Total</div>
+                            <div class="company-metric">
+                                <div class="company-metric-value">{total_emp}</div>
+                                <div class="company-metric-label">Equipamentos cadastrados</div>
                             </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{com_emp}</div>
-                                <div style="font-size: 0.85rem; color: #718096;">Comissionados</div>
+                            <div class="company-metric">
+                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{com_emp}</div>
+                                <div class="company-metric-label">Aguardando validação</div>
                             </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{val_emp}</div>
-                                <div style="font-size: 0.85rem; color: #718096;">Validados</div>
+                            <div class="company-metric">
+                                <div class="company-metric-value" style="color: {CORES['Validado']};">{val_emp}</div>
+                                <div class="company-metric-label">Processo concluído</div>
                             </div>
                         </div>
                         <div style="margin-top: 1rem;">
                             <div style="background: #f1f5f9; border-radius: 20px; padding: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between;">
-                                    <span>Progresso:</span>
+                                    <span>Progresso do fluxo:</span>
                                     <strong>{((com_emp+val_emp)/total_emp*100):.1f}%</strong>
                                 </div>
                                 <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
@@ -1109,7 +1116,7 @@ if not df_filtrado.empty:
                     fig_ranking.update_traces(textposition='outside')
                     fig_ranking.update_layout(
                         height=400,
-                        xaxis_title="Quantidade",
+                        xaxis_title="Quantidade de Atividades",
                         yaxis_title=""
                     )
                     st.plotly_chart(fig_ranking, use_container_width=True)
@@ -1121,12 +1128,16 @@ if not df_filtrado.empty:
                         df_resp_item = df_resp[df_resp[col_resp] == resp]
                         total = len(df_resp_item)
                         if total > 0:
-                            validados = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
-                            taxa = (validados / total) * 100
+                            # Para comissionamento, sucesso = itens validados
+                            if tipo_resp == 'Comissionamento':
+                                sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
+                            else:
+                                sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
+                            taxa = (sucesso_count / total) * 100
                             sucesso.append({
                                 'Responsável': resp,
                                 'Taxa de Sucesso': taxa,
-                                'Validados': validados,
+                                'Validados': sucesso_count,
                                 'Total': total
                             })
                     
@@ -1138,7 +1149,7 @@ if not df_filtrado.empty:
                             x='Taxa de Sucesso',
                             y='Responsável',
                             orientation='h',
-                            title='Taxa de Sucesso por Responsável',
+                            title=f'Taxa de Sucesso por Responsável - {tipo_resp}',
                             color='Taxa de Sucesso',
                             color_continuous_scale='Greens',
                             text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
@@ -1153,7 +1164,7 @@ if not df_filtrado.empty:
                         st.plotly_chart(fig_sucesso, use_container_width=True)
                 
                 # Distribuição de status por responsável
-                st.markdown("#### 📊 Distribuição de Status")
+                st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
                 
                 top_resp = ranking['Responsável'].head(8).tolist()
                 df_top = df_resp[df_resp[col_resp].isin(top_resp)]
@@ -1165,7 +1176,7 @@ if not df_filtrado.empty:
                     x=col_resp,
                     y='Quantidade',
                     color='Status',
-                    title='Distribuição de Status por Responsável',
+                    title=f'Distribuição de Status por Responsável de {tipo_resp}',
                     barmode='stack',
                     color_discrete_map=CORES,
                     text='Quantidade'
@@ -1177,6 +1188,8 @@ if not df_filtrado.empty:
                     xaxis_title=""
                 )
                 st.plotly_chart(fig_dist, use_container_width=True)
+            else:
+                st.info(f"Nenhum responsável de {tipo_resp} encontrado com atividades.")
     
     with tab4:
         st.markdown("### 📋 Detalhamento dos Registros")
@@ -1204,7 +1217,7 @@ if not df_filtrado.empty:
             df_display = df_filtrado[colunas_existentes].copy()
             st.dataframe(df_display, use_container_width=True)
         
-        # Estatísticas descritivas - CORRIGIDO
+        # Estatísticas descritivas
         with st.expander("📊 Estatísticas Detalhadas"):
             st.markdown("**Distribuição por Status:**")
             status_counts = df_filtrado['Status'].value_counts().reset_index()
@@ -1231,7 +1244,7 @@ if not df_filtrado.empty:
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.0
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.1
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
