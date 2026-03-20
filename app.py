@@ -694,8 +694,7 @@ def limpar_filtros():
     """Limpa todos os filtros do session_state"""
     for key in list(st.session_state.keys()):
         if key.startswith('filtro_') or key in ['ano_selecionado', 'mes_selecionado', 'empresa_selecionada', 
-                                                 'tipo_selecionado', 'status_selecionado', 'responsavel_selecionado',
-                                                 'tipo_responsavel_filtro']:
+                                                 'tipo_selecionado', 'status_selecionado']:
             del st.session_state[key]
 
 # ============================================
@@ -822,19 +821,9 @@ with st.sidebar:
         key="filtro_status"
     )
     
-    # FILTRO DE RESPONSÁVEL (apenas para exibição na sidebar, não afeta os dados principais)
-    st.markdown('<div class="filter-title">👤 Responsável</div>', unsafe_allow_html=True)
-    
-    tipo_responsavel_filtro = st.radio(
-        "Tipo de responsável:",
-        options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
-        horizontal=True,
-        key="filtro_tipo_responsavel"
-    )
-    
     st.markdown("---")
     
-    # Botão Limpar Filtros (agora funcionando)
+    # Botão Limpar Filtros
     if st.button("🔄 Limpar Filtros", use_container_width=True):
         limpar_filtros()
         st.rerun()
@@ -842,7 +831,7 @@ with st.sidebar:
     # Estatísticas rápidas serão atualizadas após aplicar os filtros
 
 # ============================================
-# APLICAR FILTROS (exceto responsável, que é usado apenas na aba Performance)
+# APLICAR FILTROS
 # ============================================
 
 df_filtrado = df.copy()
@@ -1204,139 +1193,202 @@ if not df_filtrado.empty:
                 
                 st.plotly_chart(fig_taxas, use_container_width=True)
     
-   with tab3:
-    st.markdown("### 👥 Performance por Responsável")
-    
-    tipo_resp = st.radio(
-        "Selecionar tipo:",
-        options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
-        horizontal=True,
-        key='tipo_resp_tab'
-    )
-    
-    mapa_colunas = {
-        'Desenvolvimento': 'Resp_Dev',
-        'Comissionamento': 'Resp_Com',
-        'Auditoria': 'Resp_Audit'
-    }
-    
-    col_resp = mapa_colunas[tipo_resp]
-    
-    # Verificar se a coluna existe no DataFrame
-    if col_resp not in df_filtrado.columns:
-        st.warning(f"⚠️ Coluna '{col_resp}' não encontrada nos dados.")
-    else:
-        # Contar quantos registros têm responsável atribuído (diferente de "Não atribuído")
-        df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
+    with tab3:
+        st.markdown("### 👥 Performance por Responsável")
         
-        # Verificar se a coluna está vazia
-        if df_resp.empty:
-            st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado. Verifique se os dados estão preenchidos na coluna '{col_resp}'.")
-            
-            # Mostrar amostra dos dados para debug
-            with st.expander("🔍 Verificar dados disponíveis"):
-                st.write(f"**Coluna:** {col_resp}")
-                st.write(f"**Valores únicos na coluna:** {df_filtrado[col_resp].unique().tolist()}")
-                st.write(f"**Total de registros:** {len(df_filtrado)}")
-                st.write(f"**Registros com 'Não atribuído':** {len(df_filtrado[df_filtrado[col_resp] == 'Não atribuído'])}")
+        tipo_resp = st.radio(
+            "Selecionar tipo:",
+            options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
+            horizontal=True,
+            key='tipo_resp_tab'
+        )
+        
+        mapa_colunas = {
+            'Desenvolvimento': 'Resp_Dev',
+            'Comissionamento': 'Resp_Com',
+            'Auditoria': 'Resp_Audit'
+        }
+        
+        col_resp = mapa_colunas[tipo_resp]
+        
+        # Verificar se a coluna existe no DataFrame
+        if col_resp not in df_filtrado.columns:
+            st.warning(f"⚠️ Coluna '{col_resp}' não encontrada nos dados.")
         else:
-            col1, col2 = st.columns(2)
+            # Contar quantos registros têm responsável atribuído (diferente de "Não atribuído")
+            df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
             
-            with col1:
-                # Ranking de quantidade
-                ranking = df_resp[col_resp].value_counts().head(10).reset_index()
-                ranking.columns = ['Responsável', 'Quantidade']
+            # Verificar se a coluna está vazia
+            if df_resp.empty:
+                st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado. Verifique se os dados estão preenchidos na coluna '{col_resp}'.")
                 
-                fig_ranking = px.bar(
-                    ranking,
-                    x='Quantidade',
-                    y='Responsável',
-                    orientation='h',
-                    title=f'Top 10 Responsáveis - {tipo_resp}',
-                    color='Quantidade',
-                    color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
-                    text='Quantidade'
-                )
-                fig_ranking.update_traces(textposition='outside')
-                fig_ranking.update_layout(
-                    height=400,
-                    xaxis_title="Quantidade de Atividades",
-                    yaxis_title="",
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
-                st.plotly_chart(fig_ranking, use_container_width=True)
-            
-            with col2:
-                # Taxa de sucesso (itens validados)
-                sucesso = []
-                for resp in ranking['Responsável'].head(10):
-                    df_resp_item = df_resp[df_resp[col_resp] == resp]
-                    total = len(df_resp_item)
-                    if total > 0:
-                        # Para todos os tipos, sucesso = itens que chegaram a "Validado"
-                        sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
-                        taxa = (sucesso_count / total) * 100
-                        sucesso.append({
-                            'Responsável': resp,
-                            'Taxa de Sucesso': taxa,
-                            'Validados': sucesso_count,
-                            'Total': total
-                        })
+                # Mostrar amostra dos dados para debug
+                with st.expander("🔍 Verificar dados disponíveis"):
+                    st.write(f"**Coluna:** {col_resp}")
+                    st.write(f"**Valores únicos na coluna:** {df_filtrado[col_resp].unique().tolist()}")
+                    st.write(f"**Total de registros:** {len(df_filtrado)}")
+                    st.write(f"**Registros com 'Não atribuído':** {len(df_filtrado[df_filtrado[col_resp] == 'Não atribuído'])}")
+            else:
+                col1, col2 = st.columns(2)
                 
-                if sucesso:
-                    df_sucesso = pd.DataFrame(sucesso).sort_values('Taxa de Sucesso', ascending=False)
+                with col1:
+                    # Ranking de quantidade
+                    ranking = df_resp[col_resp].value_counts().head(10).reset_index()
+                    ranking.columns = ['Responsável', 'Quantidade']
                     
-                    fig_sucesso = px.bar(
-                        df_sucesso,
-                        x='Taxa de Sucesso',
+                    fig_ranking = px.bar(
+                        ranking,
+                        x='Quantidade',
                         y='Responsável',
                         orientation='h',
-                        title=f'Taxa de Sucesso por Responsável - {tipo_resp}',
-                        color='Taxa de Sucesso',
-                        color_continuous_scale=['#e8f5e9', '#2e7d32'],
-                        text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
+                        title=f'Top 10 Responsáveis - {tipo_resp}',
+                        color='Quantidade',
+                        color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
+                        text='Quantidade'
                     )
-                    fig_sucesso.update_traces(textposition='outside')
-                    fig_sucesso.update_layout(
+                    fig_ranking.update_traces(textposition='outside')
+                    fig_ranking.update_layout(
                         height=400,
-                        xaxis_title="Taxa de Sucesso (%)",
-                        xaxis_range=[0, 100],
+                        xaxis_title="Quantidade de Atividades",
                         yaxis_title="",
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)'
                     )
-                    st.plotly_chart(fig_sucesso, use_container_width=True)
+                    st.plotly_chart(fig_ranking, use_container_width=True)
+                
+                with col2:
+                    # Taxa de sucesso (itens validados)
+                    sucesso = []
+                    for resp in ranking['Responsável'].head(10):
+                        df_resp_item = df_resp[df_resp[col_resp] == resp]
+                        total = len(df_resp_item)
+                        if total > 0:
+                            sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
+                            taxa = (sucesso_count / total) * 100
+                            sucesso.append({
+                                'Responsável': resp,
+                                'Taxa de Sucesso': taxa,
+                                'Validados': sucesso_count,
+                                'Total': total
+                            })
+                    
+                    if sucesso:
+                        df_sucesso = pd.DataFrame(sucesso).sort_values('Taxa de Sucesso', ascending=False)
+                        
+                        fig_sucesso = px.bar(
+                            df_sucesso,
+                            x='Taxa de Sucesso',
+                            y='Responsável',
+                            orientation='h',
+                            title=f'Taxa de Sucesso por Responsável - {tipo_resp}',
+                            color='Taxa de Sucesso',
+                            color_continuous_scale=['#e8f5e9', '#2e7d32'],
+                            text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
+                        )
+                        fig_sucesso.update_traces(textposition='outside')
+                        fig_sucesso.update_layout(
+                            height=400,
+                            xaxis_title="Taxa de Sucesso (%)",
+                            xaxis_range=[0, 100],
+                            yaxis_title="",
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)'
+                        )
+                        st.plotly_chart(fig_sucesso, use_container_width=True)
+                    else:
+                        st.info("Não foi possível calcular a taxa de sucesso para os responsáveis.")
+                
+                # Distribuição de status por responsável
+                st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
+                
+                top_resp = ranking['Responsável'].head(8).tolist()
+                df_top = df_resp[df_resp[col_resp].isin(top_resp)]
+                
+                dist_status = df_top.groupby([col_resp, 'Status']).size().reset_index(name='Quantidade')
+                
+                if not dist_status.empty:
+                    fig_dist = px.bar(
+                        dist_status,
+                        x=col_resp,
+                        y='Quantidade',
+                        color='Status',
+                        title=f'Distribuição de Status por Responsável de {tipo_resp}',
+                        barmode='stack',
+                        color_discrete_map=CORES,
+                        text='Quantidade'
+                    )
+                    fig_dist.update_traces(textposition='inside')
+                    fig_dist.update_layout(
+                        height=450,
+                        xaxis_tickangle=45,
+                        xaxis_title="",
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)'
+                    )
+                    st.plotly_chart(fig_dist, use_container_width=True)
                 else:
-                    st.info("Não foi possível calcular a taxa de sucesso para os responsáveis.")
-            
-            # Distribuição de status por responsável
-            st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
-            
-            top_resp = ranking['Responsável'].head(8).tolist()
-            df_top = df_resp[df_resp[col_resp].isin(top_resp)]
-            
-            dist_status = df_top.groupby([col_resp, 'Status']).size().reset_index(name='Quantidade')
-            
-            if not dist_status.empty:
-                fig_dist = px.bar(
-                    dist_status,
-                    x=col_resp,
-                    y='Quantidade',
-                    color='Status',
-                    title=f'Distribuição de Status por Responsável de {tipo_resp}',
-                    barmode='stack',
-                    color_discrete_map=CORES,
-                    text='Quantidade'
-                )
-                fig_dist.update_traces(textposition='inside')
-                fig_dist.update_layout(
-                    height=450,
-                    xaxis_tickangle=45,
-                    xaxis_title="",
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
-                st.plotly_chart(fig_dist, use_container_width=True)
+                    st.info("Nenhum dado disponível para distribuição de status.")
+    
+    with tab4:
+        st.markdown("### 📋 Detalhamento dos Registros")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total de Registros", len(df_filtrado))
+        with col2:
+            st.metric("Empresas", len(df_filtrado['Empresa'].unique()))
+        with col3:
+            if 'Tipo' in df_filtrado.columns:
+                st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()))
             else:
-                st.info("Nenhum dado disponível para distribuição de status.")
+                st.metric("Tipos de Equipamento", 0)
+        with col4:
+            st.metric("Responsáveis Desenvolvimento", len(df_filtrado['Resp_Dev'].unique()))
+        
+        colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
+        colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
+        
+        if colunas_existentes:
+            df_display = df_filtrado[colunas_existentes].copy()
+            st.dataframe(df_display, use_container_width=True)
+        
+        with st.expander("📊 Estatísticas Detalhadas"):
+            st.markdown("**Distribuição por Status:**")
+            status_counts = df_filtrado['Status'].value_counts().reset_index()
+            status_counts.columns = ['Status', 'Quantidade']
+            total_linhas = len(df_filtrado)
+            
+            percentuais = []
+            for qtd in status_counts['Quantidade']:
+                percentual = (qtd / total_linhas * 100) if total_linhas > 0 else 0
+                percentuais.append(f"{percentual:.1f}%")
+            
+            status_counts['Percentual'] = percentuais
+            st.dataframe(status_counts)
+            
+            if 'Tipo' in df_filtrado.columns:
+                st.markdown("**Distribuição por Tipo de Equipamento:**")
+                tipo_counts = df_filtrado['Tipo'].value_counts().reset_index()
+                tipo_counts.columns = ['Tipo', 'Quantidade']
+                st.dataframe(tipo_counts.head(15))
+    
+    # FOOTER
+    st.markdown(f"""
+    <div class="footer">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.4 • Energisa
+            </div>
+            <div>
+                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            </div>
+            <div style="color: #6b7280;">
+                {len(df_filtrado)} registros • {fonte.upper()}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+else:
+    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
