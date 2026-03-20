@@ -621,7 +621,7 @@ def mostrar_popup_calculos():
         <em>Percentual de equipamentos que necessitam de revisão</em><br><br>
         <strong>Legenda:</strong><br>
         • <span style="color:#2E7D32;">Desenvolvidos</span>: Aguardando comissionamento<br>
-        • <span style="color:#028a9f;">Comissionados</span>: Aguardando Validação<br>
+        • <span style="color:#028a9f;">Aguardando Validação</span>: Comissionados pendentes<br>
         • <span style="color:#005973;">Validados</span>: Processo concluído<br>
         • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
     </div>
@@ -714,7 +714,7 @@ def criar_grafico_pizza_status(df_filtrado):
         bgcolor='rgba(255,255,255,0.9)',
         bordercolor=cor_alerta,
         borderwidth=1,
-        borderpad=4,
+        borderpad=4
     )
     
     # Adicionar anotação secundária com resumo executivo
@@ -980,8 +980,8 @@ if not df_filtrado.empty:
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_aguardando_validacao}</div>
-                <div style="font-weight: 500;">Aguardando Validação</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Comissionados pendentes</div>
+                <div style="font-weight: 500;">Comissionados</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando validação</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     → {taxa_comiss_para_valid:.1f}% já validados
                 </div>
