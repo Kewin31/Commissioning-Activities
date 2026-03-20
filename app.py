@@ -13,6 +13,21 @@ import tempfile
 import time
 from dateutil.relativedelta import relativedelta
 
+#PDF
+# No início do arquivo, após os imports
+from pdf_generator import adicionar_botao_pdf
+
+# Onde você quiser adicionar o botão (ex: no sidebar)
+with st.sidebar:
+    # ... seus filtros existentes ...
+    
+    st.markdown("---")
+    st.markdown("### 📄 Exportar")
+    
+    # Adicionar o botão do PDF
+    adicionar_botao_pdf(df_filtrado)  # <-- ADICIONE ESTA LINHA
+#FIM PDF
+
 # Configuração da página
 st.set_page_config(
     page_title="Dashboard Executivo | Fábrica SCADA",
