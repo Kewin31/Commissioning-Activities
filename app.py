@@ -715,7 +715,6 @@ def criar_grafico_pizza_status(df_filtrado):
         bordercolor=cor_alerta,
         borderwidth=1,
         borderpad=4,
-        bordercolor=cor_alerta
     )
     
     # Adicionar anotação secundária com resumo executivo
