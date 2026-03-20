@@ -407,15 +407,16 @@ def processar_dados(df):
     # Padronizar nomes das colunas
     df.columns = df.columns.str.strip()
     
-    # Mapeamento de colunas (SEM Responsável Comissionamento)
+    # Mapeamento de colunas com os nomes EXATOS do seu CSV
     mapeamento_colunas = {
         'Cód. Equipamento': 'Codigo',
         'Cód.Equipamento': 'Codigo',
         'Título': 'Codigo',
+        'Chamado Desenvolvimento': 'Chamado',
         'Tipo Equipamento': 'Tipo',
         'Empresa': 'Empresa',
-        'Chamado Desenvolvimento': 'Chamado',
         'Responsável Desenvolvimento': 'Resp_Dev',
+        'Responsável Comissionamento': 'Resp_Com',  # AGORA ESTÁ SENDO CAPTURADO!
         'Responsável Auditoria': 'Resp_Audit',
         'Status': 'Status',
         'Criado': 'Criado',
@@ -428,24 +429,23 @@ def processar_dados(df):
     for col_antiga, col_nova in mapeamento_colunas.items():
         if col_antiga in df.columns and col_nova not in df.columns:
             df.rename(columns={col_antiga: col_nova}, inplace=True)
+            with st.sidebar:
+                st.success(f"✅ Renomeado: '{col_antiga}' → '{col_nova}'")
     
-    # CRIAR COLUNA VIRTUAL DE COMISSIONAMENTO
-    # Usar "Modificado por" como responsável pelo comissionamento
-    # Regra: Quando Status = Comissionado ou Validado, o responsável é quem fez a última modificação
-    if 'Modificado_por' in df.columns:
-        # Para itens que estão em Comissionado ou Validado, usar quem modificou
-        df['Resp_Com'] = df.apply(
-            lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
-            axis=1
-        )
-        
-        # Mostrar informação no dashboard
-        with st.sidebar:
-            st.info("ℹ️ Responsável Comissionamento = quem moveu o card para Comissionado/Validado")
-    else:
-        df['Resp_Com'] = 'Não atribuído'
-        with st.sidebar:
-            st.warning("⚠️ Campo 'Modificado por' não encontrado")
+    # Verificar se a coluna Resp_Com foi encontrada
+    with st.sidebar:
+        if 'Resp_Com' in df.columns:
+            st.success(f"✅ Coluna 'Resp_Com' encontrada! {df['Resp_Com'].nunique()} valores únicos")
+        else:
+            st.warning("⚠️ Coluna 'Resp_Com' não encontrada. Criando fallback.")
+            # Fallback: usar Modificado por para itens comissionados/validados
+            if 'Modificado_por' in df.columns:
+                df['Resp_Com'] = df.apply(
+                    lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
+                    axis=1
+                )
+            else:
+                df['Resp_Com'] = 'Não atribuído'
     
     # Preencher responsáveis não atribuídos
     for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
@@ -572,8 +572,8 @@ def load_data():
             'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
             'Empresa': np.random.choice(['EMT', 'ETO'], 100),
             'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa'], 100),
+            'Responsável Comissionamento': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
             'Responsável Auditoria': np.random.choice(['Fernando Costa', 'Lucia Santos'], 100),
-            'Modificado por': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
             'Status': np.random.choice(['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão'], 100, 
                                       p=[0.5, 0.15, 0.25, 0.1]),
             'Criado': pd.date_range(start='2025-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
