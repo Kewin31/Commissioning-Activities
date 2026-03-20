@@ -688,6 +688,17 @@ def load_data():
         return None, "erro"
 
 # ============================================
+# FUNÇÃO PARA LIMPAR FILTROS
+# ============================================
+def limpar_filtros():
+    """Limpa todos os filtros do session_state"""
+    for key in list(st.session_state.keys()):
+        if key.startswith('filtro_') or key in ['ano_selecionado', 'mes_selecionado', 'empresa_selecionada', 
+                                                 'tipo_selecionado', 'status_selecionado', 'responsavel_selecionado',
+                                                 'tipo_responsavel_filtro']:
+            del st.session_state[key]
+
+# ============================================
 # INTERFACE PRINCIPAL
 # ============================================
 
@@ -731,7 +742,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================
-# SIDEBAR COM FILTROS NO FORMATO DA IMAGEM
+# SIDEBAR COM FILTROS
 # ============================================
 
 with st.sidebar:
@@ -742,12 +753,9 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # ============================================
-    # FILTRO DE ANO (formato da imagem)
-    # ============================================
+    # FILTRO DE ANO
     st.markdown('<div class="filter-title">📅 Ano</div>', unsafe_allow_html=True)
     
-    # Obter anos disponíveis
     anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
     anos_opcoes = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
     
@@ -755,12 +763,11 @@ with st.sidebar:
         "Selecione o ano",
         options=anos_opcoes,
         index=0,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="filtro_ano"
     )
     
-    # ============================================
-    # FILTRO DE MÊS (formato da imagem com nomes em português)
-    # ============================================
+    # FILTRO DE MÊS
     st.markdown('<div class="filter-title" style="margin-top: 1rem;">📆 Mês</div>', unsafe_allow_html=True)
     
     meses_nomes = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
@@ -770,14 +777,13 @@ with st.sidebar:
         "Selecione o mês",
         options=meses_nomes,
         index=0,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="filtro_mes"
     )
     
     st.markdown("---")
     
-    # ============================================
     # FILTRO DE EMPRESA
-    # ============================================
     st.markdown('<div class="filter-title">🏢 Empresa</div>', unsafe_allow_html=True)
     
     empresas_opcoes = ["Todas"] + sorted(df['Empresa'].unique().tolist())
@@ -785,12 +791,11 @@ with st.sidebar:
         "Selecione a empresa",
         options=empresas_opcoes,
         index=0,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="filtro_empresa"
     )
     
-    # ============================================
     # FILTRO DE TIPO DE EQUIPAMENTO
-    # ============================================
     st.markdown('<div class="filter-title">🔧 Tipo Equipamento</div>', unsafe_allow_html=True)
     
     if 'Tipo' in df.columns:
@@ -799,14 +804,13 @@ with st.sidebar:
             "Selecione o tipo",
             options=tipos_opcoes,
             index=0,
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="filtro_tipo"
         )
     else:
         tipo_selecionado = "Todos"
     
-    # ============================================
     # FILTRO DE STATUS
-    # ============================================
     st.markdown('<div class="filter-title">📊 Status</div>', unsafe_allow_html=True)
     
     status_opcoes = ["Todos"] + sorted(df['Status'].unique().tolist())
@@ -814,87 +818,50 @@ with st.sidebar:
         "Selecione o status",
         options=status_opcoes,
         index=0,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="filtro_status"
     )
     
-    # ============================================
-    # FILTRO DE RESPONSÁVEL
-    # ============================================
+    # FILTRO DE RESPONSÁVEL (apenas para exibição na sidebar, não afeta os dados principais)
     st.markdown('<div class="filter-title">👤 Responsável</div>', unsafe_allow_html=True)
     
-    tipo_responsavel = st.radio(
+    tipo_responsavel_filtro = st.radio(
         "Tipo de responsável:",
         options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
         horizontal=True,
-        key='tipo_responsavel_filtro'
+        key="filtro_tipo_responsavel"
     )
-    
-    mapa_colunas_resp = {
-        'Desenvolvimento': 'Resp_Dev',
-        'Comissionamento': 'Resp_Com',
-        'Auditoria': 'Resp_Audit'
-    }
-    
-    col_resp_filtro = mapa_colunas_resp[tipo_responsavel]
-    
-    if col_resp_filtro in df.columns:
-        responsaveis_opcoes = ["Todos"] + sorted(df[col_resp_filtro].unique().tolist())
-        responsavel_selecionado = st.selectbox(
-            f"Selecione o responsável de {tipo_responsavel}",
-            options=responsaveis_opcoes,
-            index=0,
-            label_visibility="collapsed"
-        )
-    else:
-        responsavel_selecionado = "Todos"
     
     st.markdown("---")
     
-    # Botões de ação
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Limpar Filtros", use_container_width=True):
-            st.rerun()
-    with col2:
-        if st.button("📥 Exportar", use_container_width=True):
-            csv = df_filtrado.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                "📊 Download CSV",
-                csv,
-                f"dados_scada_{datetime.now().strftime('%Y%m%d')}.csv",
-                "text/csv",
-                use_container_width=True
-            )
+    # Botão Limpar Filtros (agora funcionando)
+    if st.button("🔄 Limpar Filtros", use_container_width=True):
+        limpar_filtros()
+        st.rerun()
+    
+    # Estatísticas rápidas serão atualizadas após aplicar os filtros
 
 # ============================================
-# APLICAR FILTROS
+# APLICAR FILTROS (exceto responsável, que é usado apenas na aba Performance)
 # ============================================
 
 df_filtrado = df.copy()
 
-# Filtro de Ano
+# Aplicar filtros básicos
 if ano_selecionado != "Todos os Anos" and 'Ano' in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado['Ano'] == ano_selecionado]
 
-# Filtro de Mês
 if mes_selecionado != "Todos os Meses" and 'Mes_Nome' in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado['Mes_Nome'] == mes_selecionado]
 
-# Filtro de Empresa
 if empresa_selecionada != "Todas":
     df_filtrado = df_filtrado[df_filtrado['Empresa'] == empresa_selecionada]
 
-# Filtro de Tipo de Equipamento
 if tipo_selecionado != "Todos" and 'Tipo' in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado['Tipo'] == tipo_selecionado]
 
-# Filtro de Status
 if status_selecionado != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
-
-# Filtro de Responsável
-if responsavel_selecionado != "Todos" and col_resp_filtro in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado[col_resp_filtro] == responsavel_selecionado]
 
 # ============================================
 # ESTATÍSTICAS RÁPIDAS NA SIDEBAR
@@ -940,7 +907,7 @@ if not df_filtrado.empty:
     # Total de equipamentos que já passaram pelo comissionamento
     total_comissionados = qtd_aguardando_validacao + qtd_validados
     
-    # Total de itens no fluxo (excluindo pendentes)
+    # Total de itens no fluxo
     total_fluxo = qtd_desenvolvidos + qtd_aguardando_validacao + qtd_validados + qtd_revisao
     
     # Taxas de conversão
@@ -1244,7 +1211,7 @@ if not df_filtrado.empty:
             "Selecionar tipo:",
             options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
             horizontal=True,
-            key='tipo_resp'
+            key='tipo_resp_tab'
         )
         
         mapa_colunas = {
@@ -1255,6 +1222,8 @@ if not df_filtrado.empty:
         
         col_resp = mapa_colunas[tipo_resp]
         
+        # IMPORTANTE: Usar df_filtrado original (já com filtros de ano, mês, empresa, tipo, status)
+        # Mas sem o filtro de responsável, pois este é o objeto de análise
         if col_resp in df_filtrado.columns:
             df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
             
@@ -1262,6 +1231,7 @@ if not df_filtrado.empty:
                 col1, col2 = st.columns(2)
                 
                 with col1:
+                    # Ranking de quantidade
                     ranking = df_resp[col_resp].value_counts().head(10).reset_index()
                     ranking.columns = ['Responsável', 'Quantidade']
                     
@@ -1286,6 +1256,7 @@ if not df_filtrado.empty:
                     st.plotly_chart(fig_ranking, use_container_width=True)
                 
                 with col2:
+                    # Taxa de sucesso (itens validados)
                     sucesso = []
                     for resp in ranking['Responsável'].head(10):
                         df_resp_item = df_resp[df_resp[col_resp] == resp]
@@ -1324,6 +1295,7 @@ if not df_filtrado.empty:
                         )
                         st.plotly_chart(fig_sucesso, use_container_width=True)
                 
+                # Distribuição de status por responsável
                 st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
                 
                 top_resp = ranking['Responsável'].head(8).tolist()
@@ -1368,7 +1340,7 @@ if not df_filtrado.empty:
             else:
                 st.metric("Tipos de Equipamento", 0)
         with col4:
-            st.metric("Responsáveis", len(df_filtrado['Resp_Dev'].unique()))
+            st.metric("Responsáveis Desenvolvimento", len(df_filtrado['Resp_Dev'].unique()))
         
         colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
         colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
