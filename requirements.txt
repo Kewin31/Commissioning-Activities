@@ -5,3 +5,4 @@ numpy
 openpyxl
 PyGithub
 requests
+fpdf2
