@@ -223,7 +223,7 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         return False
 
 # ============================================
-# CSS PERSONALIZADO - ESTILO ENERGISA
+# CSS PERSONALIZADO - ESTILO ENERGISA COM FUNDO CINZA CLARO
 # ============================================
 st.markdown("""
 <style>
@@ -231,7 +231,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     .stApp {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e6f3f5 100%);
+        background-color: #f3f4f6;
     }
     
     /* Header executivo com gradiente Energisa */
@@ -299,8 +299,8 @@ st.markdown("""
         background: white;
         padding: 1.5rem;
         border-radius: 16px;
-        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
-        border: 1px solid rgba(4,216,215,0.2);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
         transition: all 0.2s ease;
         height: 100%;
         position: relative;
@@ -309,7 +309,7 @@ st.markdown("""
     
     .metric-card-executivo:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,89,115,0.15);
+        box-shadow: 0 8px 25px rgba(0,89,115,0.1);
         border-color: #04d8d7;
     }
     
@@ -324,7 +324,7 @@ st.markdown("""
     }
     
     .metric-titulo {
-        color: #2c5f6b;
+        color: #374151;
         font-size: 0.9rem;
         font-weight: 500;
         text-transform: uppercase;
@@ -340,7 +340,7 @@ st.markdown("""
     }
     
     .metric-sub {
-        color: #5f8b94;
+        color: #6b7280;
         font-size: 0.85rem;
         margin-top: 0.3rem;
     }
@@ -370,14 +370,14 @@ st.markdown("""
         background: white;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         margin-bottom: 2rem;
-        border: 1px solid rgba(4,216,215,0.2);
+        border: 1px solid #e5e7eb;
         transition: all 0.2s;
     }
     
     .fluxo-container:hover {
-        box-shadow: 0 8px 25px rgba(0,89,115,0.12);
+        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
         border-color: #04d8d7;
     }
     
@@ -386,14 +386,14 @@ st.markdown("""
         background: white;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         height: 100%;
-        border: 1px solid rgba(4,216,215,0.2);
+        border: 1px solid #e5e7eb;
         transition: all 0.2s;
     }
     
     .company-card:hover {
-        box-shadow: 0 8px 25px rgba(0,89,115,0.12);
+        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
         border-color: #04d8d7;
     }
     
@@ -417,7 +417,7 @@ st.markdown("""
     
     .company-metric-label {
         font-size: 0.8rem;
-        color: #5f8b94;
+        color: #6b7280;
         margin-top: 0.3rem;
     }
     
@@ -441,12 +441,13 @@ st.markdown("""
         background-color: white;
         padding: 0.5rem 2rem;
         border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
     }
     
     .stTabs [data-baseweb="tab"] {
         font-weight: 500;
-        color: #2c5f6b;
+        color: #374151;
     }
     
     .stTabs [aria-selected="true"] {
@@ -460,10 +461,10 @@ st.markdown("""
         padding: 1rem 2rem;
         border-radius: 12px;
         margin-top: 3rem;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+        box-shadow: 0 -1px 2px rgba(0,0,0,0.02);
         font-size: 0.85rem;
-        color: #5f8b94;
-        border-top: 1px solid rgba(4,216,215,0.3);
+        color: #6b7280;
+        border-top: 1px solid #e5e7eb;
     }
     
     /* Botões */
@@ -479,7 +480,8 @@ st.markdown("""
     
     /* Sidebar */
     .css-1d391kg, .css-1633s36 {
-        background: linear-gradient(180deg, #f0f9ff 0%, #e6f3f5 100%);
+        background-color: #ffffff;
+        border-right: 1px solid #e5e7eb;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -495,10 +497,10 @@ CORES = {
     'Pendente': '#C62828',           # Vermelho
     'EMT': '#028a9f',                # Turquesa Energisa
     'ETO': '#005973',                # Azul escuro Energisa
-    'background': '#f0f9ff',
+    'background': '#f3f4f6',
     'card': 'white',
-    'texto': '#2c5f6b',
-    'texto_secundario': '#5f8b94',
+    'texto': '#1f2937',
+    'texto_secundario': '#6b7280',
     'gradient_start': '#005973',
     'gradient_mid': '#028a9f',
     'gradient_end': '#04d8d7'
@@ -794,7 +796,7 @@ with st.sidebar:
     revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
     
     st.markdown(f"""
-    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f;">
+    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f; border: 1px solid #e5e7eb;">
         <div style="display: flex; justify-content: space-between;">
             <span>📦 Total:</span> <strong>{total}</strong>
         </div>
@@ -856,10 +858,10 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 1</div>
+                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 1</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos}</div>
                 <div style="font-weight: 500;">Desenvolvidos</div>
-                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando comissionamento</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando comissionamento</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     → {taxa_desenv_para_comiss:.1f}% para comissionar
                 </div>
@@ -871,10 +873,10 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 2</div>
+                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados}</div>
                 <div style="font-weight: 500;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando validação</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando validação</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     → {taxa_comiss_para_valid:.1f}% validados
                 </div>
@@ -886,10 +888,10 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 3</div>
+                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 3</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados}</div>
                 <div style="font-weight: 500;">Validados</div>
-                <div style="font-size: 0.85rem; color: #5f8b94;">Processo concluído</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Processo concluído</div>
                 <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     ✓ {taxa_valid_sobre_total:.1f}% do total
                 </div>
@@ -901,10 +903,10 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #5f8b94;">GARGALO</div>
+                <div style="font-size: 0.9rem; color: #6b7280;">GARGALO</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
                 <div style="font-weight: 500;">Em Revisão</div>
-                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando correções</div>
+                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando correções</div>
                 <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
                     ⚠️ {taxa_revisao_sobre_total:.1f}% em revisão
                 </div>
@@ -958,7 +960,7 @@ if not df_filtrado.empty:
                                     <span>Progresso do fluxo:</span>
                                     <strong>{((com_emp+val_emp)/total_emp*100):.1f}%</strong>
                                 </div>
-                                <div style="width: 100%; background: #cbd5e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
+                                <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
                                     <div style="width: {((com_emp+val_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
                                 </div>
                             </div>
@@ -1314,7 +1316,7 @@ if not df_filtrado.empty:
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
             </div>
-            <div style="color: #5f8b94;">
+            <div style="color: #6b7280;">
                 {len(df_filtrado)} registros • {fonte.upper()}
             </div>
         </div>
