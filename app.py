@@ -1243,9 +1243,6 @@ if not df_filtrado.empty:
 else:
     st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
     
-    st.markdown("---")
-    st.markdown(criar_componente_horarios(), unsafe_allow_html=True)
-    
     st.markdown(f"""
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
