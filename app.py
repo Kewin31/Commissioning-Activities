@@ -223,18 +223,16 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         return False
 
 # ============================================
-# CSS PERSONALIZADO - ESTILO ENERGISA COM FUNDO CINZA CLARO
+# CSS PERSONALIZADO - ESTILO ENERGISA
 # ============================================
 st.markdown("""
 <style>
-    /* Fontes e reset */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     .stApp {
         background-color: #f3f4f6;
     }
     
-    /* Header executivo com gradiente Energisa */
     .header-executivo {
         background: linear-gradient(135deg, #005973 0%, #028a9f 50%, #04d8d7 100%);
         padding: 1.5rem 2rem;
@@ -294,78 +292,6 @@ st.markdown("""
         backdrop-filter: blur(5px);
     }
     
-    /* Cards de métricas - Estilo Energisa */
-    .metric-card-executivo {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s ease;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .metric-card-executivo:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,89,115,0.1);
-        border-color: #04d8d7;
-    }
-    
-    .metric-card-executivo::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #005973, #04d8d7);
-    }
-    
-    .metric-titulo {
-        color: #374151;
-        font-size: 0.9rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.5rem;
-    }
-    
-    .metric-valor {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1.2;
-        color: #005973;
-    }
-    
-    .metric-sub {
-        color: #6b7280;
-        font-size: 0.85rem;
-        margin-top: 0.3rem;
-    }
-    
-    .metric-tendencia {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        padding: 0.2rem 0.5rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-    
-    .tendencia-positiva {
-        background: #e0f7fa;
-        color: #006c84;
-    }
-    
-    .tendencia-negativa {
-        background: #ffe6e6;
-        color: #c62828;
-    }
-    
-    /* Cards de fluxo */
     .fluxo-container {
         background: white;
         border-radius: 16px;
@@ -381,7 +307,6 @@ st.markdown("""
         border-color: #04d8d7;
     }
     
-    /* Cards comparativos */
     .company-card {
         background: white;
         border-radius: 16px;
@@ -421,15 +346,6 @@ st.markdown("""
         margin-top: 0.3rem;
     }
     
-    /* Estilo dos filtros */
-    .filters-section {
-        background: white;
-        border-radius: 16px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid #e5e7eb;
-    }
-    
     .filter-title {
         font-size: 0.85rem;
         font-weight: 600;
@@ -439,41 +355,6 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
     
-    .badge-status {
-        display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 30px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-    
-    .badge-desenvolvido { background: #E8F5E9; color: #2E7D32; }
-    .badge-comissionado { background: #E0F7FA; color: #006c84; }
-    .badge-validado { background: #E8EAF6; color: #283593; }
-    .badge-revisao { background: #FFF3E0; color: #F57C00; }
-    .badge-pendente { background: #FFEBEE; color: #C62828; }
-    
-    /* Tabs personalizadas */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        background-color: white;
-        padding: 0.5rem 2rem;
-        border-radius: 12px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        font-weight: 500;
-        color: #374151;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        color: #005973;
-        border-bottom-color: #04d8d7;
-    }
-    
-    /* Footer */
     .footer {
         background: white;
         padding: 1rem 2rem;
@@ -485,7 +366,6 @@ st.markdown("""
         border-top: 1px solid #e5e7eb;
     }
     
-    /* Botões */
     .stButton > button {
         background: linear-gradient(135deg, #005973, #028a9f);
         color: white;
@@ -496,7 +376,6 @@ st.markdown("""
         background: linear-gradient(135deg, #006c84, #04d8d7);
     }
     
-    /* Sidebar */
     .css-1d391kg, .css-1633s36 {
         background-color: #ffffff;
         border-right: 1px solid #e5e7eb;
@@ -505,23 +384,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# CORES ENERGISA OFICIAIS
+# CORES ENERGISA
 # ============================================
 CORES = {
-    'Desenvolvido': '#2E7D32',      # Verde escuro
-    'Comissionado': '#028a9f',      # Turquesa Energisa
-    'Validado': '#005973',           # Azul escuro Energisa
-    'Necessário Revisão': '#F57C00', # Laranja
-    'Pendente': '#C62828',           # Vermelho
-    'EMT': '#028a9f',                # Turquesa Energisa
-    'ETO': '#005973',                # Azul escuro Energisa
-    'background': '#f3f4f6',
-    'card': 'white',
-    'texto': '#1f2937',
-    'texto_secundario': '#6b7280',
-    'gradient_start': '#005973',
-    'gradient_mid': '#028a9f',
-    'gradient_end': '#04d8d7'
+    'Desenvolvido': '#2E7D32',
+    'Comissionado': '#028a9f',
+    'Validado': '#005973',
+    'Necessário Revisão': '#F57C00',
+    'Pendente': '#C62828',
+    'EMT': '#028a9f',
+    'ETO': '#005973',
 }
 
 # ============================================
@@ -535,22 +407,45 @@ def processar_dados(df):
     # Padronizar nomes das colunas
     df.columns = df.columns.str.strip()
     
-    # Mapeamento de colunas
+    # Mapeamento de colunas (SEM Responsável Comissionamento)
     mapeamento_colunas = {
-        'Cód.Equipamento': 'Codigo',
         'Cód. Equipamento': 'Codigo',
+        'Cód.Equipamento': 'Codigo',
+        'Título': 'Codigo',
         'Tipo Equipamento': 'Tipo',
         'Empresa': 'Empresa',
-        'Chamado de Desenvolvimento': 'Chamado',
+        'Chamado Desenvolvimento': 'Chamado',
         'Responsável Desenvolvimento': 'Resp_Dev',
-        'Responsável Comissionamento': 'Resp_Com',
-        'Responsável Auditoria': 'Resp_Audit'
+        'Responsável Auditoria': 'Resp_Audit',
+        'Status': 'Status',
+        'Criado': 'Criado',
+        'Modificado': 'Modificado',
+        'Modificado por': 'Modificado_por',
+        'Revisões': 'Revisoes'
     }
     
-    # Renomear colunas se existirem
+    # Renomear colunas
     for col_antiga, col_nova in mapeamento_colunas.items():
         if col_antiga in df.columns and col_nova not in df.columns:
             df.rename(columns={col_antiga: col_nova}, inplace=True)
+    
+    # CRIAR COLUNA VIRTUAL DE COMISSIONAMENTO
+    # Usar "Modificado por" como responsável pelo comissionamento
+    # Regra: Quando Status = Comissionado ou Validado, o responsável é quem fez a última modificação
+    if 'Modificado_por' in df.columns:
+        # Para itens que estão em Comissionado ou Validado, usar quem modificou
+        df['Resp_Com'] = df.apply(
+            lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
+            axis=1
+        )
+        
+        # Mostrar informação no dashboard
+        with st.sidebar:
+            st.info("ℹ️ Responsável Comissionamento = quem moveu o card para Comissionado/Validado")
+    else:
+        df['Resp_Com'] = 'Não atribuído'
+        with st.sidebar:
+            st.warning("⚠️ Campo 'Modificado por' não encontrado")
     
     # Preencher responsáveis não atribuídos
     for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
@@ -595,7 +490,13 @@ def processar_dados(df):
     # Processar datas
     for col in ['Criado', 'Modificado']:
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], format='%d/%m/%Y %H:%M', errors='coerce')
+            try:
+                df[col] = pd.to_datetime(df[col], format='%d/%m/%Y %H:%M', errors='coerce')
+            except:
+                try:
+                    df[col] = pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+                except:
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
     
     # Criar colunas de tempo
     if 'Criado' in df.columns:
@@ -654,28 +555,25 @@ def calcular_tendencias(df, periodo='mes'):
 def load_data():
     """Carrega dados do GitHub ou local"""
     try:
-        # Tentar carregar do GitHub primeiro
         df = load_data_from_github()
         
         if df is not None:
             return processar_dados(df), "github"
         
-        # Fallback para arquivo local
         caminho_local = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
         if os.path.exists(caminho_local):
             df = pd.read_csv(caminho_local, encoding='utf-8-sig')
             return processar_dados(df), "local"
         
-        # Dados de exemplo
         st.info("📊 Usando dados de exemplo para demonstração.")
         
         dados_exemplo = {
-            'Cód.Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
+            'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
             'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
             'Empresa': np.random.choice(['EMT', 'ETO'], 100),
             'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa'], 100),
-            'Responsável Comissionamento': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
             'Responsável Auditoria': np.random.choice(['Fernando Costa', 'Lucia Santos'], 100),
+            'Modificado por': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
             'Status': np.random.choice(['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão'], 100, 
                                       p=[0.5, 0.15, 0.25, 0.1]),
             'Criado': pd.date_range(start='2025-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
@@ -693,8 +591,7 @@ def load_data():
 def limpar_filtros():
     """Limpa todos os filtros do session_state"""
     for key in list(st.session_state.keys()):
-        if key.startswith('filtro_') or key in ['ano_selecionado', 'mes_selecionado', 'empresa_selecionada', 
-                                                 'tipo_selecionado', 'status_selecionado']:
+        if key.startswith('filtro_'):
             del st.session_state[key]
 
 # ============================================
@@ -827,8 +724,6 @@ with st.sidebar:
     if st.button("🔄 Limpar Filtros", use_container_width=True):
         limpar_filtros()
         st.rerun()
-    
-    # Estatísticas rápidas serão atualizadas após aplicar os filtros
 
 # ============================================
 # APLICAR FILTROS
@@ -836,7 +731,6 @@ with st.sidebar:
 
 df_filtrado = df.copy()
 
-# Aplicar filtros básicos
 if ano_selecionado != "Todos os Anos" and 'Ano' in df_filtrado.columns:
     df_filtrado = df_filtrado[df_filtrado['Ano'] == ano_selecionado]
 
@@ -1378,7 +1272,7 @@ if not df_filtrado.empty:
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.4 • Energisa
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.5 • Energisa
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
