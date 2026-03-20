@@ -74,6 +74,63 @@ def get_logo_base64():
     return None, None
 
 # ============================================
+# CONFIGURAÇÕES DO GITHUB
+# ============================================
+def get_github_config():
+    """Obtém configurações do GitHub do Streamlit Secrets"""
+    try:
+        if "GITHUB_TOKEN" not in st.secrets:
+            return None, None, None
+            
+        token = st.secrets["GITHUB_TOKEN"]
+        
+        if "GITHUB_REPO" not in st.secrets:
+            return token, None, None
+            
+        repo = st.secrets["GITHUB_REPO"]
+        
+        if '/' not in repo:
+            return token, None, None
+            
+        file_path = st.secrets.get("GITHUB_FILE_PATH", "data/Dados/Comissionamento AD - UNs.csv")
+        
+        return token, repo, file_path
+        
+    except Exception as e:
+        return None, None, None
+
+def load_data_from_github():
+    """Carrega dados do GitHub com tratamento de erro 401"""
+    try:
+        token, repo_name, file_path = get_github_config()
+        
+        if not token or not repo_name:
+            return None
+        
+        g = Github(token)
+        
+        try:
+            repo = g.get_repo(repo_name)
+            contents = repo.get_contents(file_path)
+            
+            file_content = base64.b64decode(contents.content).decode('utf-8')
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+                f.write(file_content)
+                temp_file = f.name
+            
+            df = pd.read_csv(temp_file, encoding='utf-8-sig')
+            os.unlink(temp_file)
+            
+            return df
+            
+        except GithubException as e:
+            return None
+                
+    except Exception as e:
+        return None
+
+# ============================================
 # CSS PERSONALIZADO - ESTILO ENERGISA
 # ============================================
 st.markdown("""
@@ -399,16 +456,19 @@ def calcular_tendencias(df, periodo='mes'):
 def load_data():
     """Carrega dados do GitHub ou local"""
     try:
+        # Tentar carregar do GitHub
         df = load_data_from_github()
         
         if df is not None:
             return processar_dados(df), "github"
         
+        # Tentar carregar do local
         caminho_local = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
         if os.path.exists(caminho_local):
             df = pd.read_csv(caminho_local, encoding='utf-8-sig')
             return processar_dados(df), "local"
         
+        # Usar dados de exemplo
         dados_exemplo = {
             'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
             'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
