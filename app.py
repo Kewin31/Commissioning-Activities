@@ -374,6 +374,27 @@ st.markdown("""
     .info-popup strong {
         color: #005973;
     }
+    
+    /* Estilo para métricas de destaque */
+    .metric-highlight {
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        border-radius: 12px;
+        padding: 0.75rem;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .metric-value-large {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -389,6 +410,9 @@ CORES = {
     'EMT': '#028a9f',
     'ETO': '#005973',
 }
+
+# Ordem prioritária para status (críticos primeiro)
+ORDEM_STATUS = ['Necessário Revisão', 'Pendente', 'Desenvolvido', 'Comissionado', 'Validado']
 
 # ============================================
 # FUNÇÕES DE PROCESSAMENTO
@@ -603,6 +627,124 @@ def mostrar_popup_calculos():
     </div>
     """
     return popup_html
+
+# ============================================
+# FUNÇÃO PARA CRIAR GRÁFICO DE PIZZA MELHORADO
+# ============================================
+def criar_grafico_pizza_status(df_filtrado):
+    """Cria gráfico de pizza com melhorias executivas"""
+    
+    # Contagem por status
+    status_counts = df_filtrado['Status'].value_counts().reset_index()
+    status_counts.columns = ['Status', 'Quantidade']
+    
+    # Ordenação personalizada: críticos primeiro
+    status_counts['Status'] = pd.Categorical(
+        status_counts['Status'], 
+        categories=ORDEM_STATUS, 
+        ordered=True
+    )
+    status_counts = status_counts.sort_values('Status')
+    
+    # Calcular percentuais para anotações
+    total_registros = status_counts['Quantidade'].sum()
+    
+    # Percentual de revisão (gargalo)
+    pct_revisao = (
+        status_counts[status_counts['Status'] == 'Necessário Revisão']['Quantidade'].sum() / total_registros * 100 
+        if total_registros > 0 else 0
+    )
+    
+    # Percentual de pendentes
+    pct_pendente = (
+        status_counts[status_counts['Status'] == 'Pendente']['Quantidade'].sum() / total_registros * 100 
+        if total_registros > 0 else 0
+    )
+    
+    # Percentual de validados (sucesso)
+    pct_validado = (
+        status_counts[status_counts['Status'] == 'Validado']['Quantidade'].sum() / total_registros * 100 
+        if total_registros > 0 else 0
+    )
+    
+    # Definir quais fatias devem ser "explodidas" (destacadas)
+    explode = [0.05 if status in ['Necessário Revisão', 'Pendente'] else 0 for status in status_counts['Status']]
+    
+    # Criar gráfico de pizza
+    fig_status = px.pie(
+        status_counts,
+        values='Quantidade',
+        names='Status',
+        title='Distribuição por Status',
+        color='Status',
+        color_discrete_map=CORES,
+        hole=0.4
+    )
+    
+    # Configurar rótulos e aparência
+    fig_status.update_traces(
+        textposition='outside',
+        textinfo='percent+label',
+        texttemplate='%{label}<br>%{percent:.1%}',
+        marker=dict(line=dict(color='white', width=2)),
+        pull=explode,
+        insidetextorientation='horizontal',
+        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent:.1%}%<extra></extra>'
+    )
+    
+    # Adicionar anotação principal com alerta de gargalo
+    if pct_revisao > 10:
+        msg_alerta = f"⚠️ ATENÇÃO: {pct_revisao:.1f}% dos equipamentos necessitam de revisão"
+        cor_alerta = '#F57C00'
+    elif pct_revisao > 5:
+        msg_alerta = f"📌 Alerta: {pct_revisao:.1f}% em revisão - Acompanhar"
+        cor_alerta = '#FFA726'
+    else:
+        msg_alerta = f"✅ Gargalo controlado: {pct_revisao:.1f}% em revisão"
+        cor_alerta = '#2E7D32'
+    
+    fig_status.add_annotation(
+        text=msg_alerta,
+        x=0.5,
+        y=-0.18,
+        xref='paper',
+        yref='paper',
+        showarrow=False,
+        font=dict(size=12, color=cor_alerta, weight='bold'),
+        bgcolor='rgba(255,255,255,0.9)',
+        bordercolor=cor_alerta,
+        borderwidth=1,
+        borderpad=4,
+        bordercolor=cor_alerta
+    )
+    
+    # Adicionar anotação secundária com resumo executivo
+    resumo_texto = f"✓ {pct_validado:.1f}% concluídos | ⚠️ {pct_pendente:.1f}% pendentes"
+    
+    fig_status.add_annotation(
+        text=resumo_texto,
+        x=0.5,
+        y=-0.28,
+        xref='paper',
+        yref='paper',
+        showarrow=False,
+        font=dict(size=10, color='#6b7280'),
+        bgcolor='rgba(255,255,255,0.8)',
+        borderwidth=0
+    )
+    
+    # Configurar layout final
+    fig_status.update_layout(
+        showlegend=False,
+        height=450,
+        margin=dict(t=50, b=90, l=20, r=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        title_font=dict(size=16, color='#1f2937'),
+        title_x=0.5
+    )
+    
+    return fig_status
 
 # ============================================
 # INTERFACE PRINCIPAL
@@ -932,37 +1074,14 @@ if not df_filtrado.empty:
                     </div>
                     """, unsafe_allow_html=True)
         
-        # Gráfico de distribuição
+        # Gráfico de distribuição - USANDO A FUNÇÃO MELHORADA
         st.markdown("### 📊 Distribuição do Portfólio")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            status_counts = df_filtrado['Status'].value_counts().reset_index()
-            status_counts.columns = ['Status', 'Quantidade']
-            
-            fig_status = px.pie(
-                status_counts,
-                values='Quantidade',
-                names='Status',
-                title='Distribuição por Status',
-                color='Status',
-                color_discrete_map=CORES,
-                hole=0.4
-            )
-            fig_status.update_traces(
-                textposition='inside', 
-                textinfo='percent+label',
-                texttemplate='%{label}<br>%{percent:.1%}',
-                marker=dict(line=dict(color='white', width=2))
-            )
-            fig_status.update_layout(
-                showlegend=False,
-                height=350,
-                margin=dict(t=50, b=10, l=10, r=10),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+            # Gráfico de pizza melhorado com função dedicada
+            fig_status = criar_grafico_pizza_status(df_filtrado)
             st.plotly_chart(fig_status, use_container_width=True)
         
         with col2:
@@ -980,14 +1099,19 @@ if not df_filtrado.empty:
                     color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
                     text='Quantidade'
                 )
-                fig_tipo.update_traces(textposition='outside')
+                fig_tipo.update_traces(
+                    textposition='outside',
+                    texttemplate='%{text}',
+                    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<extra></extra>'
+                )
                 fig_tipo.update_layout(
-                    height=350,
+                    height=450,
                     margin=dict(t=50, b=10, l=10, r=10),
                     xaxis_title="Quantidade",
                     yaxis_title="",
                     paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    title_font=dict(size=14, color='#1f2937')
                 )
                 st.plotly_chart(fig_tipo, use_container_width=True)
     
@@ -1010,13 +1134,18 @@ if not df_filtrado.empty:
                 title='Evolução Mensal por Status',
                 color_discrete_map=CORES
             )
+            fig_evolucao.update_traces(
+                marker=dict(size=8),
+                line=dict(width=2)
+            )
             fig_evolucao.update_layout(
                 height=400,
                 xaxis_title="Mês",
                 yaxis_title="Quantidade",
                 hovermode='x unified',
                 paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
+                plot_bgcolor='rgba(0,0,0,0)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_evolucao, use_container_width=True)
             
@@ -1030,13 +1159,14 @@ if not df_filtrado.empty:
                 barmode='stack',
                 text='Quantidade'
             )
-            fig_barras.update_traces(textposition='inside')
+            fig_barras.update_traces(textposition='inside', texttemplate='%{text}')
             fig_barras.update_layout(
                 height=400,
                 xaxis_title="Mês",
                 yaxis_title="Quantidade",
                 paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
+                plot_bgcolor='rgba(0,0,0,0)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_barras, use_container_width=True)
             
@@ -1096,7 +1226,8 @@ if not df_filtrado.empty:
                     height=400,
                     hovermode='x unified',
                     paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
                 
                 st.plotly_chart(fig_taxas, use_container_width=True)
@@ -1143,7 +1274,11 @@ if not df_filtrado.empty:
                         color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
                         text='Quantidade'
                     )
-                    fig_ranking.update_traces(textposition='outside')
+                    fig_ranking.update_traces(
+                        textposition='outside',
+                        texttemplate='%{text}',
+                        hovertemplate='<b>%{y}</b><br>Atividades: %{x}<extra></extra>'
+                    )
                     fig_ranking.update_layout(
                         height=400,
                         xaxis_title="Quantidade de Atividades",
@@ -1181,7 +1316,12 @@ if not df_filtrado.empty:
                             color_continuous_scale=['#e8f5e9', '#2e7d32'],
                             text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
                         )
-                        fig_sucesso.update_traces(textposition='outside')
+                        fig_sucesso.update_traces(
+                            textposition='outside',
+                            texttemplate='%{text}',
+                            hovertemplate='<b>%{y}</b><br>Taxa de Sucesso: %{x:.1f}%<br>Validados: %{customdata[0]}/%{customdata[1]}<extra></extra>',
+                            customdata=df_sucesso[['Validados', 'Total']].values
+                        )
                         fig_sucesso.update_layout(
                             height=400,
                             xaxis_title="Taxa de Sucesso (%)",
@@ -1210,13 +1350,14 @@ if not df_filtrado.empty:
                         color_discrete_map=CORES,
                         text='Quantidade'
                     )
-                    fig_dist.update_traces(textposition='inside')
+                    fig_dist.update_traces(textposition='inside', texttemplate='%{text}')
                     fig_dist.update_layout(
                         height=450,
                         xaxis_tickangle=45,
                         xaxis_title="",
                         paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)'
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                     )
                     st.plotly_chart(fig_dist, use_container_width=True)
     
@@ -1256,20 +1397,20 @@ if not df_filtrado.empty:
                 percentuais.append(f"{percentual:.1f}%")
             
             status_counts['Percentual'] = percentuais
-            st.dataframe(status_counts)
+            st.dataframe(status_counts, use_container_width=True)
             
             if 'Tipo' in df_filtrado.columns:
                 st.markdown("**Distribuição por Tipo de Equipamento:**")
                 tipo_counts = df_filtrado['Tipo'].value_counts().reset_index()
                 tipo_counts.columns = ['Tipo', 'Quantidade']
-                st.dataframe(tipo_counts.head(15))
+                st.dataframe(tipo_counts.head(15), use_container_width=True)
     
     # FOOTER
     st.markdown(f"""
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.5 • Energisa
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
