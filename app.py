@@ -421,6 +421,24 @@ st.markdown("""
         margin-top: 0.3rem;
     }
     
+    /* Estilo dos filtros */
+    .filters-section {
+        background: white;
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .filter-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
     .badge-status {
         display: inline-block;
         padding: 0.3rem 0.8rem;
@@ -583,6 +601,11 @@ def processar_dados(df):
     if 'Criado' in df.columns:
         df['Ano'] = df['Criado'].dt.year
         df['Mes'] = df['Criado'].dt.month
+        df['Mes_Nome'] = df['Criado'].dt.month.map({
+            1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+            5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+            9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+        })
         df['Mes_Ano'] = df['Criado'].dt.strftime('%Y-%m')
         df['Data'] = df['Criado'].dt.date
     
@@ -707,113 +730,127 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# SIDEBAR
+# ============================================
+# SIDEBAR COM FILTROS NO FORMATO DA IMAGEM
+# ============================================
+
 with st.sidebar:
-    st.markdown("### 🎯 Painel de Controle")
-    
-    # Fonte de dados
-    st.markdown("**📊 Conexão GitHub**")
-    conectado, msg = test_github_connection()
-    if conectado:
-        st.success("✅ " + msg)
-    else:
-        st.warning("⚠️ " + msg)
-        st.info("💡 O dashboard está funcionando com dados locais.")
-    
-    st.markdown("---")
-    
-    # Filtros principais
-    st.markdown("### 🔍 Filtros")
-    
-    # Período
-    st.markdown("**📅 Período**")
-    
-    opcao_periodo = st.radio(
-        "Selecionar período:",
-        options=['Últimos 30 dias', 'Últimos 90 dias', 'Ano atual', 'Todos', 'Personalizado'],
-        index=0,
-        horizontal=True
-    )
-    
-    data_inicio = None
-    data_fim = None
-    
-    if opcao_periodo == 'Personalizado':
-        col1, col2 = st.columns(2)
-        with col1:
-            data_inicio = st.date_input("De", value=datetime.now() - timedelta(days=30))
-        with col2:
-            data_fim = st.date_input("Até", value=datetime.now())
-    elif opcao_periodo == 'Últimos 30 dias':
-        data_inicio = datetime.now() - timedelta(days=30)
-        data_fim = datetime.now()
-    elif opcao_periodo == 'Últimos 90 dias':
-        data_inicio = datetime.now() - timedelta(days=90)
-        data_fim = datetime.now()
-    elif opcao_periodo == 'Ano atual':
-        data_inicio = datetime(datetime.now().year, 1, 1)
-        data_fim = datetime.now()
-    
-    st.markdown("**🏢 Empresa**")
-    empresas = st.multiselect(
-        "Selecionar empresas:",
-        options=sorted(df['Empresa'].unique()),
-        default=sorted(df['Empresa'].unique())
-    )
-    
-    st.markdown("**🔧 Tipo de Equipamento**")
-    if 'Tipo' in df.columns:
-        tipos = st.multiselect(
-            "Selecionar tipos:",
-            options=sorted(df['Tipo'].unique()),
-            default=[]
-        )
-    else:
-        tipos = []
-    
-    # Aplicar filtros
-    df_filtrado = df.copy()
-    
-    if empresas:
-        df_filtrado = df_filtrado[df_filtrado['Empresa'].isin(empresas)]
-    
-    if tipos:
-        df_filtrado = df_filtrado[df_filtrado['Tipo'].isin(tipos)]
-    
-    if data_inicio and data_fim and 'Criado' in df_filtrado.columns:
-        df_filtrado = df_filtrado[
-            (df_filtrado['Criado'].dt.date >= data_inicio.date()) &
-            (df_filtrado['Criado'].dt.date <= data_fim.date())
-        ]
-    
-    # Estatísticas rápidas
-    st.markdown("---")
-    st.markdown("### 📊 Visão Rápida")
-    
-    total = len(df_filtrado)
-    em_andamento = len(df_filtrado[df_filtrado['Status'].isin(['Desenvolvido', 'Comissionado'])])
-    finalizados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
-    revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
-    
-    st.markdown(f"""
-    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f; border: 1px solid #e5e7eb;">
-        <div style="display: flex; justify-content: space-between;">
-            <span>📦 Total:</span> <strong>{total}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>⚙️ Em andamento:</span> <strong>{em_andamento}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>✅ Finalizados:</span> <strong>{finalizados}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>📝 Em revisão:</span> <strong>{revisao}</strong>
-        </div>
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h3 style="color: #005973; margin-bottom: 0.5rem;">🎯 Filtros</h3>
+        <p style="color: #6b7280; font-size: 0.85rem;">Selecione os critérios para análise</p>
     </div>
     """, unsafe_allow_html=True)
     
+    # ============================================
+    # FILTRO DE ANO (formato da imagem)
+    # ============================================
+    st.markdown('<div class="filter-title">📅 Ano</div>', unsafe_allow_html=True)
+    
+    # Obter anos disponíveis
+    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
+    anos_opcoes = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
+    
+    ano_selecionado = st.selectbox(
+        "Selecione o ano",
+        options=anos_opcoes,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    # ============================================
+    # FILTRO DE MÊS (formato da imagem com nomes em português)
+    # ============================================
+    st.markdown('<div class="filter-title" style="margin-top: 1rem;">📆 Mês</div>', unsafe_allow_html=True)
+    
+    meses_nomes = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    
+    mes_selecionado = st.selectbox(
+        "Selecione o mês",
+        options=meses_nomes,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
     st.markdown("---")
     
+    # ============================================
+    # FILTRO DE EMPRESA
+    # ============================================
+    st.markdown('<div class="filter-title">🏢 Empresa</div>', unsafe_allow_html=True)
+    
+    empresas_opcoes = ["Todas"] + sorted(df['Empresa'].unique().tolist())
+    empresa_selecionada = st.selectbox(
+        "Selecione a empresa",
+        options=empresas_opcoes,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    # ============================================
+    # FILTRO DE TIPO DE EQUIPAMENTO
+    # ============================================
+    st.markdown('<div class="filter-title">🔧 Tipo Equipamento</div>', unsafe_allow_html=True)
+    
+    if 'Tipo' in df.columns:
+        tipos_opcoes = ["Todos"] + sorted(df['Tipo'].unique().tolist())
+        tipo_selecionado = st.selectbox(
+            "Selecione o tipo",
+            options=tipos_opcoes,
+            index=0,
+            label_visibility="collapsed"
+        )
+    else:
+        tipo_selecionado = "Todos"
+    
+    # ============================================
+    # FILTRO DE STATUS
+    # ============================================
+    st.markdown('<div class="filter-title">📊 Status</div>', unsafe_allow_html=True)
+    
+    status_opcoes = ["Todos"] + sorted(df['Status'].unique().tolist())
+    status_selecionado = st.selectbox(
+        "Selecione o status",
+        options=status_opcoes,
+        index=0,
+        label_visibility="collapsed"
+    )
+    
+    # ============================================
+    # FILTRO DE RESPONSÁVEL
+    # ============================================
+    st.markdown('<div class="filter-title">👤 Responsável</div>', unsafe_allow_html=True)
+    
+    tipo_responsavel = st.radio(
+        "Tipo de responsável:",
+        options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
+        horizontal=True,
+        key='tipo_responsavel_filtro'
+    )
+    
+    mapa_colunas_resp = {
+        'Desenvolvimento': 'Resp_Dev',
+        'Comissionamento': 'Resp_Com',
+        'Auditoria': 'Resp_Audit'
+    }
+    
+    col_resp_filtro = mapa_colunas_resp[tipo_responsavel]
+    
+    if col_resp_filtro in df.columns:
+        responsaveis_opcoes = ["Todos"] + sorted(df[col_resp_filtro].unique().tolist())
+        responsavel_selecionado = st.selectbox(
+            f"Selecione o responsável de {tipo_responsavel}",
+            options=responsaveis_opcoes,
+            index=0,
+            label_visibility="collapsed"
+        )
+    else:
+        responsavel_selecionado = "Todos"
+    
+    st.markdown("---")
+    
+    # Botões de ação
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 Limpar Filtros", use_container_width=True):
@@ -828,6 +865,66 @@ with st.sidebar:
                 "text/csv",
                 use_container_width=True
             )
+
+# ============================================
+# APLICAR FILTROS
+# ============================================
+
+df_filtrado = df.copy()
+
+# Filtro de Ano
+if ano_selecionado != "Todos os Anos" and 'Ano' in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado['Ano'] == ano_selecionado]
+
+# Filtro de Mês
+if mes_selecionado != "Todos os Meses" and 'Mes_Nome' in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado['Mes_Nome'] == mes_selecionado]
+
+# Filtro de Empresa
+if empresa_selecionada != "Todas":
+    df_filtrado = df_filtrado[df_filtrado['Empresa'] == empresa_selecionada]
+
+# Filtro de Tipo de Equipamento
+if tipo_selecionado != "Todos" and 'Tipo' in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado['Tipo'] == tipo_selecionado]
+
+# Filtro de Status
+if status_selecionado != "Todos":
+    df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
+
+# Filtro de Responsável
+if responsavel_selecionado != "Todos" and col_resp_filtro in df_filtrado.columns:
+    df_filtrado = df_filtrado[df_filtrado[col_resp_filtro] == responsavel_selecionado]
+
+# ============================================
+# ESTATÍSTICAS RÁPIDAS NA SIDEBAR
+# ============================================
+
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 📊 Visão Rápida")
+    
+    total_filtrado = len(df_filtrado)
+    em_andamento = len(df_filtrado[df_filtrado['Status'].isin(['Desenvolvido', 'Comissionado'])])
+    finalizados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
+    revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
+    
+    st.markdown(f"""
+    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f; border: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between;">
+            <span>📦 Total:</span> <strong>{total_filtrado}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>⚙️ Em andamento:</span> <strong>{em_andamento}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>✅ Finalizados:</span> <strong>{finalizados}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span>📝 Em revisão:</span> <strong>{revisao}</strong>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ============================================
 # PAINEL PRINCIPAL
@@ -1305,7 +1402,7 @@ if not df_filtrado.empty:
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.2 • Energisa
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.3 • Energisa
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
