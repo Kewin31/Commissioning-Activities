@@ -782,7 +782,7 @@ st.markdown(f"""
             <p>Acompanhamento de Comissionamento das unidades - EMT | ETO</p>
         </div>
         <div class="header-data">
-            📅 {datetime.now().strftime('%d/%m/%Y')} • Fonte: {fonte.upper()}
+            📅 {datetime.now().strftime('%d/%m/%Y')}
         </div>
     </div>
 </div>
