@@ -112,18 +112,18 @@ def test_github_connection():
             return True, f"Conectado como {user.login}"
         except GithubException as e:
             if e.status == 401:
-                return False, "❌ Token inválido ou expirado. Configure um novo token."
+                return False, "Token inválido ou expirado"
             elif e.status == 404:
-                return False, f"❌ Repositório '{repo_name}' não encontrado."
+                return False, f"Repositório '{repo_name}' não encontrado"
             else:
-                return False, f"❌ Erro GitHub: {e.status}"
+                return False, f"Erro GitHub: {e.status}"
         
     except GithubException as e:
         if e.status == 401:
-            return False, "❌ Token inválido ou expirado. Configure um novo token."
-        return False, f"❌ Erro de conexão: {str(e)}"
+            return False, "Token inválido ou expirado"
+        return False, f"Erro de conexão: {str(e)}"
     except Exception as e:
-        return False, f"❌ Erro: {str(e)}"
+        return False, f"Erro: {str(e)}"
 
 def load_data_from_github():
     """Carrega dados do GitHub com tratamento de erro 401"""
@@ -151,18 +151,9 @@ def load_data_from_github():
             return df
             
         except GithubException as e:
-            if e.status == 401:
-                st.warning("⚠️ Token GitHub inválido. Usando dados locais.")
-                return None
-            elif e.status == 404:
-                st.warning("⚠️ Arquivo não encontrado no GitHub. Usando dados locais.")
-                return None
-            else:
-                st.warning(f"⚠️ Erro GitHub: {e.status}. Usando dados locais.")
-                return None
+            return None
                 
     except Exception as e:
-        st.warning(f"⚠️ Erro ao carregar do GitHub: {str(e)}. Usando dados locais.")
         return None
 
 def atualizar_dados_github(arquivo_upload, branch="main"):
@@ -171,11 +162,9 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         token, repo_name, file_path = get_github_config()
         
         if not token or not repo_name:
-            st.error("❌ Configurações do GitHub incompletas.")
             return False
         
         if arquivo_upload is None:
-            st.error("❌ Nenhum arquivo selecionado.")
             return False
         
         g = Github(token)
@@ -183,15 +172,7 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         try:
             repo = g.get_repo(repo_name)
         except GithubException as e:
-            if e.status == 401:
-                st.error("❌ Token inválido ou expirado. Configure um novo token.")
-                return False
-            elif e.status == 404:
-                st.error(f"❌ Repositório '{repo_name}' não encontrado.")
-                return False
-            else:
-                st.error(f"❌ Erro GitHub: {e.status}")
-                return False
+            return False
         
         file_content = arquivo_upload.read()
         
@@ -213,13 +194,11 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
                     branch=branch
                 )
             else:
-                raise e
+                return False
         
-        st.success(f"✅ Arquivo atualizado no GitHub!")
         return True
         
     except Exception as e:
-        st.error(f"❌ Erro ao atualizar GitHub: {str(e)}")
         return False
 
 # ============================================
@@ -380,6 +359,21 @@ st.markdown("""
         background-color: #ffffff;
         border-right: 1px solid #e5e7eb;
     }
+    
+    /* Estilo para o popup de informações */
+    .info-popup {
+        background-color: #f8fafc;
+        border-left: 4px solid #028a9f;
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
+        color: #1f2937;
+    }
+    
+    .info-popup strong {
+        color: #005973;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -416,7 +410,7 @@ def processar_dados(df):
         'Tipo Equipamento': 'Tipo',
         'Empresa': 'Empresa',
         'Responsável Desenvolvimento': 'Resp_Dev',
-        'Responsável Comissionamento': 'Resp_Com',  # AGORA ESTÁ SENDO CAPTURADO!
+        'Responsável Comissionamento': 'Resp_Com',
         'Responsável Auditoria': 'Resp_Audit',
         'Status': 'Status',
         'Criado': 'Criado',
@@ -425,27 +419,20 @@ def processar_dados(df):
         'Revisões': 'Revisoes'
     }
     
-    # Renomear colunas
+    # Renomear colunas (silenciosamente, sem mensagens)
     for col_antiga, col_nova in mapeamento_colunas.items():
         if col_antiga in df.columns and col_nova not in df.columns:
             df.rename(columns={col_antiga: col_nova}, inplace=True)
-            with st.sidebar:
-                st.success(f"✅ Renomeado: '{col_antiga}' → '{col_nova}'")
     
-    # Verificar se a coluna Resp_Com foi encontrada
-    with st.sidebar:
-        if 'Resp_Com' in df.columns:
-            st.success(f"✅ Coluna 'Resp_Com' encontrada! {df['Resp_Com'].nunique()} valores únicos")
+    # Se a coluna Resp_Com não existir, criar fallback silencioso
+    if 'Resp_Com' not in df.columns:
+        if 'Modificado_por' in df.columns:
+            df['Resp_Com'] = df.apply(
+                lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
+                axis=1
+            )
         else:
-            st.warning("⚠️ Coluna 'Resp_Com' não encontrada. Criando fallback.")
-            # Fallback: usar Modificado por para itens comissionados/validados
-            if 'Modificado_por' in df.columns:
-                df['Resp_Com'] = df.apply(
-                    lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
-                    axis=1
-                )
-            else:
-                df['Resp_Com'] = 'Não atribuído'
+            df['Resp_Com'] = 'Não atribuído'
     
     # Preencher responsáveis não atribuídos
     for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
@@ -565,8 +552,7 @@ def load_data():
             df = pd.read_csv(caminho_local, encoding='utf-8-sig')
             return processar_dados(df), "local"
         
-        st.info("📊 Usando dados de exemplo para demonstração.")
-        
+        # Dados de exemplo
         dados_exemplo = {
             'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
             'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
@@ -582,7 +568,6 @@ def load_data():
         return processar_dados(df), "exemplo"
         
     except Exception as e:
-        st.error(f"❌ Erro ao carregar dados: {str(e)}")
         return None, "erro"
 
 # ============================================
@@ -593,6 +578,31 @@ def limpar_filtros():
     for key in list(st.session_state.keys()):
         if key.startswith('filtro_'):
             del st.session_state[key]
+
+# ============================================
+# FUNÇÃO PARA POPUP DE INFORMAÇÕES
+# ============================================
+def mostrar_popup_calculos():
+    """Mostra popup com explicação dos cálculos"""
+    popup_html = """
+    <div class="info-popup">
+        <strong>📊 Como as taxas são calculadas:</strong><br><br>
+        <strong>ETAPA 1 → 2:</strong> (Comissionados + Validados) / Desenvolvidos × 100<br>
+        <em>Percentual do desenvolvimento que já passou pelo comissionamento</em><br><br>
+        <strong>ETAPA 2 → 3:</strong> Validados / (Comissionados + Validados) × 100<br>
+        <em>Percentual dos equipamentos comissionados que já foram validados</em><br><br>
+        <strong>ETAPA 3:</strong> Validados / Total do Fluxo × 100<br>
+        <em>Percentual de equipamentos validados sobre o total do fluxo</em><br><br>
+        <strong>GARGALO:</strong> Em Revisão / Total do Fluxo × 100<br>
+        <em>Percentual de equipamentos que necessitam de revisão</em><br><br>
+        <strong>Legenda:</strong><br>
+        • <span style="color:#2E7D32;">Desenvolvidos</span>: Aguardando comissionamento<br>
+        • <span style="color:#028a9f;">Aguardando Validação</span>: Comissionados pendentes<br>
+        • <span style="color:#005973;">Validados</span>: Processo concluído<br>
+        • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
+    </div>
+    """
+    return popup_html
 
 # ============================================
 # INTERFACE PRINCIPAL
@@ -801,6 +811,10 @@ if not df_filtrado.empty:
     
     # VISUALIZAÇÃO DO FLUXO
     st.markdown("### 🔄 Fluxo de Validação")
+    
+    # Botão de informação com popup
+    with st.expander("ℹ️ Entenda os cálculos", expanded=False):
+        st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -1105,28 +1119,17 @@ if not df_filtrado.empty:
         
         col_resp = mapa_colunas[tipo_resp]
         
-        # Verificar se a coluna existe no DataFrame
         if col_resp not in df_filtrado.columns:
             st.warning(f"⚠️ Coluna '{col_resp}' não encontrada nos dados.")
         else:
-            # Contar quantos registros têm responsável atribuído (diferente de "Não atribuído")
             df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
             
-            # Verificar se a coluna está vazia
             if df_resp.empty:
-                st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado. Verifique se os dados estão preenchidos na coluna '{col_resp}'.")
-                
-                # Mostrar amostra dos dados para debug
-                with st.expander("🔍 Verificar dados disponíveis"):
-                    st.write(f"**Coluna:** {col_resp}")
-                    st.write(f"**Valores únicos na coluna:** {df_filtrado[col_resp].unique().tolist()}")
-                    st.write(f"**Total de registros:** {len(df_filtrado)}")
-                    st.write(f"**Registros com 'Não atribuído':** {len(df_filtrado[df_filtrado[col_resp] == 'Não atribuído'])}")
+                st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado.")
             else:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    # Ranking de quantidade
                     ranking = df_resp[col_resp].value_counts().head(10).reset_index()
                     ranking.columns = ['Responsável', 'Quantidade']
                     
@@ -1151,7 +1154,6 @@ if not df_filtrado.empty:
                     st.plotly_chart(fig_ranking, use_container_width=True)
                 
                 with col2:
-                    # Taxa de sucesso (itens validados)
                     sucesso = []
                     for resp in ranking['Responsável'].head(10):
                         df_resp_item = df_resp[df_resp[col_resp] == resp]
@@ -1189,10 +1191,7 @@ if not df_filtrado.empty:
                             plot_bgcolor='rgba(0,0,0,0)'
                         )
                         st.plotly_chart(fig_sucesso, use_container_width=True)
-                    else:
-                        st.info("Não foi possível calcular a taxa de sucesso para os responsáveis.")
                 
-                # Distribuição de status por responsável
                 st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
                 
                 top_resp = ranking['Responsável'].head(8).tolist()
@@ -1220,8 +1219,6 @@ if not df_filtrado.empty:
                         plot_bgcolor='rgba(0,0,0,0)'
                     )
                     st.plotly_chart(fig_dist, use_container_width=True)
-                else:
-                    st.info("Nenhum dado disponível para distribuição de status.")
     
     with tab4:
         st.markdown("### 📋 Detalhamento dos Registros")
