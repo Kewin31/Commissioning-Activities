@@ -621,7 +621,7 @@ def mostrar_popup_calculos():
         <em>Percentual de equipamentos que necessitam de revisão</em><br><br>
         <strong>Legenda:</strong><br>
         • <span style="color:#2E7D32;">Desenvolvidos</span>: Aguardando comissionamento<br>
-        • <span style="color:#028a9f;">Aguardando Validação</span>: Comissionados pendentes<br>
+        • <span style="color:#028a9f;">Comissionados</span>: Aguardando Validação<br>
         • <span style="color:#005973;">Validados</span>: Processo concluído<br>
         • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
     </div>
