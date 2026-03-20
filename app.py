@@ -107,7 +107,6 @@ def test_github_connection():
         g = Github(token)
         user = g.get_user()
         
-        # Tentar acessar o repositório
         try:
             repo = g.get_repo(repo_name)
             return True, f"Conectado como {user.login}"
@@ -224,7 +223,7 @@ def atualizar_dados_github(arquivo_upload, branch="main"):
         return False
 
 # ============================================
-# CSS PERSONALIZADO - ESTILO EXECUTIVO
+# CSS PERSONALIZADO - ESTILO ENERGISA
 # ============================================
 st.markdown("""
 <style>
@@ -232,16 +231,16 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     .stApp {
-        background-color: #f8fafc;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e6f3f5 100%);
     }
     
-    /* Header executivo com logo */
+    /* Header executivo com gradiente Energisa */
     .header-executivo {
-        background: linear-gradient(135deg, #0B2A4A 0%, #1E3A5F 100%);
+        background: linear-gradient(135deg, #005973 0%, #028a9f 50%, #04d8d7 100%);
         padding: 1.5rem 2rem;
         border-radius: 0 0 20px 20px;
         margin: -1rem -1rem 2rem -1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 20px rgba(0,89,115,0.2);
     }
     
     .header-conteudo {
@@ -276,17 +275,18 @@ st.markdown("""
         font-weight: 600;
         margin: 0;
         letter-spacing: -0.02em;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
     .header-titulo p {
-        color: rgba(255,255,255,0.8);
+        color: rgba(255,255,255,0.9);
         margin: 0.2rem 0 0 0;
         font-size: 0.95rem;
     }
     
     .header-data {
         margin-left: auto;
-        background: rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.2);
         padding: 0.5rem 1rem;
         border-radius: 30px;
         color: white;
@@ -294,13 +294,13 @@ st.markdown("""
         backdrop-filter: blur(5px);
     }
     
-    /* Cards de métricas - Estilo executivo */
+    /* Cards de métricas - Estilo Energisa */
     .metric-card-executivo {
         background: white;
         padding: 1.5rem;
         border-radius: 16px;
-        box-shadow: 0 4px 15px rgba(0,20,40,0.05);
-        border: 1px solid #eef2f6;
+        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
+        border: 1px solid rgba(4,216,215,0.2);
         transition: all 0.2s ease;
         height: 100%;
         position: relative;
@@ -309,12 +309,22 @@ st.markdown("""
     
     .metric-card-executivo:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,40,80,0.1);
-        border-color: #cbd5e0;
+        box-shadow: 0 8px 25px rgba(0,89,115,0.15);
+        border-color: #04d8d7;
+    }
+    
+    .metric-card-executivo::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #005973, #04d8d7);
     }
     
     .metric-titulo {
-        color: #4a5568;
+        color: #2c5f6b;
         font-size: 0.9rem;
         font-weight: 500;
         text-transform: uppercase;
@@ -326,10 +336,11 @@ st.markdown("""
         font-size: 2.5rem;
         font-weight: 700;
         line-height: 1.2;
+        color: #005973;
     }
     
     .metric-sub {
-        color: #718096;
+        color: #5f8b94;
         font-size: 0.85rem;
         margin-top: 0.3rem;
     }
@@ -345,8 +356,8 @@ st.markdown("""
     }
     
     .tendencia-positiva {
-        background: #e6f7e6;
-        color: #2e7d32;
+        background: #e0f7fa;
+        color: #006c84;
     }
     
     .tendencia-negativa {
@@ -359,17 +370,31 @@ st.markdown("""
         background: white;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0,20,40,0.05);
+        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
         margin-bottom: 2rem;
+        border: 1px solid rgba(4,216,215,0.2);
+        transition: all 0.2s;
     }
     
-    /* Cards comparativos com descrição */
+    .fluxo-container:hover {
+        box-shadow: 0 8px 25px rgba(0,89,115,0.12);
+        border-color: #04d8d7;
+    }
+    
+    /* Cards comparativos */
     .company-card {
         background: white;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 15px rgba(0,89,115,0.08);
         height: 100%;
+        border: 1px solid rgba(4,216,215,0.2);
+        transition: all 0.2s;
+    }
+    
+    .company-card:hover {
+        box-shadow: 0 8px 25px rgba(0,89,115,0.12);
+        border-color: #04d8d7;
     }
     
     .company-title {
@@ -377,7 +402,7 @@ st.markdown("""
         font-weight: 600;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid #e0f7fa;
     }
     
     .company-metric {
@@ -392,7 +417,7 @@ st.markdown("""
     
     .company-metric-label {
         font-size: 0.8rem;
-        color: #718096;
+        color: #5f8b94;
         margin-top: 0.3rem;
     }
     
@@ -405,7 +430,7 @@ st.markdown("""
     }
     
     .badge-desenvolvido { background: #E8F5E9; color: #2E7D32; }
-    .badge-comissionado { background: #E3F2FD; color: #1976D2; }
+    .badge-comissionado { background: #E0F7FA; color: #006c84; }
     .badge-validado { background: #E8EAF6; color: #283593; }
     .badge-revisao { background: #FFF3E0; color: #F57C00; }
     .badge-pendente { background: #FFEBEE; color: #C62828; }
@@ -421,7 +446,12 @@ st.markdown("""
     
     .stTabs [data-baseweb="tab"] {
         font-weight: 500;
-        color: #4a5568;
+        color: #2c5f6b;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #005973;
+        border-bottom-color: #04d8d7;
     }
     
     /* Footer */
@@ -432,26 +462,46 @@ st.markdown("""
         margin-top: 3rem;
         box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
         font-size: 0.85rem;
-        color: #718096;
+        color: #5f8b94;
+        border-top: 1px solid rgba(4,216,215,0.3);
+    }
+    
+    /* Botões */
+    .stButton > button {
+        background: linear-gradient(135deg, #005973, #028a9f);
+        color: white;
+        border: none;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #006c84, #04d8d7);
+    }
+    
+    /* Sidebar */
+    .css-1d391kg, .css-1633s36 {
+        background: linear-gradient(180deg, #f0f9ff 0%, #e6f3f5 100%);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================
-# CORES EXECUTIVAS
+# CORES ENERGISA OFICIAIS
 # ============================================
 CORES = {
     'Desenvolvido': '#2E7D32',      # Verde escuro
-    'Comissionado': '#1976D2',      # Azul
-    'Validado': '#283593',           # Azul escuro
+    'Comissionado': '#028a9f',      # Turquesa Energisa
+    'Validado': '#005973',           # Azul escuro Energisa
     'Necessário Revisão': '#F57C00', # Laranja
     'Pendente': '#C62828',           # Vermelho
-    'EMT': '#0B2A4A',
-    'ETO': '#1E3A5F',
-    'background': '#f8fafc',
+    'EMT': '#028a9f',                # Turquesa Energisa
+    'ETO': '#005973',                # Azul escuro Energisa
+    'background': '#f0f9ff',
     'card': 'white',
-    'texto': '#2d3748',
-    'texto_secundario': '#718096'
+    'texto': '#2c5f6b',
+    'texto_secundario': '#5f8b94',
+    'gradient_start': '#005973',
+    'gradient_mid': '#028a9f',
+    'gradient_end': '#04d8d7'
 }
 
 # ============================================
@@ -646,7 +696,7 @@ st.markdown(f"""
         </div>
         <div class="header-titulo">
             <h1>Radar de Comissionamento SCADA</h1>
-            <p>Acompanhamento Executivo • Desenvolvimento → Validação</p>
+            <p>Cliente é tudo pra gente • Acompanhamento Executivo • Desenvolvimento → Validação</p>
         </div>
         <div class="header-data">
             📅 {datetime.now().strftime('%d/%m/%Y')} • Fonte: {fonte.upper()}
@@ -744,7 +794,7 @@ with st.sidebar:
     revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
     
     st.markdown(f"""
-    <div style="background: white; padding: 1rem; border-radius: 12px;">
+    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f;">
         <div style="display: flex; justify-content: space-between;">
             <span>📦 Total:</span> <strong>{total}</strong>
         </div>
@@ -806,11 +856,11 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #718096;">ETAPA 1</div>
+                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 1</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos}</div>
                 <div style="font-weight: 500;">Desenvolvidos</div>
-                <div style="font-size: 0.85rem; color: #718096;">Aguardando comissionamento</div>
-                <div style="margin-top: 0.5rem; background: #f1f8f1; border-radius: 20px; padding: 0.3rem;">
+                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando comissionamento</div>
+                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     → {taxa_desenv_para_comiss:.1f}% para comissionar
                 </div>
             </div>
@@ -821,11 +871,11 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #718096;">ETAPA 2</div>
+                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 2</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados}</div>
                 <div style="font-weight: 500;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #718096;">Aguardando validação</div>
-                <div style="margin-top: 0.5rem; background: #e3f2fd; border-radius: 20px; padding: 0.3rem;">
+                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando validação</div>
+                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     → {taxa_comiss_para_valid:.1f}% validados
                 </div>
             </div>
@@ -836,11 +886,11 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #718096;">ETAPA 3</div>
+                <div style="font-size: 0.9rem; color: #5f8b94;">ETAPA 3</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados}</div>
                 <div style="font-weight: 500;">Validados</div>
-                <div style="font-size: 0.85rem; color: #718096;">Processo concluído</div>
-                <div style="margin-top: 0.5rem; background: #e8eaf6; border-radius: 20px; padding: 0.3rem;">
+                <div style="font-size: 0.85rem; color: #5f8b94;">Processo concluído</div>
+                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
                     ✓ {taxa_valid_sobre_total:.1f}% do total
                 </div>
             </div>
@@ -851,10 +901,10 @@ if not df_filtrado.empty:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
             <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #718096;">GARGALO</div>
+                <div style="font-size: 0.9rem; color: #5f8b94;">GARGALO</div>
                 <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
                 <div style="font-weight: 500;">Em Revisão</div>
-                <div style="font-size: 0.85rem; color: #718096;">Aguardando correções</div>
+                <div style="font-size: 0.85rem; color: #5f8b94;">Aguardando correções</div>
                 <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
                     ⚠️ {taxa_revisao_sobre_total:.1f}% em revisão
                 </div>
@@ -890,7 +940,7 @@ if not df_filtrado.empty:
                         <div class="company-title" style="color: {CORES[empresa]};">{empresa}</div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                             <div class="company-metric">
-                                <div class="company-metric-value">{total_emp}</div>
+                                <div class="company-metric-value" style="color: #005973;">{total_emp}</div>
                                 <div class="company-metric-label">Equipamentos cadastrados</div>
                             </div>
                             <div class="company-metric">
@@ -903,13 +953,13 @@ if not df_filtrado.empty:
                             </div>
                         </div>
                         <div style="margin-top: 1rem;">
-                            <div style="background: #f1f5f9; border-radius: 20px; padding: 0.5rem;">
+                            <div style="background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span>Progresso do fluxo:</span>
                                     <strong>{((com_emp+val_emp)/total_emp*100):.1f}%</strong>
                                 </div>
-                                <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
-                                    <div style="width: {((com_emp+val_emp)/total_emp*100)}%; background: {CORES['Comissionado']}; height: 6px; border-radius: 3px;"></div>
+                                <div style="width: 100%; background: #cbd5e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
+                                    <div style="width: {((com_emp+val_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -938,12 +988,15 @@ if not df_filtrado.empty:
             fig_status.update_traces(
                 textposition='inside', 
                 textinfo='percent+label',
-                texttemplate='%{label}<br>%{percent:.1%}'
+                texttemplate='%{label}<br>%{percent:.1%}',
+                marker=dict(line=dict(color='white', width=2))
             )
             fig_status.update_layout(
                 showlegend=False,
                 height=350,
-                margin=dict(t=50, b=10, l=10, r=10)
+                margin=dict(t=50, b=10, l=10, r=10),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
             )
             st.plotly_chart(fig_status, use_container_width=True)
         
@@ -960,7 +1013,7 @@ if not df_filtrado.empty:
                     orientation='h',
                     title='Top 8 Tipos de Equipamento',
                     color='Quantidade',
-                    color_continuous_scale='Blues',
+                    color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
                     text='Quantidade'
                 )
                 fig_tipo.update_traces(textposition='outside')
@@ -968,7 +1021,9 @@ if not df_filtrado.empty:
                     height=350,
                     margin=dict(t=50, b=10, l=10, r=10),
                     xaxis_title="Quantidade",
-                    yaxis_title=""
+                    yaxis_title="",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
                 )
                 st.plotly_chart(fig_tipo, use_container_width=True)
     
@@ -997,7 +1052,9 @@ if not df_filtrado.empty:
                 height=400,
                 xaxis_title="Mês",
                 yaxis_title="Quantidade",
-                hovermode='x unified'
+                hovermode='x unified',
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
             )
             st.plotly_chart(fig_evolucao, use_container_width=True)
             
@@ -1016,7 +1073,9 @@ if not df_filtrado.empty:
             fig_barras.update_layout(
                 height=400,
                 xaxis_title="Mês",
-                yaxis_title="Quantidade"
+                yaxis_title="Quantidade",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
             )
             st.plotly_chart(fig_barras, use_container_width=True)
             
@@ -1046,21 +1105,24 @@ if not df_filtrado.empty:
                     y=df_taxas['Taxa Comissionamento'],
                     name='Comissionamento',
                     line=dict(color=CORES['Comissionado'], width=3),
-                    mode='lines+markers'
+                    mode='lines+markers',
+                    marker=dict(size=8)
                 ))
                 fig_taxas.add_trace(go.Scatter(
                     x=df_taxas['Mês'],
                     y=df_taxas['Taxa Validação'],
                     name='Validação',
                     line=dict(color=CORES['Validado'], width=3),
-                    mode='lines+markers'
+                    mode='lines+markers',
+                    marker=dict(size=8)
                 ))
                 fig_taxas.add_trace(go.Scatter(
                     x=df_taxas['Mês'],
                     y=df_taxas['Taxa Revisão'],
                     name='Revisão',
                     line=dict(color=CORES['Necessário Revisão'], width=3),
-                    mode='lines+markers'
+                    mode='lines+markers',
+                    marker=dict(size=8)
                 ))
                 
                 fig_taxas.update_layout(
@@ -1069,7 +1131,9 @@ if not df_filtrado.empty:
                     yaxis_title="Taxa (%)",
                     yaxis=dict(range=[0, 100]),
                     height=400,
-                    hovermode='x unified'
+                    hovermode='x unified',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
                 )
                 
                 st.plotly_chart(fig_taxas, use_container_width=True)
@@ -1110,14 +1174,16 @@ if not df_filtrado.empty:
                         orientation='h',
                         title=f'Top 10 Responsáveis - {tipo_resp}',
                         color='Quantidade',
-                        color_continuous_scale='Blues',
+                        color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
                         text='Quantidade'
                     )
                     fig_ranking.update_traces(textposition='outside')
                     fig_ranking.update_layout(
                         height=400,
                         xaxis_title="Quantidade de Atividades",
-                        yaxis_title=""
+                        yaxis_title="",
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)'
                     )
                     st.plotly_chart(fig_ranking, use_container_width=True)
                 
@@ -1128,11 +1194,7 @@ if not df_filtrado.empty:
                         df_resp_item = df_resp[df_resp[col_resp] == resp]
                         total = len(df_resp_item)
                         if total > 0:
-                            # Para comissionamento, sucesso = itens validados
-                            if tipo_resp == 'Comissionamento':
-                                sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
-                            else:
-                                sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
+                            sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
                             taxa = (sucesso_count / total) * 100
                             sucesso.append({
                                 'Responsável': resp,
@@ -1151,7 +1213,7 @@ if not df_filtrado.empty:
                             orientation='h',
                             title=f'Taxa de Sucesso por Responsável - {tipo_resp}',
                             color='Taxa de Sucesso',
-                            color_continuous_scale='Greens',
+                            color_continuous_scale=['#e8f5e9', '#2e7d32'],
                             text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
                         )
                         fig_sucesso.update_traces(textposition='outside')
@@ -1159,7 +1221,9 @@ if not df_filtrado.empty:
                             height=400,
                             xaxis_title="Taxa de Sucesso (%)",
                             xaxis_range=[0, 100],
-                            yaxis_title=""
+                            yaxis_title="",
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)'
                         )
                         st.plotly_chart(fig_sucesso, use_container_width=True)
                 
@@ -1185,7 +1249,9 @@ if not df_filtrado.empty:
                 fig_dist.update_layout(
                     height=450,
                     xaxis_tickangle=45,
-                    xaxis_title=""
+                    xaxis_title="",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
                 )
                 st.plotly_chart(fig_dist, use_container_width=True)
             else:
@@ -1224,7 +1290,6 @@ if not df_filtrado.empty:
             status_counts.columns = ['Status', 'Quantidade']
             total_linhas = len(df_filtrado)
             
-            # Calcular percentual separadamente para evitar erro
             percentuais = []
             for qtd in status_counts['Quantidade']:
                 percentual = (qtd / total_linhas * 100) if total_linhas > 0 else 0
@@ -1244,12 +1309,12 @@ if not df_filtrado.empty:
     <div class="footer">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.1
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 4.1 • Energisa
             </div>
             <div>
                 Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
             </div>
-            <div style="color: {CORES['texto_secundario']};">
+            <div style="color: #5f8b94;">
                 {len(df_filtrado)} registros • {fonte.upper()}
             </div>
         </div>
