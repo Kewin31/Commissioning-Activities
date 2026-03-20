@@ -13,20 +13,8 @@ import tempfile
 import time
 from dateutil.relativedelta import relativedelta
 
-#PDF
-# No início do arquivo, após os imports
+# Importar o gerador de PDF
 from pdf_generator import adicionar_botao_pdf
-
-# Onde você quiser adicionar o botão (ex: no sidebar)
-with st.sidebar:
-    # ... seus filtros existentes ...
-    
-    st.markdown("---")
-    st.markdown("### 📄 Exportar")
-    
-    # Adicionar o botão do PDF
-    adicionar_botao_pdf(df_filtrado)  # <-- ADICIONE ESTA LINHA
-#FIM PDF
 
 # Configuração da página
 st.set_page_config(
@@ -84,6 +72,99 @@ def get_logo_base64():
             continue
     
     return None, None
+
+# ============================================
+# FUNÇÃO PARA HORÁRIOS EM TEMPO REAL
+# ============================================
+def get_horarios_regioes():
+    """Retorna os horários atualizados das regiões onde a Energisa atua"""
+    from datetime import datetime, timezone, timedelta
+    
+    utc_now = datetime.now(timezone.utc)
+    
+    regioes = {
+        'Brasília, Brasil': {'offset': -3, 'descricao': ''},
+        'Cuiabá, Brasil': {'offset': -4, 'descricao': 'Menos 1 h'},
+        'Porto Velho, Brasil': {'offset': -4, 'descricao': 'Menos 1 h'},
+        'Acre, Brasil': {'offset': -5, 'descricao': 'Menos 2 h'}
+    }
+    
+    horarios = []
+    for regiao, info in regioes.items():
+        local_time = utc_now + timedelta(hours=info['offset'])
+        
+        dias_semana_pt = {
+            'monday': 'segunda-feira', 'tuesday': 'terça-feira', 'wednesday': 'quarta-feira',
+            'thursday': 'quinta-feira', 'friday': 'sexta-feira', 'saturday': 'sábado', 'sunday': 'domingo'
+        }
+        
+        dia_semana = local_time.strftime('%A').lower()
+        dia_semana_pt = dias_semana_pt.get(dia_semana, dia_semana)
+        data_formatada = local_time.strftime(f'{dia_semana_pt}, %d/%m/%Y')
+        hora_formatada = local_time.strftime('%H:%M')
+        
+        horarios.append({
+            'regiao': regiao,
+            'hora': hora_formatada,
+            'descricao': info['descricao'],
+            'data': data_formatada
+        })
+    
+    return horarios
+
+def criar_componente_horarios():
+    """Cria o componente visual com os horários das regiões"""
+    horarios = get_horarios_regioes()
+    
+    html = f"""
+    <div style="
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1rem;
+        margin-top: 1rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    ">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🕐</span>
+            <span style="font-weight: 600; color: #005973;">Horários em Tempo Real</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem;">
+    """
+    
+    for horario in horarios:
+        if horario['descricao']:
+            descricao_html = f"""
+            <div style="font-size: 0.7rem; color: #6b7280; margin-top: 0.25rem;">
+                {horario['descricao']}
+            </div>
+            """
+        else:
+            descricao_html = ""
+        
+        html += f"""
+        <div style="text-align: center; min-width: 110px;">
+            <div style="font-weight: 600; color: #1f2937; font-size: 0.9rem; margin-bottom: 0.5rem;">{horario['regiao']}</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #028a9f;">{horario['hora']}</div>
+            {descricao_html}
+            <div style="font-size: 0.7rem; color: #6b7280; margin-top: 0.25rem;">
+                {horario['data']}
+            </div>
+        </div>
+        """
+    
+    html += """
+        </div>
+    </div>
+    """
+    
+    return html
 
 # ============================================
 # CONFIGURAÇÕES DO GITHUB
@@ -353,7 +434,7 @@ st.markdown("""
         background: white;
         padding: 1rem 2rem;
         border-radius: 12px;
-        margin-top: 3rem;
+        margin-top: 2rem;
         box-shadow: 0 -1px 2px rgba(0,0,0,0.02);
         font-size: 0.85rem;
         color: #6b7280;
@@ -375,7 +456,6 @@ st.markdown("""
         border-right: 1px solid #e5e7eb;
     }
     
-    /* Estilo para o popup de informações */
     .info-popup {
         background-color: #f8fafc;
         border-left: 4px solid #028a9f;
@@ -388,27 +468,6 @@ st.markdown("""
     
     .info-popup strong {
         color: #005973;
-    }
-    
-    /* Estilo para métricas de destaque */
-    .metric-highlight {
-        background: linear-gradient(135deg, #f8fafc, #ffffff);
-        border-radius: 12px;
-        padding: 0.75rem;
-        text-align: center;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .metric-value-large {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .metric-label {
-        font-size: 0.75rem;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -426,7 +485,6 @@ CORES = {
     'ETO': '#005973',
 }
 
-# Ordem prioritária para status (críticos primeiro)
 ORDEM_STATUS = ['Necessário Revisão', 'Pendente', 'Desenvolvido', 'Comissionado', 'Validado']
 
 # ============================================
@@ -437,10 +495,8 @@ def processar_dados(df):
     if df is None or df.empty:
         return df
     
-    # Padronizar nomes das colunas
     df.columns = df.columns.str.strip()
     
-    # Mapeamento de colunas com os nomes EXATOS do seu CSV
     mapeamento_colunas = {
         'Cód. Equipamento': 'Codigo',
         'Cód.Equipamento': 'Codigo',
@@ -458,12 +514,10 @@ def processar_dados(df):
         'Revisões': 'Revisoes'
     }
     
-    # Renomear colunas (silenciosamente, sem mensagens)
     for col_antiga, col_nova in mapeamento_colunas.items():
         if col_antiga in df.columns and col_nova not in df.columns:
             df.rename(columns={col_antiga: col_nova}, inplace=True)
     
-    # Se a coluna Resp_Com não existir, criar fallback silencioso
     if 'Resp_Com' not in df.columns:
         if 'Modificado_por' in df.columns:
             df['Resp_Com'] = df.apply(
@@ -473,31 +527,23 @@ def processar_dados(df):
         else:
             df['Resp_Com'] = 'Não atribuído'
     
-    # Preencher responsáveis não atribuídos
     for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
         if col in df.columns:
             df[col] = df[col].fillna('Não atribuído')
         else:
             df[col] = 'Não atribuído'
     
-    # Padronizar status
     status_map = {
-        'desenvolvido': 'Desenvolvido',
-        'desenv': 'Desenvolvido',
-        'comissionado': 'Comissionado',
-        'comiss': 'Comissionado',
-        'validado': 'Validado',
-        'valid': 'Validado',
-        'revisão': 'Necessário Revisão',
-        'revisao': 'Necessário Revisão',
+        'desenvolvido': 'Desenvolvido', 'desenv': 'Desenvolvido',
+        'comissionado': 'Comissionado', 'comiss': 'Comissionado',
+        'validado': 'Validado', 'valid': 'Validado',
+        'revisão': 'Necessário Revisão', 'revisao': 'Necessário Revisão',
         'revisar': 'Necessário Revisão',
         'necessario revisão': 'Necessário Revisão',
         'necessario revisao': 'Necessário Revisão',
-        'pendente': 'Pendente',
-        'pend': 'Pendente'
+        'pendente': 'Pendente', 'pend': 'Pendente'
     }
     
-    # Identificar coluna de status
     col_status = None
     for col in ['Status', 'Fase', 'Situação', 'Situacao']:
         if col in df.columns:
@@ -507,13 +553,10 @@ def processar_dados(df):
     if col_status:
         df[col_status] = df[col_status].astype(str).str.lower().str.strip()
         df['Status'] = df[col_status].map(lambda x: next(
-            (v for k, v in status_map.items() if k in x), 
-            'Pendente'
-        ))
+            (v for k, v in status_map.items() if k in x), 'Pendente'))
     else:
         df['Status'] = 'Pendente'
     
-    # Processar datas
     for col in ['Criado', 'Modificado']:
         if col in df.columns:
             try:
@@ -524,7 +567,6 @@ def processar_dados(df):
                 except:
                     df[col] = pd.to_datetime(df[col], errors='coerce')
     
-    # Criar colunas de tempo
     if 'Criado' in df.columns:
         df['Ano'] = df['Criado'].dt.year
         df['Mes'] = df['Criado'].dt.month
@@ -591,7 +633,6 @@ def load_data():
             df = pd.read_csv(caminho_local, encoding='utf-8-sig')
             return processar_dados(df), "local"
         
-        # Dados de exemplo
         dados_exemplo = {
             'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
             'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
@@ -649,11 +690,9 @@ def mostrar_popup_calculos():
 def criar_grafico_pizza_status(df_filtrado):
     """Cria gráfico de pizza com melhorias executivas"""
     
-    # Contagem por status
     status_counts = df_filtrado['Status'].value_counts().reset_index()
     status_counts.columns = ['Status', 'Quantidade']
     
-    # Ordenação personalizada: críticos primeiro
     status_counts['Status'] = pd.Categorical(
         status_counts['Status'], 
         categories=ORDEM_STATUS, 
@@ -661,31 +700,25 @@ def criar_grafico_pizza_status(df_filtrado):
     )
     status_counts = status_counts.sort_values('Status')
     
-    # Calcular percentuais para anotações
     total_registros = status_counts['Quantidade'].sum()
     
-    # Percentual de revisão (gargalo)
     pct_revisao = (
         status_counts[status_counts['Status'] == 'Necessário Revisão']['Quantidade'].sum() / total_registros * 100 
         if total_registros > 0 else 0
     )
     
-    # Percentual de pendentes
     pct_pendente = (
         status_counts[status_counts['Status'] == 'Pendente']['Quantidade'].sum() / total_registros * 100 
         if total_registros > 0 else 0
     )
     
-    # Percentual de validados (sucesso)
     pct_validado = (
         status_counts[status_counts['Status'] == 'Validado']['Quantidade'].sum() / total_registros * 100 
         if total_registros > 0 else 0
     )
     
-    # Definir quais fatias devem ser "explodidas" (destacadas)
     explode = [0.05 if status in ['Necessário Revisão', 'Pendente'] else 0 for status in status_counts['Status']]
     
-    # Criar gráfico de pizza
     fig_status = px.pie(
         status_counts,
         values='Quantidade',
@@ -696,7 +729,6 @@ def criar_grafico_pizza_status(df_filtrado):
         hole=0.4
     )
     
-    # Configurar rótulos e aparência
     fig_status.update_traces(
         textposition='outside',
         textinfo='percent+label',
@@ -707,7 +739,6 @@ def criar_grafico_pizza_status(df_filtrado):
         hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent:.1%}%<extra></extra>'
     )
     
-    # Adicionar anotação principal com alerta de gargalo
     if pct_revisao > 10:
         msg_alerta = f"⚠️ ATENÇÃO: {pct_revisao:.1f}% dos equipamentos necessitam de revisão"
         cor_alerta = '#F57C00'
@@ -732,7 +763,6 @@ def criar_grafico_pizza_status(df_filtrado):
         borderpad=4
     )
     
-    # Adicionar anotação secundária com resumo executivo
     resumo_texto = f"✓ {pct_validado:.1f}% concluídos | ⚠️ {pct_pendente:.1f}% pendentes"
     
     fig_status.add_annotation(
@@ -747,7 +777,6 @@ def criar_grafico_pizza_status(df_filtrado):
         borderwidth=0
     )
     
-    # Configurar layout final
     fig_status.update_layout(
         showlegend=False,
         height=450,
@@ -913,6 +942,14 @@ if status_selecionado != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
 
 # ============================================
+# ADICIONAR BOTÃO DO PDF (DEPOIS DO df_filtrado)
+# ============================================
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 📄 Exportar Relatório")
+    adicionar_botao_pdf(df_filtrado)
+
+# ============================================
 # ESTATÍSTICAS RÁPIDAS NA SIDEBAR
 # ============================================
 
@@ -953,13 +990,9 @@ if not df_filtrado.empty:
     qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
     qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
     
-    # Total de equipamentos que já passaram pelo comissionamento
     total_comissionados = qtd_aguardando_validacao + qtd_validados
-    
-    # Total de itens no fluxo
     total_fluxo = qtd_desenvolvidos + qtd_aguardando_validacao + qtd_validados + qtd_revisao
     
-    # Taxas de conversão
     taxa_desenv_para_comiss = (total_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
     taxa_comiss_para_valid = (qtd_validados / total_comissionados * 100) if total_comissionados > 0 else 0
     taxa_valid_sobre_total = (qtd_validados / total_fluxo * 100) if total_fluxo > 0 else 0
@@ -968,7 +1001,6 @@ if not df_filtrado.empty:
     # VISUALIZAÇÃO DO FLUXO
     st.markdown("### 🔄 Progress Tracker")
     
-    # Botão de informação com popup
     with st.expander("ℹ️ Detalhes dos cálculos", expanded=False):
         st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
     
@@ -1088,13 +1120,11 @@ if not df_filtrado.empty:
                     </div>
                     """, unsafe_allow_html=True)
         
-        # Gráfico de distribuição - USANDO A FUNÇÃO MELHORADA
         st.markdown("### 📊 Distribuição do Portfólio")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Gráfico de pizza melhorado com função dedicada
             fig_status = criar_grafico_pizza_status(df_filtrado)
             st.plotly_chart(fig_status, use_container_width=True)
         
@@ -1148,10 +1178,7 @@ if not df_filtrado.empty:
                 title='Evolução Mensal por Status',
                 color_discrete_map=CORES
             )
-            fig_evolucao.update_traces(
-                marker=dict(size=8),
-                line=dict(width=2)
-            )
+            fig_evolucao.update_traces(marker=dict(size=8), line=dict(width=2))
             fig_evolucao.update_layout(
                 height=400,
                 xaxis_title="Mês",
@@ -1419,6 +1446,10 @@ if not df_filtrado.empty:
                 tipo_counts.columns = ['Tipo', 'Quantidade']
                 st.dataframe(tipo_counts.head(15), use_container_width=True)
     
+    # HORÁRIOS EM TEMPO REAL
+    st.markdown("---")
+    st.markdown(criar_componente_horarios(), unsafe_allow_html=True)
+    
     # FOOTER
     st.markdown(f"""
     <div class="footer">
@@ -1438,3 +1469,19 @@ if not df_filtrado.empty:
 
 else:
     st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
+    
+    st.markdown("---")
+    st.markdown(criar_componente_horarios(), unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="footer">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
+            </div>
+            <div>
+                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
