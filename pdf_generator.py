@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Layout Proporcional
+# pdf_generator.py - Versão Corrigida
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -72,9 +72,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # Cards em 2 linhas
     y_start = pdf.get_y()
     
-    # Linha 1 - 3 cards
-    pdf.set_font('Arial', 'B', 9)
-    
     # Card 1: Total
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(10, y_start, 60, 28, 'F')
@@ -110,7 +107,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     
     pdf.ln(32)
     
-    # Linha 2 - 3 cards
+    # Linha 2
     y_start = pdf.get_y()
     
     # Card 4: Validados
@@ -356,7 +353,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
                 validados_resp = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
                 taxa = (validados_resp / total_resp * 100) if total_resp > 0 else 0
                 
-                # Limitar tamanho do nome
                 nome = str(resp)[:35]
                 pdf.cell(70, 7, nome, 1, 0, 'L')
                 pdf.cell(35, 7, str(total_resp), 1, 0, 'C')
@@ -402,7 +398,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 8, 'Coluna de responsaveis nao encontrada.', 0, 1)
     
-    # Rodapé
+    # Rodapé (simples, sem set_page)
     for i in range(1, pdf.page_no() + 1):
         pdf.set_page(i)
         pdf.set_y(-15)
