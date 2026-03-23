@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão Corrigida
+# pdf_generator.py - Versão Final sem set_page
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -398,13 +398,16 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 8, 'Coluna de responsaveis nao encontrada.', 0, 1)
     
-    # Rodapé (simples, sem set_page)
+    # Rodapé (apenas na última página - usando o método footer do FPDF)
+    # Vamos adicionar o rodapé manualmente no final
     for i in range(1, pdf.page_no() + 1):
-        pdf.set_page(i)
+        pdf.page = i
         pdf.set_y(-15)
         pdf.set_font('Arial', 'I', 8)
         pdf.set_text_color(100, 100, 100)
         pdf.cell(0, 10, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Pagina {i}', 0, 0, 'C')
+        # Voltar para o conteúdo após o rodapé
+        pdf.set_y(pdf.get_y() - 10)
     
     # Gerar arquivo temporário
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
