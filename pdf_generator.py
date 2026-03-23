@@ -1,14 +1,15 @@
-# pdf_generator.py - Versão SEM kaleido (usando matplotlib para gráficos)
+# pdf_generator.py - Versão usando plotly + orca (alternativa sem kaleido)
 import streamlit as st
 import pandas as pd
 import tempfile
 import os
+import base64
 from datetime import datetime
 from fpdf import FPDF
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')  # Para evitar problemas com GUI
-import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import io
+import time
 
 # Cores no formato RGB para o PDF
 CORES_PDF = {
@@ -21,7 +22,7 @@ CORES_PDF = {
     'cinza_claro': (230, 230, 230)
 }
 
-# Cores para os status
+# Cores para os status (mesmas do dashboard)
 CORES = {
     'Desenvolvido': '#2E7D32',
     'Comissionado': '#028a9f',
@@ -42,15 +43,10 @@ class PDFRelatorioEmpresa(FPDF):
         """Cabeçalho do relatório"""
         # Tentar adicionar logo da Energisa
         try:
-            logo_path = "Logo_Energisa.png"
-            if os.path.exists(logo_path):
-                self.image(logo_path, x=10, y=8, w=25)
-            else:
-                # Tentar outros nomes
-                for nome in ["logo_energisa.png", "energisa.png"]:
-                    if os.path.exists(nome):
-                        self.image(nome, x=10, y=8, w=25)
-                        break
+            for logo_path in ["Logo_Energisa.png", "logo_energisa.png", "energisa.png"]:
+                if os.path.exists(logo_path):
+                    self.image(logo_path, x=10, y=8, w=25)
+                    break
         except:
             pass
         
@@ -130,93 +126,103 @@ class PDFRelatorioEmpresa(FPDF):
         
         self.set_y(y + height + 5)
     
-    def add_matplotlib_chart(self, fig, width=180, height=100):
-        """Adiciona gráfico matplotlib ao PDF como imagem"""
+    def save_plotly_as_image(self, fig, width=800, height=400):
+        """Salva figura plotly como imagem usando método alternativo"""
         try:
-            # Salvar figura como imagem temporária
-            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
-            plt.close(fig)
-            
-            # Adicionar ao PDF
-            self.image(temp_img.name, x=self.get_x(), w=width)
-            
-            # Limpar
-            os.unlink(temp_img.name)
-            
-            # Avançar para próxima linha
-            self.ln(height * 0.7)
-        except Exception as e:
-            self.set_font('Arial', 'I', 9)
-            self.set_text_color(*CORES_PDF['cinza'])
-            self.cell(0, 8, '[Grafico nao disponivel]', 0, 1)
-            self.ln(5)
+            # Método 1: tentar usar write_image (requer kaleido)
+            img_bytes = fig.to_image(format="png", width=width, height=height, scale=2)
+            return img_bytes
+        except:
+            try:
+                # Método 2: usar html + selenium (não recomendado para cloud)
+                import plotly.io as pio
+                html = pio.to_html(fig, include_plotlyjs='cdn', full_html=False)
+                
+                # Salvar HTML temporário
+                html_path = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
+                html_path.write(html.encode())
+                html_path.close()
+                
+                # Para cloud, retornamos None e usamos texto alternativo
+                return None
+            except:
+                return None
+    
+    def add_chart_text_alternative(self, title, data):
+        """Adiciona alternativa textual para gráficos"""
+        self.set_font('Arial', 'B', 9)
+        self.set_text_color(*CORES_PDF['azul_energisa'])
+        self.cell(0, 6, f'{title}:', 0, 1, 'L')
+        self.set_font('Arial', '', 8)
+        self.set_text_color(*CORES_PDF['cinza'])
+        
+        for key, value in data.items():
+            self.cell(0, 5, f'  • {key}: {value}', 0, 1, 'L')
+        self.ln(5)
 
 
-def gerar_grafico_pizza_matplotlib(df_empresa):
-    """Gera gráfico de pizza com matplotlib"""
-    status_counts = df_empresa['Status'].value_counts()
+def gerar_grafico_pizza(df_empresa):
+    """Gera gráfico de pizza da distribuição por status"""
+    status_counts = df_empresa['Status'].value_counts().reset_index()
+    status_counts.columns = ['Status', 'Quantidade']
     
-    if status_counts.empty:
-        return None
-    
-    # Configurar figura
-    fig, ax = plt.subplots(figsize=(8, 6))
-    
-    # Cores para cada status
-    colors = [CORES.get(status, '#CCCCCC') for status in status_counts.index]
-    
-    # Criar pizza
-    wedges, texts, autotexts = ax.pie(
-        status_counts.values,
-        labels=status_counts.index,
-        colors=colors,
-        autopct='%1.1f%%',
-        startangle=90,
-        explode=[0.05] * len(status_counts),
-        shadow=True
+    fig = px.pie(
+        status_counts,
+        values='Quantidade',
+        names='Status',
+        title='Distribuição por Status',
+        color='Status',
+        color_discrete_map=CORES,
+        hole=0.3
     )
-    
-    # Configurar textos
-    for text in texts:
-        text.set_fontsize(10)
-    for autotext in autotexts:
-        autotext.set_color('white')
-        autotext.set_fontsize(9)
-        autotext.set_weight('bold')
-    
-    ax.set_title('Distribuição por Status', fontsize=14, fontweight='bold', pad=20)
-    
-    plt.tight_layout()
+    fig.update_traces(
+        textposition='outside',
+        textinfo='percent+label',
+        marker=dict(line=dict(color='white', width=2)),
+        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent:.1f}%<extra></extra>'
+    )
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=400,
+        margin=dict(t=80, b=20, l=20, r=20),
+        paper_bgcolor='white',
+        plot_bgcolor='white'
+    )
     return fig
 
 
-def gerar_grafico_barras_matplotlib(df_empresa):
-    """Gera gráfico de barras horizontais com matplotlib"""
+def gerar_grafico_tipos(df_empresa):
+    """Gera gráfico de barras dos tipos de equipamento"""
     if 'Tipo' not in df_empresa.columns or df_empresa['Tipo'].dropna().empty:
         return None
     
-    tipo_counts = df_empresa['Tipo'].value_counts().head(8)
+    tipo_counts = df_empresa['Tipo'].value_counts().head(8).reset_index()
+    tipo_counts.columns = ['Tipo', 'Quantidade']
     
-    if tipo_counts.empty:
-        return None
-    
-    fig, ax = plt.subplots(figsize=(8, 5))
-    
-    # Criar barras horizontais
-    colors = plt.cm.Blues(np.linspace(0.4, 0.9, len(tipo_counts)))
-    bars = ax.barh(tipo_counts.index, tipo_counts.values, color=colors)
-    
-    # Adicionar valores nas barras
-    for i, (bar, val) in enumerate(zip(bars, tipo_counts.values)):
-        ax.text(val + 0.5, bar.get_y() + bar.get_height()/2, 
-                str(val), va='center', fontsize=9, fontweight='bold')
-    
-    ax.set_xlabel('Quantidade', fontsize=10)
-    ax.set_title('Tipos de Equipamento', fontsize=14, fontweight='bold', pad=20)
-    ax.grid(axis='x', alpha=0.3)
-    
-    plt.tight_layout()
+    fig = px.bar(
+        tipo_counts,
+        x='Quantidade',
+        y='Tipo',
+        orientation='h',
+        title='Tipos de Equipamento',
+        color='Quantidade',
+        color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
+        text='Quantidade'
+    )
+    fig.update_traces(
+        textposition='outside',
+        texttemplate='%{text}',
+        hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<extra></extra>'
+    )
+    fig.update_layout(
+        height=350,
+        margin=dict(t=50, b=10, l=120, r=10),
+        xaxis_title="Quantidade",
+        yaxis_title="",
+        paper_bgcolor='white',
+        plot_bgcolor='white'
+    )
     return fig
 
 
@@ -237,7 +243,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # ============================================
     # 1. ANALISE DA EMPRESA
     # ============================================
-    pdf.section_title('1. ANALISE DA EMPRESA')
+    pdf.section_title('1. ANALISE DA EMPPRESA')
     
     total = len(df_empresa)
     desenvolvidos = len(df_empresa[df_empresa['Status'] == 'Desenvolvido'])
@@ -253,7 +259,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     
     # Cards de métricas
     pdf.set_font('Arial', '', 10)
-    pdf.set_fill_color(245, 245, 245)
     
     # Primeira linha
     pdf.set_x(10)
@@ -286,16 +291,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.ln(15)
     
     # ============================================
-    # 2. DISTRIBUICAO DO PORTFOLIO (Gráfico Pizza)
+    # 2. DISTRIBUICAO DO PORTFOLIO
     # ============================================
     pdf.section_title('2. DISTRIBUICAO DO PORTFOLIO')
     
-    fig_pizza = gerar_grafico_pizza_matplotlib(df_empresa)
-    if fig_pizza:
-        pdf.add_matplotlib_chart(fig_pizza, width=180, height=110)
-    else:
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(0, 8, 'Nao ha dados suficientes para gerar o grafico.', 0, 1)
+    # Versão textual dos dados
+    status_data = df_empresa['Status'].value_counts().to_dict()
+    pdf.add_chart_text_alternative('Distribuição por Status', status_data)
     
     pdf.ln(5)
     
@@ -304,9 +306,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # ============================================
     pdf.section_title('3. TIPOS DE EQUIPAMENTOS')
     
-    fig_barras = gerar_grafico_barras_matplotlib(df_empresa)
-    if fig_barras:
-        pdf.add_matplotlib_chart(fig_barras, width=180, height=90)
+    if 'Tipo' in df_empresa.columns and not df_empresa['Tipo'].dropna().empty:
+        tipo_data = df_empresa['Tipo'].value_counts().head(8).to_dict()
+        pdf.add_chart_text_alternative('Tipos de Equipamento', tipo_data)
     else:
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 8, 'Nao ha dados de tipos de equipamento disponiveis.', 0, 1)
@@ -321,12 +323,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     total_comissionados = comissionados + validados
     taxa_desenv_para_comiss = (total_comissionados / desenvolvidos * 100) if desenvolvidos > 0 else 0
     taxa_comiss_para_valid = (validados / total_comissionados * 100) if total_comissionados > 0 else 0
-    taxa_valid_sobre_total = (validados / total * 100) if total > 0 else 0
     
     # ETAPA 1 - Desenvolvidos
     pdf.set_x(10)
     pdf.set_fill_color(245, 245, 245)
-    pdf.rect(10, pdf.get_y(), 45, 50, 'F')
+    pdf.rect(10, pdf.get_y(), 45, 55, 'F')
     pdf.set_xy(12, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 1', 0, 1)
@@ -338,7 +339,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.cell(0, 4, 'Desenvolvidos', 0, 1)
     pdf.cell(0, 4, 'Aguardando', 0, 1)
     pdf.cell(0, 4, 'comissionamento', 0, 1)
-    pdf.set_y(pdf.get_y() + 35)
+    pdf.set_y(pdf.get_y() + 40)
     
     # Seta
     pdf.set_xy(60, pdf.get_y() - 45)
@@ -348,7 +349,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # ETAPA 2 - Comissionados
     pdf.set_xy(75, pdf.get_y() - 55)
     pdf.set_fill_color(245, 245, 245)
-    pdf.rect(75, pdf.get_y(), 45, 50, 'F')
+    pdf.rect(75, pdf.get_y(), 45, 55, 'F')
     pdf.set_xy(77, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 2', 0, 1)
@@ -360,7 +361,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.cell(0, 4, 'Comissionados', 0, 1)
     pdf.cell(0, 4, 'Aguardando', 0, 1)
     pdf.cell(0, 4, 'validacao', 0, 1)
-    pdf.set_y(pdf.get_y() + 35)
+    pdf.set_y(pdf.get_y() + 40)
     
     # Seta
     pdf.set_xy(125, pdf.get_y() - 45)
@@ -370,7 +371,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # ETAPA 3 - Validados
     pdf.set_xy(140, pdf.get_y() - 55)
     pdf.set_fill_color(245, 245, 245)
-    pdf.rect(140, pdf.get_y(), 45, 50, 'F')
+    pdf.rect(140, pdf.get_y(), 45, 55, 'F')
     pdf.set_xy(142, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 3', 0, 1)
@@ -383,12 +384,12 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.cell(0, 4, 'Processo', 0, 1)
     pdf.cell(0, 4, 'concluido', 0, 1)
     
-    pdf.ln(60)
+    pdf.ln(65)
     
     # GARGALO
     pdf.set_x(10)
     pdf.set_fill_color(255, 240, 230)
-    pdf.rect(10, pdf.get_y(), 180, 40, 'F')
+    pdf.rect(10, pdf.get_y(), 180, 45, 'F')
     pdf.set_xy(12, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(*CORES_PDF['laranja'])
@@ -398,7 +399,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(*CORES_PDF['cinza'])
     pdf.cell(0, 4, f'{pct_revisao:.1f}% do total de equipamentos', 0, 1)
-    pdf.ln(45)
+    pdf.ln(50)
     
     # ============================================
     # 5. PERFORMANCE POR RESPONSAVEL
@@ -411,12 +412,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
         df_resp = df_empresa[df_empresa[col_resp] != 'Não atribuído']
         
         if not df_resp.empty:
-            # Título
+            # Comissionados por responsável
             pdf.set_font('Arial', 'B', 10)
             pdf.set_text_color(*CORES_PDF['azul_energisa'])
             pdf.cell(0, 8, 'Comissionados por Responsavel', 0, 1)
             
-            # Tabela
             pdf.set_font('Arial', 'B', 8)
             pdf.set_fill_color(230, 230, 230)
             pdf.cell(60, 8, 'Responsavel', 1, 0, 'C', 1)
