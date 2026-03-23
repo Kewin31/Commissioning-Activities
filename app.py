@@ -778,17 +778,47 @@ if status_selecionado != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
 
 # ============================================
-# ADICIONAR BOTÕES DO PDF (DEPOIS DO df_filtrado)
+# ADICIONAR BOTÕES DO PDF COM FILTRO DE MÊS
 # ============================================
 with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 Exportar Relatório")
     
+    # Filtro de período para o relatório
+    st.markdown('<div class="filter-title">📅 Período do Relatório</div>', unsafe_allow_html=True)
+    
+    # Anos disponíveis
+    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
+    anos_opcoes_rel = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
+    
+    ano_relatorio = st.selectbox(
+        "Ano",
+        options=anos_opcoes_rel,
+        index=0,
+        key="filtro_ano_relatorio",
+        label_visibility="collapsed"
+    )
+    
+    # Meses disponíveis
+    meses_opcoes_rel = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    
+    mes_relatorio = st.selectbox(
+        "Mês",
+        options=meses_opcoes_rel,
+        index=0,
+        key="filtro_mes_relatorio",
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    
     # Botão para gerar relatório EMT
-    adicionar_botao_pdf_empresa(df_filtrado, "EMT")
+    from pdf_generator import adicionar_botao_pdf_empresa
+    adicionar_botao_pdf_empresa(df_filtrado, "EMT", mes_relatorio, ano_relatorio)
     
     # Botão para gerar relatório ETO
-    adicionar_botao_pdf_empresa(df_filtrado, "ETO")
+    adicionar_botao_pdf_empresa(df_filtrado, "ETO", mes_relatorio, ano_relatorio)
 
 # ============================================
 # ESTATÍSTICAS RÁPIDAS NA SIDEBAR
