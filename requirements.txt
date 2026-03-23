@@ -6,4 +6,4 @@ openpyxl
 PyGithub
 requests
 fpdf2
-pillow kaleido
+
