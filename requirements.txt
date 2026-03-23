@@ -6,4 +6,5 @@ openpyxl
 PyGithub
 requests
 fpdf2
+matplotlib
 
