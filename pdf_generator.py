@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão Definitiva
+# pdf_generator.py - Versão com Posicionamento Absoluto
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -19,28 +19,52 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # Criar PDF
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=20)
-    
-    # ============================================
-    # PÁGINA 1 - TODOS OS DADOS
-    # ============================================
     pdf.add_page()
     
-    # Cabeçalho
+    # ============================================
+    # CABEÇALHO FIXO
+    # ============================================
+    # Logo
+    try:
+        for logo in ["Logo_Energisa.png", "logo_energisa.png", "energisa.png"]:
+            if os.path.exists(logo):
+                pdf.image(logo, x=10, y=8, w=25)
+                break
+    except:
+        pass
+    
+    # Título
+    pdf.set_y(15)
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 10, 'RELATORIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
+    pdf.cell(0, 8, 'RELATORIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
+    # Subtítulo
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 6, f'UNIDADE {empresa}', 0, 1, 'C')
     
+    # Linha
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, 38, 200, 38)
     
+    # Data
+    pdf.set_y(40)
     pdf.set_font('Arial', '', 9)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 5, f'Emissao: {datetime.now().strftime("%d/%m/%Y - %H:%M")}', 0, 1, 'R')
-    pdf.ln(8)
+    
+    # ============================================
+    # 1. PANORAMA GERAL - POSIÇÃO ABSOLUTA
+    # ============================================
+    y_pos = 55
+    
+    pdf.set_y(y_pos)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '1. PANORAMA GERAL', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
     # Métricas
     total = len(df_empresa)
@@ -55,202 +79,211 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pct_revisao = (revisao / total * 100) if total > 0 else 0
     pct_desenv = (desenvolvidos / total * 100) if total > 0 else 0
     
-    # ============================================
-    # TÍTULO PANORAMA GERAL
-    # ============================================
-    pdf.set_font('Arial', 'B', 12)
+    # Cards em posições fixas
+    card_y = 78
+    
+    # Card 1 - Total
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(10, card_y, 55, 32, 'F')
+    pdf.set_xy(12, card_y + 5)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'TOTAL', 0, 1)
+    pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '1. PANORAMA GERAL', 0, 1, 'L')
-    pdf.set_draw_color(2, 138, 159)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(8)
+    pdf.cell(0, 8, str(total), 0, 1)
     
-    # Cards em linha única
-    pdf.set_font('Arial', 'B', 10)
-    
-    # Card Total
+    # Card 2 - Desenvolvidos
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, pdf.get_y(), 45, 28, 'F')
-    pdf.set_xy(12, pdf.get_y() + 4)
-    pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'TOTAL', 0, 1)
+    pdf.rect(70, card_y, 55, 32, 'F')
+    pdf.set_xy(72, card_y + 5)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'DESENVOLVIDOS', 0, 1)
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 7, str(total), 0, 1)
-    
-    # Card Desenvolvidos
-    pdf.set_xy(60, pdf.get_y() - 28)
-    pdf.set_fill_color(240, 248, 255)
-    pdf.rect(60, pdf.get_y(), 45, 28, 'F')
-    pdf.set_xy(62, pdf.get_y() + 4)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 7, str(desenvolvidos), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'DESENVOLVIDOS', 0, 1)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(0, 6, str(desenvolvidos), 0, 1)
-    pdf.set_font('Arial', '', 6)
-    pdf.cell(0, 3, f'({pct_desenv:.0f}%)', 0, 1)
+    pdf.cell(0, 4, f'({pct_desenv:.0f}%)', 0, 1)
     
-    # Card Comissionados
-    pdf.set_xy(110, pdf.get_y() - 28)
+    # Card 3 - Comissionados
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(110, pdf.get_y(), 45, 28, 'F')
-    pdf.set_xy(112, pdf.get_y() + 4)
-    pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'COMISSIONADOS', 0, 1)
-    pdf.set_font('Arial', 'B', 14)
+    pdf.rect(130, card_y, 55, 32, 'F')
+    pdf.set_xy(132, card_y + 5)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'COMISSIONADOS', 0, 1)
+    pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(2, 138, 159)
-    pdf.cell(0, 6, str(comissionados), 0, 1)
-    pdf.set_font('Arial', '', 6)
-    pdf.cell(0, 3, f'({pct_comiss:.0f}%)', 0, 1)
-    
-    # Card Validados
-    pdf.set_xy(160, pdf.get_y() - 28)
-    pdf.set_fill_color(240, 248, 255)
-    pdf.rect(160, pdf.get_y(), 40, 28, 'F')
-    pdf.set_xy(162, pdf.get_y() + 4)
+    pdf.cell(0, 7, str(comissionados), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'VALIDADOS', 0, 1)
-    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 4, f'({pct_comiss:.0f}%)', 0, 1)
+    
+    # Card 4 - Validados
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(10, card_y + 38, 55, 32, 'F')
+    pdf.set_xy(12, card_y + 43)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'VALIDADOS', 0, 1)
+    pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(46, 125, 50)
-    pdf.cell(0, 6, str(validados), 0, 1)
-    pdf.set_font('Arial', '', 6)
-    pdf.cell(0, 3, f'({pct_valid:.0f}%)', 0, 1)
-    
-    pdf.ln(32)
-    
-    # Segunda linha de cards
-    pdf.set_text_color(0, 0, 0)
-    
-    # Card Em Revisão
-    pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, pdf.get_y(), 45, 28, 'F')
-    pdf.set_xy(12, pdf.get_y() + 4)
+    pdf.cell(0, 7, str(validados), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'EM REVISAO', 0, 1)
-    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 4, f'({pct_valid:.0f}%)', 0, 1)
+    
+    # Card 5 - Em Revisão
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(70, card_y + 38, 55, 32, 'F')
+    pdf.set_xy(72, card_y + 43)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'EM REVISAO', 0, 1)
+    pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(245, 124, 0)
-    pdf.cell(0, 6, str(revisao), 0, 1)
-    pdf.set_font('Arial', '', 6)
-    pdf.cell(0, 3, f'({pct_revisao:.0f}%)', 0, 1)
-    
-    # Card Aguardando
-    pdf.set_xy(60, pdf.get_y() - 28)
-    pdf.set_fill_color(240, 248, 255)
-    pdf.rect(60, pdf.get_y(), 45, 28, 'F')
-    pdf.set_xy(62, pdf.get_y() + 4)
+    pdf.cell(0, 7, str(revisao), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.cell(0, 4, 'AGUARDANDO', 0, 1)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(198, 40, 40)
-    pdf.cell(0, 6, str(pendentes), 0, 1)
-    pdf.set_font('Arial', '', 6)
-    pdf.cell(0, 3, 'validacao', 0, 1)
+    pdf.cell(0, 4, f'({pct_revisao:.0f}%)', 0, 1)
     
-    pdf.set_text_color(0, 0, 0)
-    pdf.ln(32)
+    # Card 6 - Aguardando
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(130, card_y + 38, 55, 32, 'F')
+    pdf.set_xy(132, card_y + 43)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, 'AGUARDANDO', 0, 1)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(198, 40, 40)
+    pdf.cell(0, 7, str(pendentes), 0, 1)
+    pdf.set_font('Arial', '', 7)
+    pdf.cell(0, 4, 'validacao', 0, 1)
     
     # Barras de progresso
+    bar_y = 160
+    
+    pdf.set_y(bar_y)
     pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO', 0, 1)
-    pdf.ln(2)
     
     # Barra Comissionados
+    pdf.set_y(bar_y + 10)
     pdf.set_font('Arial', '', 9)
     pdf.cell(45, 6, 'Comissionados:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, pdf.get_y(), 110, 5, 'F')
+    pdf.rect(55, bar_y + 10, 110, 5, 'F')
     pdf.set_fill_color(2, 138, 159)
-    pdf.rect(55, pdf.get_y(), 110 * (pct_comiss / 100), 5, 'F')
-    pdf.set_xy(170, pdf.get_y() - 2)
+    pdf.rect(55, bar_y + 10, 110 * (pct_comiss / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 8)
     pdf.cell(20, 6, f'{comissionados} ({pct_comiss:.0f}%)', 0, 1)
     
     # Barra Validados
+    pdf.set_y(bar_y + 18)
     pdf.cell(45, 6, 'Validados:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, pdf.get_y(), 110, 5, 'F')
+    pdf.rect(55, bar_y + 18, 110, 5, 'F')
     pdf.set_fill_color(46, 125, 50)
-    pdf.rect(55, pdf.get_y(), 110 * (pct_valid / 100), 5, 'F')
-    pdf.set_xy(170, pdf.get_y() - 2)
+    pdf.rect(55, bar_y + 18, 110 * (pct_valid / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 16)
     pdf.cell(20, 6, f'{validados} ({pct_valid:.0f}%)', 0, 1)
     
     # Barra Em Revisão
+    pdf.set_y(bar_y + 26)
     pdf.cell(45, 6, 'Em Revisao:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, pdf.get_y(), 110, 5, 'F')
+    pdf.rect(55, bar_y + 26, 110, 5, 'F')
     pdf.set_fill_color(245, 124, 0)
-    pdf.rect(55, pdf.get_y(), 110 * (pct_revisao / 100), 5, 'F')
-    pdf.set_xy(170, pdf.get_y() - 2)
+    pdf.rect(55, bar_y + 26, 110 * (pct_revisao / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 24)
     pdf.cell(20, 6, f'{revisao} ({pct_revisao:.0f}%)', 0, 1)
-    
-    pdf.ln(8)
     
     # ============================================
     # 2. DISTRIBUIÇÃO POR STATUS
     # ============================================
+    dist_y = 200
+    
+    pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, '2. DISTRIBUICAO POR STATUS', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
     
     pdf.set_font('Arial', '', 10)
     status_counts = df_empresa['Status'].value_counts()
+    y_offset = pdf.get_y() + 5
     for status, qtd in status_counts.items():
         pct = (qtd / total * 100) if total > 0 else 0
+        pdf.set_y(y_offset)
         pdf.cell(15, 6, '', 0, 0)
         pdf.cell(0, 6, f'{status}: {qtd} ({pct:.1f}%)', 0, 1)
-    
-    pdf.ln(5)
+        y_offset += 6
     
     # ============================================
     # 3. TIPOS DE EQUIPAMENTOS
     # ============================================
+    tipo_y = y_offset + 5
+    
+    pdf.set_y(tipo_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
+    
+    pdf.set_font('Arial', '', 10)
+    y_offset = pdf.get_y() + 5
     
     if 'Tipo' in df_empresa.columns and not df_empresa['Tipo'].dropna().empty:
-        pdf.set_font('Arial', '', 10)
         tipo_counts = df_empresa['Tipo'].value_counts().head(8)
         for tipo, qtd in tipo_counts.items():
             pct = (qtd / total * 100) if total > 0 else 0
+            pdf.set_y(y_offset)
             pdf.cell(15, 6, '', 0, 0)
             pdf.cell(0, 6, f'{tipo}: {qtd} ({pct:.0f}%)', 0, 1)
+            y_offset += 6
     else:
-        pdf.set_font('Arial', '', 10)
+        pdf.set_y(y_offset)
         pdf.cell(0, 6, 'Nao ha dados de tipos de equipamento disponiveis.', 0, 1)
-    
-    pdf.ln(8)
+        y_offset += 6
     
     # ============================================
-    # 4. PERFORMANCE (continua na mesma página se houver espaço)
+    # 4. PERFORMANCE POR RESPONSAVEL
     # ============================================
+    perf_y = y_offset + 10
+    
+    # Verificar se precisa de nova página
+    if perf_y > 250:
+        pdf.add_page()
+        perf_y = 30
+    
+    pdf.set_y(perf_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, '4. PERFORMANCE POR RESPONSAVEL', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(6)
     
     col_resp = 'Resp_Com'
+    y_offset = pdf.get_y() + 6
     
     if col_resp in df_empresa.columns:
         df_resp = df_empresa[df_empresa[col_resp] != 'Não atribuído']
         
         if not df_resp.empty:
-            # Tabela de comissionados
+            pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 9)
             pdf.cell(0, 6, 'Comissionados por Responsavel:', 0, 1)
+            y_offset += 8
             
+            pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 8)
             pdf.set_fill_color(200, 220, 240)
-            pdf.cell(65, 7, 'Responsavel', 1, 0, 'C', 1)
+            pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Comissionados', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Validados', 1, 0, 'C', 1)
             pdf.cell(45, 7, 'Taxa Sucesso', 1, 1, 'C', 1)
+            y_offset += 7
             
             pdf.set_font('Arial', '', 8)
             pdf.set_fill_color(255, 255, 255)
@@ -263,27 +296,33 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
                 taxa = (validados_resp / total_resp * 100) if total_resp > 0 else 0
                 
                 nome = str(resp)[:30]
-                pdf.cell(65, 6, nome, 1, 0, 'L')
+                pdf.set_y(y_offset)
+                pdf.cell(70, 6, nome, 1, 0, 'L')
                 pdf.cell(35, 6, str(total_resp), 1, 0, 'C')
                 pdf.cell(35, 6, str(validados_resp), 1, 0, 'C')
                 pdf.cell(45, 6, f'{taxa:.0f}%', 1, 1, 'C')
+                y_offset += 6
             
-            pdf.ln(4)
+            y_offset += 4
             
             # Equipamentos em revisão
             df_revisao = df_empresa[df_empresa['Status'] == 'Necessário Revisão']
             
             if not df_revisao.empty:
+                pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 9)
                 pdf.set_text_color(245, 124, 0)
                 pdf.cell(0, 6, 'Equipamentos em Revisao por Responsavel:', 0, 1)
                 pdf.set_text_color(0, 0, 0)
+                y_offset += 8
                 
+                pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 8)
                 pdf.set_fill_color(255, 220, 200)
-                pdf.cell(65, 7, 'Responsavel', 1, 0, 'C', 1)
+                pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
                 pdf.cell(35, 7, 'Em Revisao', 1, 0, 'C', 1)
-                pdf.cell(85, 7, 'Equipamentos', 1, 1, 'C', 1)
+                pdf.cell(80, 7, 'Equipamentos', 1, 1, 'C', 1)
+                y_offset += 7
                 
                 pdf.set_font('Arial', '', 7)
                 pdf.set_fill_color(255, 255, 255)
@@ -296,13 +335,17 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
                         equip_str += '...'
                     
                     nome = str(resp)[:30]
-                    pdf.cell(65, 6, nome, 1, 0, 'L')
+                    pdf.set_y(y_offset)
+                    pdf.cell(70, 6, nome, 1, 0, 'L')
                     pdf.cell(35, 6, str(qtd), 1, 0, 'C')
-                    pdf.cell(85, 6, equip_str[:50], 1, 1, 'L')
+                    pdf.cell(80, 6, equip_str[:50], 1, 1, 'C')
+                    y_offset += 6
         else:
+            pdf.set_y(y_offset)
             pdf.set_font('Arial', '', 10)
             pdf.cell(0, 6, 'Nao ha dados de responsaveis disponiveis.', 0, 1)
     else:
+        pdf.set_y(y_offset)
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, 'Coluna de responsaveis nao encontrada.', 0, 1)
     
