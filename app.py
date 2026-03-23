@@ -784,8 +784,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 Exportar Relatório")
     
-    # Botão para gerar relatório EMT
+    # Importar a função correta
     from pdf_generator import adicionar_botao_pdf_empresa
+    
+    # Botão para gerar relatório EMT
     adicionar_botao_pdf_empresa(df_filtrado, "EMT")
     
     # Botão para gerar relatório ETO
