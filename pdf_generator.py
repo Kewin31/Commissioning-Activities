@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Melhorias
+# pdf_generator.py - Versão sem Emojis
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -8,7 +8,6 @@ from fpdf import FPDF
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
-import io
 import numpy as np
 
 def get_horario_brasilia():
@@ -57,7 +56,7 @@ def gerar_grafico_pizza(status_counts, total):
         autotext.set_fontsize(9)
         autotext.set_weight('bold')
     
-    ax.set_title('Distribuição por Status', fontsize=14, fontweight='bold', pad=20)
+    ax.set_title('Distribuicao por Status', fontsize=14, fontweight='bold', pad=20)
     
     plt.tight_layout()
     return fig
@@ -398,18 +397,22 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.ln(3)
     
-    # Meta e status
+    # Meta e status (sem emojis)
     pdf.set_font('Arial', 'B', 9)
     meta_comiss = 80
+    
     if pct_comiss < 30:
-        status_comiss = "🔴 CRITICO"
+        status_comiss = "CRITICO"
+        status_text = "CRITICO - Necessita acao imediata"
     elif pct_comiss < 50:
-        status_comiss = "🟡 ATENCAO"
+        status_comiss = "ATENCAO"
+        status_text = "ATENCAO - Abaixo da meta"
     else:
-        status_comiss = "🟢 OK"
+        status_comiss = "OK"
+        status_text = "OK - Dentro da meta"
     
     pdf.cell(0, 5, f'Meta de Comissionamento: {meta_comiss}% dos equipamentos', 0, 1)
-    pdf.cell(0, 5, f'Status Atual: {pct_comiss:.1f}% comissionado - {status_comiss}', 0, 1)
+    pdf.cell(0, 5, f'Status Atual: {pct_comiss:.1f}% comissionado - {status_text}', 0, 1)
     
     # ============================================
     # 5. PERFORMANCE POR RESPONSAVEL
