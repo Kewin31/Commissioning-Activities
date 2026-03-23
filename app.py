@@ -778,12 +778,18 @@ if status_selecionado != "Todos":
     df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
 
 # ============================================
-# ADICIONAR BOTÃO DO PDF (DEPOIS DO df_filtrado)
+# ADICIONAR BOTÕES DO PDF (DEPOIS DO df_filtrado)
 # ============================================
 with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 Exportar Relatório")
-    adicionar_botao_pdf(df_filtrado)
+    
+    # Botão para gerar relatório EMT
+    from pdf_generator import adicionar_botao_pdf_empresa
+    adicionar_botao_pdf_empresa(df_filtrado, "EMT")
+    
+    # Botão para gerar relatório ETO
+    adicionar_botao_pdf_empresa(df_filtrado, "ETO")
 
 # ============================================
 # ESTATÍSTICAS RÁPIDAS NA SIDEBAR
