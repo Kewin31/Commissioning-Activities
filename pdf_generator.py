@@ -1,16 +1,45 @@
-# pdf_generator.py - Versão com Espaçamentos Corrigidos
+# pdf_generator.py - Versão com Gráfico de Barras no Acumulado
 import streamlit as st
 import pandas as pd
 import tempfile
 import os
 from datetime import datetime, timezone, timedelta
 from fpdf import FPDF
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+import numpy as np
 
 def get_horario_brasilia():
     """Retorna o horário atual de Brasília (UTC-3)"""
     utc_now = datetime.now(timezone.utc)
     brasilia_time = utc_now - timedelta(hours=3)
     return brasilia_time
+
+def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
+    """Gera gráfico de barras verticais para o acumulado"""
+    fig, ax = plt.subplots(figsize=(8, 4))
+    
+    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisão']
+    valores = [comissionados, validados, revisao]
+    cores = ['#028a9f', '#2E7D32', '#F57C00']
+    
+    bars = ax.bar(categorias, valores, color=cores, width=0.6, edgecolor='white', linewidth=1.5)
+    
+    # Adicionar valores no topo das barras
+    for bar, val in zip(bars, valores):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + max(valores)*0.02,
+                f'{val}\n({val/total*100:.0f}%)' if total > 0 else '0',
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    ax.set_ylabel('Quantidade', fontsize=10)
+    ax.set_title(f'Total de Equipamentos: {total}', fontsize=11, fontweight='bold', pad=15)
+    ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    plt.tight_layout()
+    return fig
 
 def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
     """
@@ -110,8 +139,8 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
-    # Posição inicial dos cards
-    card_y = 78
+    # Posição inicial dos cards (mais próximo)
+    card_y = 75
     
     # CARD 1: DESENVOLVIDOS
     pdf.set_fill_color(240, 248, 255)
@@ -177,10 +206,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 3, f'({pct_revisao:.0f}%)', 0, 1)
     
-    pdf.ln(42)
+    pdf.ln(42)  # Espaço reduzido após os cards
     
     # ============================================
-    # PROGRESSO DO COMISSIONAMENTO
+    # PROGRESSO DO COMISSIONAMENTO (espaço reduzido)
     # ============================================
     bar_y = pdf.get_y() + 2
     
@@ -220,12 +249,12 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(170, bar_y + 19)
     pdf.cell(20, 6, f'{revisao} ({pct_revisao:.0f}%)', 0, 1)
     
-    pdf.ln(10)
+    pdf.ln(8)
     
     # ============================================
     # 2. DISTRIBUIÇÃO POR STATUS
     # ============================================
-    dist_y = pdf.get_y() + 3
+    dist_y = pdf.get_y() + 2
     
     pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
@@ -273,7 +302,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         y_offset += 5
     
     # ============================================
-    # 4. ACUMULADO DA UNIDADE
+    # 4. ACUMULADO DA UNIDADE (COM GRÁFICO)
     # ============================================
     acumulado_y = y_offset + 8
     
@@ -288,27 +317,33 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
-    
-    # Fundo cinza claro
-    pdf.set_fill_color(245, 245, 250)
-    pdf.rect(10, pdf.get_y(), 190, 40, 'F')
-    
-    # Conteúdo do acumulado
-    y_acum = pdf.get_y() + 4
-    pdf.set_y(y_acum)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 5, f'RESUMO DA UNIDADE {empresa}', 0, 1, 'L')
-    pdf.ln(2)
-    
-    pdf.set_font('Arial', '', 8)
-    pdf.cell(0, 4, f'Total de Equipamentos Cadastrados: {total}', 0, 1)
-    pdf.cell(0, 4, f'Equipamentos Comissionados: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
-    
     pdf.ln(5)
+    
+    # Gerar gráfico de barras
+    fig = gerar_grafico_barras_vertical(total, comissionados, validados, revisao)
+    
+    # Salvar gráfico como imagem
+    temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    
+    # Adicionar imagem ao PDF
+    pdf.image(temp_img.name, x=30, w=150)
+    os.unlink(temp_img.name)
+    
+    pdf.ln(50)
+    
+    # Texto complementar do acumulado
+    pdf.set_font('Arial', 'B', 9)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, f'Resumo da Unidade {empresa}:', 0, 1, 'L')
+    pdf.set_font('Arial', '', 8)
+    pdf.cell(0, 4, f'• Total de Equipamentos Cadastrados: {total}', 0, 1)
+    pdf.cell(0, 4, f'• Equipamentos Comissionados e Aguardando Validação: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
+    pdf.cell(0, 4, f'• Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
+    pdf.cell(0, 4, f'• Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
+    
+    pdf.ln(8)
     
     # ============================================
     # 5. PERFORMANCE POR RESPONSAVEL
