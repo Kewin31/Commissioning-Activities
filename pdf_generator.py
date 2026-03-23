@@ -1,16 +1,66 @@
-# pdf_generator.py - Com horário de Brasília
+# pdf_generator.py - Versão com Melhorias
 import streamlit as st
 import pandas as pd
 import tempfile
 import os
 from datetime import datetime, timezone, timedelta
 from fpdf import FPDF
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+import io
+import numpy as np
 
 def get_horario_brasilia():
     """Retorna o horário atual de Brasília (UTC-3)"""
     utc_now = datetime.now(timezone.utc)
-    brasilia_time = utc_now - timedelta(hours=3)  # UTC-3
+    brasilia_time = utc_now - timedelta(hours=3)
     return brasilia_time
+
+def gerar_grafico_pizza(status_counts, total):
+    """Gera gráfico de pizza usando matplotlib"""
+    if status_counts.empty:
+        return None
+    
+    # Cores para cada status
+    cores = {
+        'Desenvolvido': '#2E7D32',
+        'Comissionado': '#028a9f',
+        'Validado': '#005973',
+        'Necessário Revisão': '#F57C00',
+        'Pendente': '#C62828'
+    }
+    
+    # Preparar dados
+    labels = status_counts.index.tolist()
+    values = status_counts.values.tolist()
+    colors = [cores.get(status, '#CCCCCC') for status in labels]
+    
+    # Criar figura
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Criar pizza
+    wedges, texts, autotexts = ax.pie(
+        values,
+        labels=labels,
+        colors=colors,
+        autopct='%1.1f%%',
+        startangle=90,
+        explode=[0.03] * len(labels),
+        shadow=True,
+        textprops={'fontsize': 10}
+    )
+    
+    # Configurar textos
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(9)
+        autotext.set_weight('bold')
+    
+    ax.set_title('Distribuição por Status', fontsize=14, fontweight='bold', pad=20)
+    
+    plt.tight_layout()
+    return fig
 
 def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
     """
@@ -98,7 +148,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pct_desenv = (desenvolvidos / total * 100) if total > 0 else 0
     
     # ============================================
-    # 1. PANORAMA GERAL - CARDS
+    # 1. PANORAMA GERAL - CARDS (SEM TOTAL)
     # ============================================
     y_pos = 63
     
@@ -109,113 +159,95 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
-    # Posição inicial dos cards
+    # Posição inicial dos cards (agora 5 cards)
     card_y = 86
     
     # ============================================
-    # CARD 1: TOTAL
+    # CARD 1: DESENVOLVIDOS
     # ============================================
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, card_y, 58, 35, 'F')
+    pdf.rect(10, card_y, 55, 35, 'F')
     pdf.set_xy(15, card_y + 5)
-    pdf.set_font('Arial', 'B', 9)
-    pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 5, 'TOTAL', 0, 1)
-    pdf.set_xy(15, card_y + 15)
-    pdf.set_font('Arial', 'B', 22)
-    pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 10, str(total), 0, 1)
-    pdf.set_xy(15, card_y + 27)
-    pdf.set_font('Arial', '', 7)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 4, '100%', 0, 1)
-    
-    # ============================================
-    # CARD 2: DESENVOLVIDOS
-    # ============================================
-    pdf.set_fill_color(240, 248, 255)
-    pdf.rect(73, card_y, 58, 35, 'F')
-    pdf.set_xy(78, card_y + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 5, 'DESENVOLVIDOS', 0, 1)
-    pdf.set_xy(78, card_y + 15)
+    pdf.set_xy(15, card_y + 15)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 8, str(desenvolvidos), 0, 1)
-    pdf.set_xy(78, card_y + 27)
+    pdf.set_xy(15, card_y + 27)
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, f'({pct_desenv:.0f}%)', 0, 1)
     
     # ============================================
-    # CARD 3: COMISSIONADOS
+    # CARD 2: COMISSIONADOS
     # ============================================
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(136, card_y, 58, 35, 'F')
-    pdf.set_xy(141, card_y + 5)
+    pdf.rect(70, card_y, 55, 35, 'F')
+    pdf.set_xy(75, card_y + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 5, 'COMISSIONADOS', 0, 1)
-    pdf.set_xy(141, card_y + 15)
+    pdf.set_xy(75, card_y + 15)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 8, str(comissionados), 0, 1)
-    pdf.set_xy(141, card_y + 27)
+    pdf.set_xy(75, card_y + 27)
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 4, f'({pct_comiss:.0f}%)', 0, 1)
     
     # ============================================
-    # CARD 4: VALIDADOS (segunda linha)
+    # CARD 3: VALIDADOS
     # ============================================
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, card_y + 42, 58, 35, 'F')
-    pdf.set_xy(15, card_y + 47)
+    pdf.rect(130, card_y, 55, 35, 'F')
+    pdf.set_xy(135, card_y + 5)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 5, 'VALIDADOS', 0, 1)
-    pdf.set_xy(15, card_y + 57)
+    pdf.set_xy(135, card_y + 15)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 8, str(validados), 0, 1)
-    pdf.set_xy(15, card_y + 69)
+    pdf.set_xy(135, card_y + 27)
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 4, f'({pct_valid:.0f}%)', 0, 1)
     
     # ============================================
-    # CARD 5: EM REVISAO
+    # CARD 4: EM REVISAO
     # ============================================
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(73, card_y + 42, 58, 35, 'F')
-    pdf.set_xy(78, card_y + 47)
+    pdf.rect(10, card_y + 42, 55, 35, 'F')
+    pdf.set_xy(15, card_y + 47)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 5, 'EM REVISAO', 0, 1)
-    pdf.set_xy(78, card_y + 57)
+    pdf.set_xy(15, card_y + 57)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 8, str(revisao), 0, 1)
-    pdf.set_xy(78, card_y + 69)
+    pdf.set_xy(15, card_y + 69)
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 4, f'({pct_revisao:.0f}%)', 0, 1)
     
     # ============================================
-    # CARD 6: AGUARDANDO
+    # CARD 5: AGUARDANDO
     # ============================================
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(136, card_y + 42, 58, 35, 'F')
-    pdf.set_xy(141, card_y + 47)
+    pdf.rect(70, card_y + 42, 55, 35, 'F')
+    pdf.set_xy(75, card_y + 47)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(198, 40, 40)
     pdf.cell(0, 5, 'AGUARDANDO', 0, 1)
-    pdf.set_xy(141, card_y + 57)
+    pdf.set_xy(75, card_y + 57)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(198, 40, 40)
     pdf.cell(0, 8, str(pendentes), 0, 1)
-    pdf.set_xy(141, card_y + 69)
+    pdf.set_xy(75, card_y + 69)
     pdf.set_font('Arial', '', 7)
     pdf.set_text_color(198, 40, 40)
     pdf.cell(0, 4, 'validacao', 0, 1)
@@ -264,7 +296,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(10)
     
     # ============================================
-    # 2. DISTRIBUIÇÃO POR STATUS
+    # 2. DISTRIBUIÇÃO POR STATUS (COM GRÁFICO DE PIZZA)
     # ============================================
     dist_y = 208
     
@@ -274,21 +306,35 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 8, '2. DISTRIBUICAO POR STATUS', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
     
-    pdf.set_font('Arial', '', 10)
+    # Gerar gráfico de pizza
     status_counts = df_empresa['Status'].value_counts()
-    y_offset = pdf.get_y() + 5
-    for status, qtd in status_counts.items():
-        pct = (qtd / total * 100) if total > 0 else 0
-        pdf.set_y(y_offset)
-        pdf.cell(15, 6, '', 0, 0)
-        pdf.cell(0, 6, f'{status}: {qtd} ({pct:.1f}%)', 0, 1)
-        y_offset += 6
+    fig_pizza = gerar_grafico_pizza(status_counts, total)
+    
+    if fig_pizza:
+        # Salvar gráfico como imagem temporária
+        temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        fig_pizza.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig_pizza)
+        
+        # Adicionar imagem ao PDF
+        pdf.image(temp_img.name, x=30, w=150)
+        os.unlink(temp_img.name)
+        pdf.ln(90)
+    else:
+        # Fallback: lista textual
+        pdf.set_font('Arial', '', 10)
+        for status, qtd in status_counts.items():
+            pct = (qtd / total * 100) if total > 0 else 0
+            pdf.cell(15, 6, '', 0, 0)
+            pdf.cell(0, 6, f'{status}: {qtd} ({pct:.1f}%)', 0, 1)
+        pdf.ln(5)
     
     # ============================================
     # 3. TIPOS DE EQUIPAMENTOS
     # ============================================
-    tipo_y = y_offset + 5
+    tipo_y = pdf.get_y()
     
     pdf.set_y(tipo_y)
     pdf.set_font('Arial', 'B', 12)
@@ -314,11 +360,62 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         y_offset += 6
     
     # ============================================
-    # 4. PERFORMANCE POR RESPONSAVEL
+    # 4. ACUMULADO DA UNIDADE (NOVA VISÃO)
     # ============================================
-    perf_y = y_offset + 10
+    acumulado_y = y_offset + 15
     
     # Verificar se precisa de nova página
+    if acumulado_y > 250:
+        pdf.add_page()
+        acumulado_y = 30
+    
+    pdf.set_y(acumulado_y)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    
+    # Fundo cinza claro
+    pdf.set_fill_color(245, 245, 250)
+    pdf.rect(10, pdf.get_y(), 190, 70, 'F')
+    
+    # Conteúdo do acumulado
+    y_acum = pdf.get_y() + 5
+    pdf.set_y(y_acum)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, f'RESUMO DA UNIDADE {empresa}', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 9)
+    pdf.cell(0, 5, f'Total de Equipamentos Cadastrados: {total}', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Comissionados: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Aguardando Validacao: {pendentes}', 0, 1)
+    
+    pdf.ln(3)
+    
+    # Meta e status
+    pdf.set_font('Arial', 'B', 9)
+    meta_comiss = 80
+    if pct_comiss < 30:
+        status_comiss = "🔴 CRITICO"
+    elif pct_comiss < 50:
+        status_comiss = "🟡 ATENCAO"
+    else:
+        status_comiss = "🟢 OK"
+    
+    pdf.cell(0, 5, f'Meta de Comissionamento: {meta_comiss}% dos equipamentos', 0, 1)
+    pdf.cell(0, 5, f'Status Atual: {pct_comiss:.1f}% comissionado - {status_comiss}', 0, 1)
+    
+    # ============================================
+    # 5. PERFORMANCE POR RESPONSAVEL
+    # ============================================
+    perf_y = pdf.get_y() + 15
+    
     if perf_y > 250:
         pdf.add_page()
         perf_y = 30
@@ -326,7 +423,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(perf_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '4. PERFORMANCE POR RESPONSAVEL', 0, 1, 'L')
+    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSAVEL', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
