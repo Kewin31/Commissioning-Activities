@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Gráfico de Barras no Acumulado
+# pdf_generator.py - Versão sem caracteres especiais
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -20,7 +20,7 @@ def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
     """Gera gráfico de barras verticais para o acumulado"""
     fig, ax = plt.subplots(figsize=(8, 4))
     
-    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisão']
+    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisao']
     valores = [comissionados, validados, revisao]
     cores = ['#028a9f', '#2E7D32', '#F57C00']
     
@@ -206,10 +206,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 3, f'({pct_revisao:.0f}%)', 0, 1)
     
-    pdf.ln(42)  # Espaço reduzido após os cards
+    pdf.ln(42)
     
     # ============================================
-    # PROGRESSO DO COMISSIONAMENTO (espaço reduzido)
+    # PROGRESSO DO COMISSIONAMENTO
     # ============================================
     bar_y = pdf.get_y() + 2
     
@@ -333,15 +333,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.ln(50)
     
-    # Texto complementar do acumulado
+    # Texto complementar do acumulado (sem caracteres especiais)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 5, f'Resumo da Unidade {empresa}:', 0, 1, 'L')
     pdf.set_font('Arial', '', 8)
-    pdf.cell(0, 4, f'• Total de Equipamentos Cadastrados: {total}', 0, 1)
-    pdf.cell(0, 4, f'• Equipamentos Comissionados e Aguardando Validação: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'• Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'• Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
+    pdf.cell(0, 4, f'- Total de Equipamentos Cadastrados: {total}', 0, 1)
+    pdf.cell(0, 4, f'- Equipamentos Comissionados e Aguardando Validacao: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
+    pdf.cell(0, 4, f'- Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
+    pdf.cell(0, 4, f'- Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
     
     pdf.ln(8)
     
