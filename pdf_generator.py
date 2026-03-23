@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Acentuação Corrigida e Fontes Maiores
+# pdf_generator.py - Versão com Texto Explicativo e Assinaturas
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -111,6 +111,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 5, f'Emissão: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horário de Brasília)', 0, 1, 'R')
     
     # ============================================
+    # TEXTO EXPLICATIVO (antes do Panorama Geral)
+    # ============================================
+    pdf.set_y(58)
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(80, 80, 80)
+    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamento dos equipamentos SCADA, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.', 0, 1)
+    pdf.ln(3)
+    
+    # ============================================
     # MÉTRICAS
     # ============================================
     total = len(df_empresa)
@@ -129,7 +138,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # ============================================
     
     # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA
-    y_pos = 63
+    y_pos = pdf.get_y() + 5
     
     pdf.set_y(y_pos)
     pdf.set_font('Arial', 'B', 12)
@@ -139,11 +148,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
     # Posição inicial dos cards
-    card_y = 75
+    card_y = pdf.get_y() + 5
     
     # CARD 1: DESENVOLVIDOS
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, card_y, 45, 40, 'F')
+    pdf.rect(10, card_y, 45, 42, 'F')
     pdf.set_xy(15, card_y + 4)
     pdf.set_font('Arial', 'B', 8)
     pdf.set_text_color(100, 100, 100)
@@ -152,14 +161,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 7, str(desenvolvidos), 0, 1)
-    pdf.set_xy(15, card_y + 28)
-    pdf.set_font('Arial', '', 12)  # <-- FONTE TAMANHO 12
+    pdf.set_xy(15, card_y + 30)
+    pdf.set_font('Arial', '', 10)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, f'({pct_desenv:.0f}%)', 0, 1)
     
     # CARD 2: COMISSIONADOS
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(60, card_y, 45, 40, 'F')
+    pdf.rect(60, card_y, 45, 42, 'F')
     pdf.set_xy(65, card_y + 4)
     pdf.set_font('Arial', 'B', 8)
     pdf.set_text_color(2, 138, 159)
@@ -168,14 +177,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 7, str(comissionados), 0, 1)
-    pdf.set_xy(65, card_y + 28)
-    pdf.set_font('Arial', '', 12)  # <-- FONTE TAMANHO 12
+    pdf.set_xy(65, card_y + 30)
+    pdf.set_font('Arial', '', 10)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 4, f'({pct_comiss:.0f}%)', 0, 1)
     
     # CARD 3: VALIDADOS
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(110, card_y, 45, 40, 'F')
+    pdf.rect(110, card_y, 45, 42, 'F')
     pdf.set_xy(115, card_y + 4)
     pdf.set_font('Arial', 'B', 8)
     pdf.set_text_color(46, 125, 50)
@@ -184,14 +193,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 7, str(validados), 0, 1)
-    pdf.set_xy(115, card_y + 28)
-    pdf.set_font('Arial', '', 12)  # <-- FONTE TAMANHO 12
+    pdf.set_xy(115, card_y + 30)
+    pdf.set_font('Arial', '', 10)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 4, f'({pct_valid:.0f}%)', 0, 1)
     
     # CARD 4: EM REVISÃO
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(160, card_y, 40, 40, 'F')
+    pdf.rect(160, card_y, 40, 42, 'F')
     pdf.set_xy(165, card_y + 4)
     pdf.set_font('Arial', 'B', 8)
     pdf.set_text_color(245, 124, 0)
@@ -200,12 +209,12 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 7, str(revisao), 0, 1)
-    pdf.set_xy(165, card_y + 28)
-    pdf.set_font('Arial', '', 12)  # <-- FONTE TAMANHO 12
+    pdf.set_xy(165, card_y + 30)
+    pdf.set_font('Arial', '', 10)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 4, f'({pct_revisao:.0f}%)', 0, 1)
     
-    pdf.ln(38)  # Ajustado para acomodar altura maior dos cards
+    pdf.ln(45)
     
     # ============================================
     # PROGRESSO DO COMISSIONAMENTO
@@ -327,7 +336,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.ln(20)
     
-    # Texto complementar do acumulado (com acentos)
+    # Texto complementar do acumulado
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'Resumo da Unidade:', 0, 1, 'L')
@@ -436,7 +445,59 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
-    # Rodapé
+    # ============================================
+    # RODAPÉ COM ASSINATURAS
+    # ============================================
+    pdf.add_page()
+    
+    pdf.set_y(30)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '6. EQUIPE RESPONSÁVEL', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(10)
+    
+    # Elaborado por
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Documento Elaborado por:', 0, 1, 'L')
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'ruanney.nascimento@energisa.com.br - SRE', 0, 1, 'L')
+    pdf.ln(8)
+    
+    # Aprovado por
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Aprovado por:', 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Mauricio Dias Avelino', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'mauricio.avelino@energisa.com.br - Coordenador Equipe SCADA', 0, 1, 'L')
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Cassio Fernando Bazana Nonenmacher', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'cassio.bazana@energisa.com.br - Gerente Funcional', 0, 1, 'L')
+    pdf.cell(0, 4, 'Gerencia de Tecnologias Operativas', 0, 1, 'L')
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Savio Ricardo Muniz Aires da Costa', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'savio.ricardo@energisa.com.br - Gerente Executivo de Automação e Telecom', 0, 1, 'L')
+    
+    # Rodapé final
     pdf.set_y(-15)
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(150, 150, 150)
