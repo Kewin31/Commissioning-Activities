@@ -14,7 +14,7 @@ import time
 from dateutil.relativedelta import relativedelta
 
 # Importar o gerador de PDF
-from pdf_generator import adicionar_botao_pdf
+from pdf_generator import adicionar_botao_pdf_empresa
 
 # Configuração da página
 st.set_page_config(
@@ -783,9 +783,6 @@ if status_selecionado != "Todos":
 with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 Exportar Relatório")
-    
-    # Importar a função correta
-    from pdf_generator import adicionar_botao_pdf_empresa
     
     # Botão para gerar relatório EMT
     adicionar_botao_pdf_empresa(df_filtrado, "EMT")
