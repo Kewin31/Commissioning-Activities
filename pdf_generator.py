@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Acentuação e Layout Corrigido
+# pdf_generator.py - Versão com Acentuação Corrigida
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -9,9 +9,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
-
-# Registrar fonte que suporta acentos (usar Arial que já tem suporte)
-# O FPDF já tem suporte a Unicode com a fonte Arial
 
 def get_horario_brasilia():
     """Retorna o horário atual de Brasília (UTC-3)"""
@@ -86,7 +83,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(15)
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, 'RELATORIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
+    pdf.cell(0, 8, 'RELATÓRIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
     # Subtítulo
     pdf.set_font('Arial', 'B', 12)
@@ -97,7 +94,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     if mes_selecionado and mes_selecionado != "Todos os Meses":
         pdf.set_font('Arial', 'I', 10)
         pdf.set_text_color(100, 100, 100)
-        periodo_texto = f'Periodo: {mes_selecionado}'
+        periodo_texto = f'Período: {mes_selecionado}'
         if ano_selecionado and ano_selecionado != "Todos os Anos":
             periodo_texto += f'/{ano_selecionado}'
         pdf.cell(0, 5, periodo_texto, 0, 1, 'C')
@@ -111,7 +108,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(48)
     pdf.set_font('Arial', '', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, f'Emissao: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horario de Brasilia)', 0, 1, 'R')
+    pdf.cell(0, 5, f'Emissão: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horário de Brasília)', 0, 1, 'R')
     
     # ============================================
     # MÉTRICAS
@@ -192,13 +189,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 3, f'({pct_valid:.0f}%)', 0, 1)
     
-    # CARD 4: EM REVISAO
+    # CARD 4: EM REVISÃO
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(160, card_y, 40, 38, 'F')
     pdf.set_xy(165, card_y + 4)
     pdf.set_font('Arial', 'B', 8)
     pdf.set_text_color(245, 124, 0)
-    pdf.cell(0, 4, 'EM REVISAO', 0, 1)
+    pdf.cell(0, 4, 'EM REVISÃO', 0, 1)
     pdf.set_xy(165, card_y + 14)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(245, 124, 0)
@@ -243,7 +240,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     # Barra Em Revisão
     pdf.set_y(bar_y + 21)
-    pdf.cell(45, 6, 'Em Revisao:', 0, 0)
+    pdf.cell(45, 6, 'Em Revisão:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
     pdf.rect(55, bar_y + 21, 110, 5, 'F')
     pdf.set_fill_color(245, 124, 0)
@@ -261,7 +258,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '2. DISTRIBUICAO POR STATUS', 0, 1, 'L')
+    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(3)
@@ -300,7 +297,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             y_offset += 5
     else:
         pdf.set_y(y_offset)
-        pdf.cell(0, 5, 'Nao ha dados de tipos de equipamento disponiveis.', 0, 1)
+        pdf.cell(0, 5, 'Não há dados de tipos de equipamento disponíveis.', 0, 1)
         y_offset += 5
     
     # ============================================
@@ -343,14 +340,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(10)
     
     # ============================================
-    # PÁGINA 3 - PERFORMANCE POR RESPONSAVEL
+    # PÁGINA 3 - PERFORMANCE POR RESPONSÁVEL
     # ============================================
     pdf.add_page()
     
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSAVEL', 0, 1, 'L')
+    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSÁVEL', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -363,13 +360,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         if not df_resp.empty:
             pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 9)
-            pdf.cell(0, 6, 'Comissionados por Responsavel:', 0, 1)
+            pdf.cell(0, 6, 'Comissionados por Responsável:', 0, 1)
             y_offset += 6
             
             pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 8)
             pdf.set_fill_color(200, 220, 240)
-            pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
+            pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Comissionados', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Validados', 1, 0, 'C', 1)
             pdf.cell(45, 7, 'Taxa Sucesso', 1, 1, 'C', 1)
@@ -402,15 +399,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
                 pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 9)
                 pdf.set_text_color(245, 124, 0)
-                pdf.cell(0, 6, 'Equipamentos em Revisao por Responsavel:', 0, 1)
+                pdf.cell(0, 6, 'Equipamentos em Revisão por Responsável:', 0, 1)
                 pdf.set_text_color(0, 0, 0)
                 y_offset += 6
                 
                 pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 8)
                 pdf.set_fill_color(255, 220, 200)
-                pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
-                pdf.cell(35, 7, 'Em Revisao', 1, 0, 'C', 1)
+                pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
+                pdf.cell(35, 7, 'Em Revisão', 1, 0, 'C', 1)
                 pdf.cell(80, 7, 'Equipamentos', 1, 1, 'C', 1)
                 y_offset += 7
                 
@@ -433,17 +430,17 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         else:
             pdf.set_y(y_offset)
             pdf.set_font('Arial', '', 10)
-            pdf.cell(0, 6, 'Nao ha dados de responsaveis disponiveis.', 0, 1)
+            pdf.cell(0, 6, 'Não há dados de responsáveis disponíveis.', 0, 1)
     else:
         pdf.set_y(y_offset)
         pdf.set_font('Arial', '', 10)
-        pdf.cell(0, 6, 'Coluna de responsaveis nao encontrada.', 0, 1)
+        pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
     # Rodapé
     pdf.set_y(-15)
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Pagina {pdf.page_no()}', 0, 0, 'C')
+    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
     
     # Gerar arquivo
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
@@ -457,17 +454,17 @@ def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_
     """
     if st.button(f"📊 Gerar Relatório {empresa}", use_container_width=True, key=f"btn_pdf_{empresa}"):
         if df_filtrado.empty:
-            st.warning("Nao ha dados para gerar o relatorio.")
+            st.warning("Não há dados para gerar o relatório.")
             return
         
         # Filtrar dados da empresa
         df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa]
         
         if df_empresa.empty:
-            st.warning(f"Nao ha dados para a empresa {empresa} com os filtros selecionados.")
+            st.warning(f"Não há dados para a empresa {empresa} com os filtros selecionados.")
             return
         
-        with st.spinner(f"Gerando relatorio da {empresa}..."):
+        with st.spinner(f"Gerando relatório da {empresa}..."):
             try:
                 pdf_path = gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado, ano_selecionado)
                 
@@ -482,10 +479,10 @@ def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_
                     nome_arquivo += f"_{ano_selecionado}"
                 nome_arquivo += f"_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
                 
-                st.success(f"Relatorio da {empresa} gerado com sucesso!")
+                st.success(f"Relatório da {empresa} gerado com sucesso!")
                 
                 st.download_button(
-                    label=f"Baixar Relatorio {empresa}",
+                    label=f"Baixar Relatório {empresa}",
                     data=pdf_bytes,
                     file_name=nome_arquivo,
                     mime="application/pdf",
