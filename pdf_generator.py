@@ -153,7 +153,7 @@ pdf.set_font('Arial', 'B', 18)
 pdf.set_text_color(100, 100, 100)
 pdf.cell(0, 7, str(desenvolvidos), 0, 1)
 pdf.set_xy(15, card_y + 26)
-pdf.set_font('Arial', '', 9)  # <-- ALTERADO: tamanho 9
+pdf.set_font('Arial', '', 15)  # <-- ALTERADO: tamanho 9
 pdf.set_text_color(100, 100, 100)
 pdf.cell(0, 3, f'({pct_desenv:.0f}%)', 0, 1)
 
@@ -169,7 +169,7 @@ pdf.set_font('Arial', 'B', 18)
 pdf.set_text_color(2, 138, 159)
 pdf.cell(0, 7, str(comissionados), 0, 1)
 pdf.set_xy(65, card_y + 26)
-pdf.set_font('Arial', '', 9)  # <-- ALTERADO: tamanho 9
+pdf.set_font('Arial', '', 15)  # <-- ALTERADO: tamanho 9
 pdf.set_text_color(2, 138, 159)
 pdf.cell(0, 3, f'({pct_comiss:.0f}%)', 0, 1)
 
@@ -185,7 +185,7 @@ pdf.set_font('Arial', 'B', 18)
 pdf.set_text_color(46, 125, 50)
 pdf.cell(0, 7, str(validados), 0, 1)
 pdf.set_xy(115, card_y + 26)
-pdf.set_font('Arial', '', 9)  # <-- ALTERADO: tamanho 9
+pdf.set_font('Arial', '', 15)  # <-- ALTERADO: tamanho 9
 pdf.set_text_color(46, 125, 50)
 pdf.cell(0, 3, f'({pct_valid:.0f}%)', 0, 1)
 
@@ -201,7 +201,7 @@ pdf.set_font('Arial', 'B', 18)
 pdf.set_text_color(245, 124, 0)
 pdf.cell(0, 7, str(revisao), 0, 1)
 pdf.set_xy(165, card_y + 26)
-pdf.set_font('Arial', '', 9)  # <-- ALTERADO: tamanho 9
+pdf.set_font('Arial', '', 15)  # <-- ALTERADO: tamanho 9
 pdf.set_text_color(245, 124, 0)
 pdf.cell(0, 3, f'({pct_revisao:.0f}%)', 0, 1)
     
