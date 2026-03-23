@@ -1,17 +1,12 @@
-# pdf_generator.py - Versão usando plotly + orca (alternativa sem kaleido)
+# pdf_generator.py - Versão Corrigida
 import streamlit as st
 import pandas as pd
 import tempfile
 import os
-import base64
 from datetime import datetime
 from fpdf import FPDF
-import plotly.express as px
-import plotly.graph_objects as go
-import io
-import time
 
-# Cores no formato RGB para o PDF
+# Cores no formato RGB para o PDF (como tuplas)
 CORES_PDF = {
     'azul_energisa': (0, 89, 115),
     'azul_claro': (2, 138, 159),
@@ -22,7 +17,7 @@ CORES_PDF = {
     'cinza_claro': (230, 230, 230)
 }
 
-# Cores para os status (mesmas do dashboard)
+# Cores para os status
 CORES = {
     'Desenvolvido': '#2E7D32',
     'Comissionado': '#028a9f',
@@ -52,22 +47,22 @@ class PDFRelatorioEmpresa(FPDF):
         
         # Título
         self.set_font('Arial', 'B', 18)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
+        self.set_text_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
         self.cell(0, 10, 'RELATORIO EXECUTIVO - COMISSIONAMENTO SCADA', 0, 1, 'C')
         
         # Subtítulo com a empresa
         self.set_font('Arial', 'B', 14)
-        self.set_text_color(*CORES_PDF['azul_claro'])
+        self.set_text_color(CORES_PDF['azul_claro'][0], CORES_PDF['azul_claro'][1], CORES_PDF['azul_claro'][2])
         self.cell(0, 8, f'UNIDADE {self.empresa}', 0, 1, 'C')
         
         # Linha separadora
-        self.set_draw_color(*CORES_PDF['azul_energisa'])
+        self.set_draw_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
         self.line(10, 40, 200, 40)
         
         # Data
         self.set_y(45)
         self.set_font('Arial', '', 9)
-        self.set_text_color(*CORES_PDF['cinza'])
+        self.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
         self.cell(0, 5, f'Data de emissao: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
         
         self.ln(5)
@@ -76,15 +71,15 @@ class PDFRelatorioEmpresa(FPDF):
         """Rodapé do relatório"""
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
-        self.set_text_color(*CORES_PDF['cinza'])
+        self.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
         self.cell(0, 10, f'Energisa - Comissionamento SCADA | Unidade {self.empresa} | Pagina {self.page_no()}', 0, 0, 'C')
     
     def section_title(self, title):
         """Título de seção"""
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
+        self.set_text_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
         self.cell(0, 10, title, 0, 1, 'L')
-        self.set_draw_color(*CORES_PDF['azul_claro'])
+        self.set_draw_color(CORES_PDF['azul_claro'][0], CORES_PDF['azul_claro'][1], CORES_PDF['azul_claro'][2])
         self.line(self.get_x(), self.get_y(), self.get_x() + 190, self.get_y())
         self.ln(5)
     
@@ -94,10 +89,10 @@ class PDFRelatorioEmpresa(FPDF):
             color = CORES_PDF['azul_energisa']
         
         self.set_font('Arial', 'B', 20)
-        self.set_text_color(*color)
+        self.set_text_color(color[0], color[1], color[2])
         self.cell(45, 15, str(value), 0, 0, 'C')
         self.set_font('Arial', '', 8)
-        self.set_text_color(*CORES_PDF['cinza'])
+        self.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
         self.cell(45, 15, label, 0, 0, 'C')
         if sublabel:
             self.set_font('Arial', 'I', 7)
@@ -113,10 +108,10 @@ class PDFRelatorioEmpresa(FPDF):
         x = self.get_x()
         y = self.get_y()
         
-        self.set_fill_color(*CORES_PDF['cinza_claro'])
+        self.set_fill_color(CORES_PDF['cinza_claro'][0], CORES_PDF['cinza_claro'][1], CORES_PDF['cinza_claro'][2])
         self.rect(x, y, width, height, 'F')
         
-        self.set_fill_color(*color)
+        self.set_fill_color(color[0], color[1], color[2])
         self.rect(x, y, width * (percentage / 100), height, 'F')
         
         self.set_font('Arial', '', 8)
@@ -126,104 +121,17 @@ class PDFRelatorioEmpresa(FPDF):
         
         self.set_y(y + height + 5)
     
-    def save_plotly_as_image(self, fig, width=800, height=400):
-        """Salva figura plotly como imagem usando método alternativo"""
-        try:
-            # Método 1: tentar usar write_image (requer kaleido)
-            img_bytes = fig.to_image(format="png", width=width, height=height, scale=2)
-            return img_bytes
-        except:
-            try:
-                # Método 2: usar html + selenium (não recomendado para cloud)
-                import plotly.io as pio
-                html = pio.to_html(fig, include_plotlyjs='cdn', full_html=False)
-                
-                # Salvar HTML temporário
-                html_path = tempfile.NamedTemporaryFile(delete=False, suffix='.html')
-                html_path.write(html.encode())
-                html_path.close()
-                
-                # Para cloud, retornamos None e usamos texto alternativo
-                return None
-            except:
-                return None
-    
     def add_chart_text_alternative(self, title, data):
         """Adiciona alternativa textual para gráficos"""
         self.set_font('Arial', 'B', 9)
-        self.set_text_color(*CORES_PDF['azul_energisa'])
+        self.set_text_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
         self.cell(0, 6, f'{title}:', 0, 1, 'L')
         self.set_font('Arial', '', 8)
-        self.set_text_color(*CORES_PDF['cinza'])
+        self.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
         
         for key, value in data.items():
             self.cell(0, 5, f'  • {key}: {value}', 0, 1, 'L')
         self.ln(5)
-
-
-def gerar_grafico_pizza(df_empresa):
-    """Gera gráfico de pizza da distribuição por status"""
-    status_counts = df_empresa['Status'].value_counts().reset_index()
-    status_counts.columns = ['Status', 'Quantidade']
-    
-    fig = px.pie(
-        status_counts,
-        values='Quantidade',
-        names='Status',
-        title='Distribuição por Status',
-        color='Status',
-        color_discrete_map=CORES,
-        hole=0.3
-    )
-    fig.update_traces(
-        textposition='outside',
-        textinfo='percent+label',
-        marker=dict(line=dict(color='white', width=2)),
-        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent:.1f}%<extra></extra>'
-    )
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        height=400,
-        margin=dict(t=80, b=20, l=20, r=20),
-        paper_bgcolor='white',
-        plot_bgcolor='white'
-    )
-    return fig
-
-
-def gerar_grafico_tipos(df_empresa):
-    """Gera gráfico de barras dos tipos de equipamento"""
-    if 'Tipo' not in df_empresa.columns or df_empresa['Tipo'].dropna().empty:
-        return None
-    
-    tipo_counts = df_empresa['Tipo'].value_counts().head(8).reset_index()
-    tipo_counts.columns = ['Tipo', 'Quantidade']
-    
-    fig = px.bar(
-        tipo_counts,
-        x='Quantidade',
-        y='Tipo',
-        orientation='h',
-        title='Tipos de Equipamento',
-        color='Quantidade',
-        color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
-        text='Quantidade'
-    )
-    fig.update_traces(
-        textposition='outside',
-        texttemplate='%{text}',
-        hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<extra></extra>'
-    )
-    fig.update_layout(
-        height=350,
-        margin=dict(t=50, b=10, l=120, r=10),
-        xaxis_title="Quantidade",
-        yaxis_title="",
-        paper_bgcolor='white',
-        plot_bgcolor='white'
-    )
-    return fig
 
 
 def gerar_relatorio_empresa(df_filtrado, empresa):
@@ -243,7 +151,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # ============================================
     # 1. ANALISE DA EMPRESA
     # ============================================
-    pdf.section_title('1. ANALISE DA EMPPRESA')
+    pdf.section_title('1. ANALISE DA EMPRESA')
     
     total = len(df_empresa)
     desenvolvidos = len(df_empresa[df_empresa['Status'] == 'Desenvolvido'])
@@ -297,7 +205,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     
     # Versão textual dos dados
     status_data = df_empresa['Status'].value_counts().to_dict()
-    pdf.add_chart_text_alternative('Distribuição por Status', status_data)
+    pdf.add_chart_text_alternative('Distribuicao por Status', status_data)
     
     pdf.ln(5)
     
@@ -332,10 +240,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 1', 0, 1)
     pdf.set_font('Arial', 'B', 18)
-    pdf.set_text_color(*CORES_PDF['azul_energisa'])
+    pdf.set_text_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
     pdf.cell(0, 10, str(desenvolvidos), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.set_text_color(*CORES_PDF['cinza'])
+    pdf.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
     pdf.cell(0, 4, 'Desenvolvidos', 0, 1)
     pdf.cell(0, 4, 'Aguardando', 0, 1)
     pdf.cell(0, 4, 'comissionamento', 0, 1)
@@ -344,7 +252,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # Seta
     pdf.set_xy(60, pdf.get_y() - 45)
     pdf.set_font('Arial', '', 18)
-    pdf.cell(10, 10, '→', 0, 1)
+    pdf.cell(10, 10, '->', 0, 1)
     
     # ETAPA 2 - Comissionados
     pdf.set_xy(75, pdf.get_y() - 55)
@@ -354,10 +262,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 2', 0, 1)
     pdf.set_font('Arial', 'B', 18)
-    pdf.set_text_color(*CORES_PDF['azul_claro'])
+    pdf.set_text_color(CORES_PDF['azul_claro'][0], CORES_PDF['azul_claro'][1], CORES_PDF['azul_claro'][2])
     pdf.cell(0, 10, str(comissionados), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.set_text_color(*CORES_PDF['cinza'])
+    pdf.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
     pdf.cell(0, 4, 'Comissionados', 0, 1)
     pdf.cell(0, 4, 'Aguardando', 0, 1)
     pdf.cell(0, 4, 'validacao', 0, 1)
@@ -366,7 +274,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     # Seta
     pdf.set_xy(125, pdf.get_y() - 45)
     pdf.set_font('Arial', '', 18)
-    pdf.cell(10, 10, '→', 0, 1)
+    pdf.cell(10, 10, '->', 0, 1)
     
     # ETAPA 3 - Validados
     pdf.set_xy(140, pdf.get_y() - 55)
@@ -376,10 +284,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.set_font('Arial', 'B', 9)
     pdf.cell(0, 5, 'ETAPA 3', 0, 1)
     pdf.set_font('Arial', 'B', 18)
-    pdf.set_text_color(*CORES_PDF['verde'])
+    pdf.set_text_color(CORES_PDF['verde'][0], CORES_PDF['verde'][1], CORES_PDF['verde'][2])
     pdf.cell(0, 10, str(validados), 0, 1)
     pdf.set_font('Arial', '', 7)
-    pdf.set_text_color(*CORES_PDF['cinza'])
+    pdf.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
     pdf.cell(0, 4, 'Validados', 0, 1)
     pdf.cell(0, 4, 'Processo', 0, 1)
     pdf.cell(0, 4, 'concluido', 0, 1)
@@ -392,12 +300,12 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.rect(10, pdf.get_y(), 180, 45, 'F')
     pdf.set_xy(12, pdf.get_y() + 5)
     pdf.set_font('Arial', 'B', 10)
-    pdf.set_text_color(*CORES_PDF['laranja'])
+    pdf.set_text_color(CORES_PDF['laranja'][0], CORES_PDF['laranja'][1], CORES_PDF['laranja'][2])
     pdf.cell(0, 6, 'GARGALO', 0, 1)
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 8, f'{revisao} equipamentos em revisao', 0, 1)
     pdf.set_font('Arial', '', 8)
-    pdf.set_text_color(*CORES_PDF['cinza'])
+    pdf.set_text_color(CORES_PDF['cinza'][0], CORES_PDF['cinza'][1], CORES_PDF['cinza'][2])
     pdf.cell(0, 4, f'{pct_revisao:.1f}% do total de equipamentos', 0, 1)
     pdf.ln(50)
     
@@ -414,7 +322,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
         if not df_resp.empty:
             # Comissionados por responsável
             pdf.set_font('Arial', 'B', 10)
-            pdf.set_text_color(*CORES_PDF['azul_energisa'])
+            pdf.set_text_color(CORES_PDF['azul_energisa'][0], CORES_PDF['azul_energisa'][1], CORES_PDF['azul_energisa'][2])
             pdf.cell(0, 8, 'Comissionados por Responsavel', 0, 1)
             
             pdf.set_font('Arial', 'B', 8)
@@ -446,7 +354,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
             
             if not df_revisao.empty:
                 pdf.set_font('Arial', 'B', 10)
-                pdf.set_text_color(*CORES_PDF['laranja'])
+                pdf.set_text_color(CORES_PDF['laranja'][0], CORES_PDF['laranja'][1], CORES_PDF['laranja'][2])
                 pdf.cell(0, 8, 'Equipamentos em Revisao por Responsavel', 0, 1)
                 
                 pdf.set_font('Arial', 'B', 8)
