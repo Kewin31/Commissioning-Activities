@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão sem caracteres especiais
+# pdf_generator.py - Versão com Acentuação e Layout Corrigido
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -10,6 +10,9 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 
+# Registrar fonte que suporta acentos (usar Arial que já tem suporte)
+# O FPDF já tem suporte a Unicode com a fonte Arial
+
 def get_horario_brasilia():
     """Retorna o horário atual de Brasília (UTC-3)"""
     utc_now = datetime.now(timezone.utc)
@@ -20,13 +23,12 @@ def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
     """Gera gráfico de barras verticais para o acumulado"""
     fig, ax = plt.subplots(figsize=(8, 4))
     
-    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisao']
+    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisão']
     valores = [comissionados, validados, revisao]
     cores = ['#028a9f', '#2E7D32', '#F57C00']
     
     bars = ax.bar(categorias, valores, color=cores, width=0.6, edgecolor='white', linewidth=1.5)
     
-    # Adicionar valores no topo das barras
     for bar, val in zip(bars, valores):
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + max(valores)*0.02,
@@ -126,7 +128,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pct_desenv = (desenvolvidos / total * 100) if total > 0 else 0
     
     # ============================================
-    # PÁGINA 1 - TODO O CONTEÚDO
+    # PÁGINA 1 - PANORAMA, PROGRESSO, DISTRIBUIÇÃO, TIPOS
     # ============================================
     
     # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA
@@ -139,7 +141,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
-    # Posição inicial dos cards (mais próximo)
+    # Posição inicial dos cards
     card_y = 75
     
     # CARD 1: DESENVOLVIDOS
@@ -302,16 +304,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         y_offset += 5
     
     # ============================================
-    # 4. ACUMULADO DA UNIDADE (COM GRÁFICO)
+    # PÁGINA 2 - ACUMULADO DA UNIDADE (COM GRÁFICO)
     # ============================================
-    acumulado_y = y_offset + 8
+    pdf.add_page()
     
-    # Verificar se precisa de nova página
-    if acumulado_y > 250:
-        pdf.add_page()
-        acumulado_y = 25
-    
-    pdf.set_y(acumulado_y)
+    pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE', 0, 1, 'L')
@@ -331,31 +328,26 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.image(temp_img.name, x=30, w=150)
     os.unlink(temp_img.name)
     
-    pdf.ln(50)
+    pdf.ln(55)
     
-    # Texto complementar do acumulado (sem caracteres especiais)
-    pdf.set_font('Arial', 'B', 9)
+    # Texto complementar do acumulado (com acentos)
+    pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 5, f'Resumo da Unidade {empresa}:', 0, 1, 'L')
-    pdf.set_font('Arial', '', 8)
-    pdf.cell(0, 4, f'- Total de Equipamentos Cadastrados: {total}', 0, 1)
-    pdf.cell(0, 4, f'- Equipamentos Comissionados e Aguardando Validacao: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'- Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
-    pdf.cell(0, 4, f'- Equipamentos em Revisao: {revisao} ({pct_revisao:.1f}%)', 0, 1)
+    pdf.cell(0, 6, 'Resumo da Unidade:', 0, 1, 'L')
+    pdf.set_font('Arial', '', 9)
+    pdf.cell(0, 5, f'Total de Equipamentos Cadastrados: {total}', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Comissionados e Aguardando Validação: {comissionados} ({pct_comiss:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Validados: {validados} ({pct_valid:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao} ({pct_revisao:.1f}%)', 0, 1)
     
-    pdf.ln(8)
+    pdf.ln(10)
     
     # ============================================
-    # 5. PERFORMANCE POR RESPONSAVEL
+    # PÁGINA 3 - PERFORMANCE POR RESPONSAVEL
     # ============================================
-    perf_y = pdf.get_y() + 5
+    pdf.add_page()
     
-    # Verificar se precisa de nova página para a tabela
-    if perf_y > 230:
-        pdf.add_page()
-        perf_y = 25
-    
-    pdf.set_y(perf_y)
+    pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSAVEL', 0, 1, 'L')
@@ -407,18 +399,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             df_revisao = df_empresa[df_empresa['Status'] == 'Necessário Revisão']
             
             if not df_revisao.empty:
-                # Verificar espaço para a segunda tabela
-                if y_offset > 230:
-                    pdf.add_page()
-                    y_offset = 25
-                    pdf.set_y(y_offset)
-                    pdf.set_font('Arial', 'B', 12)
-                    pdf.set_text_color(0, 89, 115)
-                    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSAVEL (continuacao)', 0, 1, 'L')
-                    pdf.set_draw_color(2, 138, 159)
-                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                    y_offset = pdf.get_y() + 5
-                
                 pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 9)
                 pdf.set_text_color(245, 124, 0)
