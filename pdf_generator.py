@@ -116,7 +116,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(58)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(80, 80, 80)
-    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamento dos equipamentos SCADA, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.')
+    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamentos da unidade, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.')
     pdf.ln(3)
     
     # ============================================
