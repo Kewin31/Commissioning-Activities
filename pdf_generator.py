@@ -466,7 +466,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 4, 'ruanney.nascimento@energisa.com.br - SRE', 0, 1, 'L')
+    pdf.cell(0, 4, 'kewin.ferreira@energisa.com.br - SRE', 0, 1, 'L')
     pdf.ln(8)
     
     # Aprovado por
