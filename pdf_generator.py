@@ -328,7 +328,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.image(temp_img.name, x=30, w=150)
     os.unlink(temp_img.name)
     
-    pdf.ln(40)
+    pdf.ln(20)
     
     # Texto complementar do acumulado (com acentos)
     pdf.set_font('Arial', 'B', 10)
