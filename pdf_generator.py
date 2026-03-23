@@ -37,7 +37,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa):
     pdf.set_y(15)
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, 'RELATORIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
+    pdf.cell(0, 8, 'RELATÓRIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
     # Subtítulo
     pdf.set_font('Arial', 'B', 12)
