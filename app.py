@@ -1081,68 +1081,6 @@ if not df_filtrado.empty:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig_barras, use_container_width=True)
-            
-            st.markdown("### 📊 Taxas de Conversão")
-            
-            taxa_mensal = []
-            for mes in evolucao['Ano_Mes'].unique():
-                df_mes = df_filtrado[df_filtrado['Ano_Mes'] == mes]
-                total_mes = len(df_mes)
-                if total_mes > 0:
-                    aguardando_mes = len(df_mes[df_mes['Status'] == 'Comissionado'])
-                    validados_mes = len(df_mes[df_mes['Status'] == 'Validado'])
-                    total_comiss_mes = aguardando_mes + validados_mes
-                    
-                    taxa_mensal.append({
-                        'Mês': mes,
-                        'Taxa Comissionamento': (total_comiss_mes / total_mes * 100) if total_mes > 0 else 0,
-                        'Taxa Validação': (validados_mes / total_comiss_mes * 100) if total_comiss_mes > 0 else 0,
-                        'Taxa Revisão': len(df_mes[df_mes['Status'] == 'Necessário Revisão']) / total_mes * 100 if total_mes > 0 else 0
-                    })
-            
-            if taxa_mensal:
-                df_taxas = pd.DataFrame(taxa_mensal)
-                df_taxas = df_taxas.sort_values('Mês')
-                
-                fig_taxas = go.Figure()
-                fig_taxas.add_trace(go.Scatter(
-                    x=df_taxas['Mês'],
-                    y=df_taxas['Taxa Comissionamento'],
-                    name='Comissionamento',
-                    line=dict(color=CORES['Comissionado'], width=3),
-                    mode='lines+markers',
-                    marker=dict(size=8)
-                ))
-                fig_taxas.add_trace(go.Scatter(
-                    x=df_taxas['Mês'],
-                    y=df_taxas['Taxa Validação'],
-                    name='Validação',
-                    line=dict(color=CORES['Validado'], width=3),
-                    mode='lines+markers',
-                    marker=dict(size=8)
-                ))
-                fig_taxas.add_trace(go.Scatter(
-                    x=df_taxas['Mês'],
-                    y=df_taxas['Taxa Revisão'],
-                    name='Revisão',
-                    line=dict(color=CORES['Necessário Revisão'], width=3),
-                    mode='lines+markers',
-                    marker=dict(size=8)
-                ))
-                
-                fig_taxas.update_layout(
-                    title='Evolução das Taxas de Conversão',
-                    xaxis_title="Mês",
-                    yaxis_title="Taxa (%)",
-                    yaxis=dict(range=[0, 100]),
-                    height=400,
-                    hovermode='x unified',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                )
-                
-                st.plotly_chart(fig_taxas, use_container_width=True)
     
     with tab3:
         st.markdown("### 👥 Performance por Responsável")
