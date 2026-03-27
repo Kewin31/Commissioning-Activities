@@ -1,1290 +1,603 @@
+# pdf_generator.py - Versão com Texto Explicativo e Assinaturas
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import numpy as np
-import os
-import io
-import base64
-from github import Github
-from github import GithubException
 import tempfile
-import time
-from dateutil.relativedelta import relativedelta
+import os
+from datetime import datetime, timezone, timedelta
+from fpdf import FPDF
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+import numpy as np
 
-# Importar o gerador de PDF
-from pdf_generator import adicionar_botao_pdf_empresa
+def get_horario_brasilia():
+    """Retorna o horário atual de Brasília (UTC-3)"""
+    utc_now = datetime.now(timezone.utc)
+    brasilia_time = utc_now - timedelta(hours=3)
+    return brasilia_time
 
-# Configuração da página
-st.set_page_config(
-    page_title="Dashboard Executivo | Fábrica SCADA",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
+    """Gera gráfico de barras verticais para o acumulado"""
+    fig, ax = plt.subplots(figsize=(8, 4))
+    
+    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisão']
+    valores = [comissionados, validados, revisao]
+    cores = ['#028a9f', '#2E7D32', '#F57C00']
+    
+    bars = ax.bar(categorias, valores, color=cores, width=0.6, edgecolor='white', linewidth=1.5)
+    
+    for bar, val in zip(bars, valores):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + max(valores)*0.02,
+                f'{val}\n({val/total*100:.0f}%)' if total > 0 else '0',
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    ax.set_ylabel('Quantidade', fontsize=10)
+    ax.set_title(f'Total de Equipamentos: {total}', fontsize=11, fontweight='bold', pad=15)
+    ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    plt.tight_layout()
+    return fig
 
-# ============================================
-# FUNÇÕES DE FORMATAÇÃO
-# ============================================
-def formatar_data_portugues(data, formato='completo'):
-    """Formata datas em português"""
-    if pd.isna(data):
-        return ""
-    
-    meses_pt = {
-        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
-        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
-        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
-    }
-    
-    if formato == 'mes_ano':
-        return f"{meses_pt[data.month]}/{data.year}"
-    elif formato == 'ano_mes':
-        return f"{data.year}/{data.month:02d}"
-    else:
-        return data.strftime('%d/%m/%Y')
-
-def get_logo_base64():
-    """Converte a logo para base64 para exibição"""
-    possiveis_nomes = [
-        "Logo_Energisa.png",
-        "logo_energisa.png",
-        "Logo_Energisa.gif",
-        "Selo120_Azul_GIF_FundoTransparente novo.gif",
-        "energisa.png"
-    ]
-    
-    for logo_path in possiveis_nomes:
-        try:
-            if os.path.exists(logo_path):
-                with open(logo_path, "rb") as f:
-                    logo_bytes = f.read()
-                if logo_path.lower().endswith('.png'):
-                    mime_type = "image/png"
-                elif logo_path.lower().endswith('.gif'):
-                    mime_type = "image/gif"
-                else:
-                    mime_type = "image/png"
-                
-                return base64.b64encode(logo_bytes).decode(), mime_type
-        except:
-            continue
-    
-    return None, None
-
-# ============================================
-# CONFIGURAÇÕES DO GITHUB
-# ============================================
-def get_github_config():
-    """Obtém configurações do GitHub do Streamlit Secrets"""
-    try:
-        if "GITHUB_TOKEN" not in st.secrets:
-            return None, None, None
-            
-        token = st.secrets["GITHUB_TOKEN"]
-        
-        if "GITHUB_REPO" not in st.secrets:
-            return token, None, None
-            
-        repo = st.secrets["GITHUB_REPO"]
-        
-        if '/' not in repo:
-            return token, None, None
-            
-        file_path = st.secrets.get("GITHUB_FILE_PATH", "data/Dados/Comissionamento AD - UNs.csv")
-        
-        return token, repo, file_path
-        
-    except Exception as e:
-        return None, None, None
-
-def load_data_from_github():
-    """Carrega dados do GitHub com tratamento de erro 401"""
-    try:
-        token, repo_name, file_path = get_github_config()
-        
-        if not token or not repo_name:
-            return None
-        
-        g = Github(token)
-        
-        try:
-            repo = g.get_repo(repo_name)
-            contents = repo.get_contents(file_path)
-            
-            file_content = base64.b64decode(contents.content).decode('utf-8')
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-                f.write(file_content)
-                temp_file = f.name
-            
-            df = pd.read_csv(temp_file, encoding='utf-8-sig')
-            os.unlink(temp_file)
-            
-            return df
-            
-        except GithubException as e:
-            return None
-                
-    except Exception as e:
-        return None
-
-# ============================================
-# CSS PERSONALIZADO - ESTILO ENERGISA
-# ============================================
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    .stApp {
-        background-color: #f3f4f6;
-    }
-    
-    .header-executivo {
-        background: linear-gradient(135deg, #005973 0%, #028a9f 50%, #04d8d7 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 0 0 20px 20px;
-        margin: -1rem -1rem 2rem -1rem;
-        box-shadow: 0 4px 20px rgba(0,89,115,0.2);
-    }
-    
-    .header-conteudo {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    
-    .header-logo {
-        background: white;
-        padding: 0.5rem;
-        border-radius: 12px;
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    
-    .header-logo img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-    }
-    
-    .header-titulo h1 {
-        color: white;
-        font-size: 2rem;
-        font-weight: 600;
-        margin: 0;
-        letter-spacing: -0.02em;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    .header-titulo p {
-        color: rgba(255,255,255,0.9);
-        margin: 0.2rem 0 0 0;
-        font-size: 0.95rem;
-    }
-    
-    .header-data {
-        margin-left: auto;
-        background: rgba(255,255,255,0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 30px;
-        color: white;
-        font-size: 0.9rem;
-        backdrop-filter: blur(5px);
-    }
-    
-    .fluxo-container {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-    }
-    
-    .fluxo-container:hover {
-        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
-        border-color: #04d8d7;
-    }
-    
-    .company-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        height: 100%;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-    }
-    
-    .company-card:hover {
-        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
-        border-color: #04d8d7;
-    }
-    
-    .company-title {
-        font-size: 1.3rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e0f7fa;
-    }
-    
-    .company-metric {
-        text-align: center;
-        padding: 0.5rem;
-    }
-    
-    .company-metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .company-metric-label {
-        font-size: 0.8rem;
-        color: #6b7280;
-        margin-top: 0.3rem;
-    }
-    
-    .filter-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .footer {
-        background: white;
-        padding: 1rem 2rem;
-        border-radius: 12px;
-        margin-top: 2rem;
-        box-shadow: 0 -1px 2px rgba(0,0,0,0.02);
-        font-size: 0.85rem;
-        color: #6b7280;
-        border-top: 1px solid #e5e7eb;
-    }
-    
-    .stButton > button {
-        background: linear-gradient(135deg, #005973, #028a9f);
-        color: white;
-        border: none;
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(135deg, #006c84, #04d8d7);
-    }
-    
-    .css-1d391kg, .css-1633s36 {
-        background-color: #ffffff;
-        border-right: 1px solid #e5e7eb;
-    }
-    
-    .info-popup {
-        background-color: #f8fafc;
-        border-left: 4px solid #028a9f;
-        padding: 0.8rem 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        font-size: 0.85rem;
-        color: #1f2937;
-    }
-    
-    .info-popup strong {
-        color: #005973;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================
-# CORES ENERGISA
-# ============================================
-CORES = {
-    'Desenvolvido': '#2E7D32',
-    'Comissionado': '#028a9f',
-    'Validado': '#005973',
-    'Necessário Revisão': '#F57C00',
-    'Pendente': '#C62828',
-    'EMT': '#028a9f',
-    'ETO': '#005973',
-}
-
-ORDEM_STATUS = ['Necessário Revisão', 'Pendente', 'Desenvolvido', 'Comissionado', 'Validado']
-
-# ============================================
-# FUNÇÕES DE PROCESSAMENTO
-# ============================================
-def processar_dados(df):
-    """Processa e padroniza os dados"""
-    if df is None or df.empty:
-        return df
-    
-    df.columns = df.columns.str.strip()
-    
-    mapeamento_colunas = {
-        'Cód. Equipamento': 'Codigo',
-        'Cód.Equipamento': 'Codigo',
-        'Título': 'Codigo',
-        'Chamado Desenvolvimento': 'Chamado',
-        'Tipo Equipamento': 'Tipo',
-        'Empresa': 'Empresa',
-        'Responsável Desenvolvimento': 'Resp_Dev',
-        'Responsável Comissionamento': 'Resp_Com',
-        'Responsável Auditoria': 'Resp_Audit',
-        'Status': 'Status',
-        'Criado': 'Criado',
-        'Modificado': 'Modificado',
-        'Modificado por': 'Modificado_por',
-        'Revisões': 'Revisoes'
-    }
-    
-    for col_antiga, col_nova in mapeamento_colunas.items():
-        if col_antiga in df.columns and col_nova not in df.columns:
-            df.rename(columns={col_antiga: col_nova}, inplace=True)
-    
-    if 'Resp_Com' not in df.columns:
-        if 'Modificado_por' in df.columns:
-            df['Resp_Com'] = df.apply(
-                lambda row: row['Modificado_por'] if row['Status'] in ['Comissionado', 'Validado'] else 'Não atribuído',
-                axis=1
-            )
-        else:
-            df['Resp_Com'] = 'Não atribuído'
-    
-    for col in ['Resp_Dev', 'Resp_Com', 'Resp_Audit']:
-        if col in df.columns:
-            df[col] = df[col].fillna('Não atribuído')
-        else:
-            df[col] = 'Não atribuído'
-    
-    status_map = {
-        'desenvolvido': 'Desenvolvido', 'desenv': 'Desenvolvido',
-        'comissionado': 'Comissionado', 'comiss': 'Comissionado',
-        'validado': 'Validado', 'valid': 'Validado',
-        'revisão': 'Necessário Revisão', 'revisao': 'Necessário Revisão',
-        'revisar': 'Necessário Revisão',
-        'necessario revisão': 'Necessário Revisão',
-        'necessario revisao': 'Necessário Revisão',
-        'pendente': 'Pendente', 'pend': 'Pendente'
-    }
-    
-    col_status = None
-    for col in ['Status', 'Fase', 'Situação', 'Situacao']:
-        if col in df.columns:
-            col_status = col
-            break
-    
-    if col_status:
-        df[col_status] = df[col_status].astype(str).str.lower().str.strip()
-        df['Status'] = df[col_status].map(lambda x: next(
-            (v for k, v in status_map.items() if k in x), 'Pendente'))
-    else:
-        df['Status'] = 'Pendente'
-    
-    for col in ['Criado', 'Modificado']:
-        if col in df.columns:
-            try:
-                df[col] = pd.to_datetime(df[col], format='%d/%m/%Y %H:%M', errors='coerce')
-            except:
-                try:
-                    df[col] = pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S', errors='coerce')
-                except:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
-    
-    if 'Criado' in df.columns:
-        df['Ano'] = df['Criado'].dt.year
-        df['Mes'] = df['Criado'].dt.month
-        df['Mes_Nome'] = df['Criado'].dt.month.map({
-            1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
-            5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
-            9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
-        })
-        df['Mes_Ano'] = df['Criado'].dt.strftime('%Y-%m')
-        df['Data'] = df['Criado'].dt.date
-    
-    return df
-
-def calcular_tendencias(df, periodo='mes'):
-    """Calcula tendências para os KPIs"""
-    if df.empty or 'Criado' not in df.columns:
-        return {}
-    
-    hoje = datetime.now()
-    
-    if periodo == 'mes':
-        inicio_periodo = hoje - relativedelta(months=1)
-        inicio_periodo_anterior = hoje - relativedelta(months=2)
-    else:
-        inicio_periodo = hoje - timedelta(days=7)
-        inicio_periodo_anterior = hoje - timedelta(days=14)
-    
-    df_periodo = df[df['Criado'] >= inicio_periodo]
-    df_anterior = df[
-        (df['Criado'] >= inicio_periodo_anterior) & 
-        (df['Criado'] < inicio_periodo)
-    ]
-    
-    tendencias = {}
-    
-    for status in ['Desenvolvido', 'Comissionado', 'Validado']:
-        qtd_periodo = len(df_periodo[df_periodo['Status'] == status])
-        qtd_anterior = len(df_anterior[df_anterior['Status'] == status])
-        
-        if qtd_anterior > 0:
-            variacao = ((qtd_periodo - qtd_anterior) / qtd_anterior) * 100
-        else:
-            variacao = 100 if qtd_periodo > 0 else 0
-        
-        tendencias[status] = {
-            'atual': qtd_periodo,
-            'anterior': qtd_anterior,
-            'variacao': variacao
-        }
-    
-    return tendencias
-
-@st.cache_data(ttl=300)
-def load_data():
-    """Carrega dados do GitHub ou local"""
-    try:
-        # Tentar carregar do GitHub
-        df = load_data_from_github()
-        
-        if df is not None:
-            return processar_dados(df), "github"
-        
-        # Tentar carregar do local
-        caminho_local = os.path.join('data', 'Dados', 'Comissionamento AD - UNs.csv')
-        if os.path.exists(caminho_local):
-            df = pd.read_csv(caminho_local, encoding='utf-8-sig')
-            return processar_dados(df), "local"
-        
-        # Usar dados de exemplo
-        dados_exemplo = {
-            'Cód. Equipamento': [f'EQ{str(i).zfill(4)}' for i in range(1, 101)],
-            'Tipo Equipamento': np.random.choice(['Inversor', 'Transformador', 'Painel', 'Cabo', 'Disjuntor'], 100),
-            'Empresa': np.random.choice(['EMT', 'ETO'], 100),
-            'Responsável Desenvolvimento': np.random.choice(['João Silva', 'Maria Santos', 'Pedro Costa'], 100),
-            'Responsável Comissionamento': np.random.choice(['Carlos Lima', 'Ana Paula', 'Roberto Alves'], 100),
-            'Responsável Auditoria': np.random.choice(['Fernando Costa', 'Lucia Santos'], 100),
-            'Status': np.random.choice(['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão'], 100, 
-                                      p=[0.5, 0.15, 0.25, 0.1]),
-            'Criado': pd.date_range(start='2025-01-01', periods=100, freq='D').strftime('%d/%m/%Y %H:%M')
-        }
-        df = pd.DataFrame(dados_exemplo)
-        return processar_dados(df), "exemplo"
-        
-    except Exception as e:
-        return None, "erro"
-
-# ============================================
-# FUNÇÃO PARA LIMPAR FILTROS
-# ============================================
-def limpar_filtros():
-    """Limpa todos os filtros do session_state"""
-    for key in list(st.session_state.keys()):
-        if key.startswith('filtro_'):
-            del st.session_state[key]
-
-# ============================================
-# FUNÇÃO PARA POPUP DE INFORMAÇÕES
-# ============================================
-def mostrar_popup_calculos():
-    """Mostra popup com explicação dos cálculos"""
-    popup_html = """
-    <div class="info-popup">
-        <strong>📊 Como as taxas são calculadas:</strong><br><br>
-        <strong>ETAPA 1 → 2:</strong> (Comissionados + Validados) / Desenvolvidos × 100<br>
-        <em>Percentual do desenvolvimento que já passou pelo comissionamento</em><br><br>
-        <strong>ETAPA 2 → 3:</strong> Validados / (Comissionados + Validados) × 100<br>
-        <em>Percentual dos equipamentos comissionados que já foram validados</em><br><br>
-        <strong>ETAPA 3:</strong> Validados / Total do Fluxo × 100<br>
-        <em>Percentual de equipamentos validados sobre o total do fluxo</em><br><br>
-        <strong>GARGALO:</strong> Em Revisão / Total do Fluxo × 100<br>
-        <em>Percentual de equipamentos que necessitam de revisão</em><br><br>
-        <strong>Legenda:</strong><br>
-        • <span style="color:#2E7D32;">Desenvolvidos</span>: Aguardando comissionamento<br>
-        • <span style="color:#028a9f;">Aguardando Validação</span>: Comissionados pendentes<br>
-        • <span style="color:#005973;">Validados</span>: Processo concluído<br>
-        • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
-    </div>
+def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
     """
-    return popup_html
-
-# ============================================
-# FUNÇÃO PARA CRIAR GRÁFICO DE PIZZA MELHORADO
-# ============================================
-def criar_grafico_pizza_status(df_filtrado):
-    """Cria gráfico de pizza com melhorias executivas"""
+    Gera relatório PDF executivo para uma empresa específica
+    """
+    # Filtrar dados da empresa
+    df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa].copy()
     
-    status_counts = df_filtrado['Status'].value_counts().reset_index()
-    status_counts.columns = ['Status', 'Quantidade']
+    if df_empresa.empty:
+        raise ValueError(f"Nao ha dados para a empresa {empresa}")
     
-    status_counts['Status'] = pd.Categorical(
-        status_counts['Status'], 
-        categories=ORDEM_STATUS, 
-        ordered=True
-    )
-    status_counts = status_counts.sort_values('Status')
+    # IMPORTANTE: Para o acumulado, vamos usar TODOS os dados da empresa (sem filtro de período)
+    df_acumulado = df_filtrado[df_filtrado['Empresa'] == empresa].copy()
     
-    total_registros = status_counts['Quantidade'].sum()
+    # Aplicar filtro de mês e ano apenas para os dados do período (não para o acumulado)
+    df_periodo = df_empresa.copy()
     
-    pct_revisao = (
-        status_counts[status_counts['Status'] == 'Necessário Revisão']['Quantidade'].sum() / total_registros * 100 
-        if total_registros > 0 else 0
-    )
+    if mes_selecionado and mes_selecionado != "Todos os Meses":
+        if 'Mes_Nome' in df_periodo.columns:
+            df_periodo = df_periodo[df_periodo['Mes_Nome'] == mes_selecionado]
     
-    pct_pendente = (
-        status_counts[status_counts['Status'] == 'Pendente']['Quantidade'].sum() / total_registros * 100 
-        if total_registros > 0 else 0
-    )
+    if ano_selecionado and ano_selecionado != "Todos os Anos":
+        if 'Ano' in df_periodo.columns:
+            df_periodo = df_periodo[df_periodo['Ano'] == ano_selecionado]
     
-    pct_validado = (
-        status_counts[status_counts['Status'] == 'Validado']['Quantidade'].sum() / total_registros * 100 
-        if total_registros > 0 else 0
-    )
+    if df_periodo.empty:
+        raise ValueError(f"Nao ha dados para a empresa {empresa} com os filtros selecionados.")
     
-    explode = [0.05 if status in ['Necessário Revisão', 'Pendente'] else 0 for status in status_counts['Status']]
+    # Criar PDF
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
     
-    fig_status = px.pie(
-        status_counts,
-        values='Quantidade',
-        names='Status',
-        title='Distribuição por Status',
-        color='Status',
-        color_discrete_map=CORES,
-        hole=0.4
-    )
+    # ============================================
+    # CABEÇALHO
+    # ============================================
+    # Logo
+    try:
+        for logo in ["Logo_Energisa.png", "logo_energisa.png", "energisa.png"]:
+            if os.path.exists(logo):
+                pdf.image(logo, x=10, y=8, w=25)
+                break
+    except:
+        pass
     
-    fig_status.update_traces(
-        textposition='outside',
-        textinfo='percent+label',
-        texttemplate='%{label}<br>%{percent:.1%}',
-        marker=dict(line=dict(color='white', width=2)),
-        pull=explode,
-        insidetextorientation='horizontal',
-        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent:.1%}%<extra></extra>'
-    )
+    # Título
+    pdf.set_y(15)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, 'RELATÓRIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
-    if pct_revisao > 10:
-        msg_alerta = f"⚠️ ATENÇÃO: {pct_revisao:.1f}% dos equipamentos necessitam de revisão"
-        cor_alerta = '#F57C00'
-    elif pct_revisao > 5:
-        msg_alerta = f"📌 Alerta: {pct_revisao:.1f}% em revisão - Acompanhar"
-        cor_alerta = '#FFA726'
+    # Subtítulo
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 6, f'UNIDADE {empresa}', 0, 1, 'C')
+    
+    # Período (se houver filtro)
+    if mes_selecionado and mes_selecionado != "Todos os Meses":
+        pdf.set_font('Arial', 'I', 10)
+        pdf.set_text_color(100, 100, 100)
+        periodo_texto = f'Período: {mes_selecionado}'
+        if ano_selecionado and ano_selecionado != "Todos os Anos":
+            periodo_texto += f'/{ano_selecionado}'
+        pdf.cell(0, 5, periodo_texto, 0, 1, 'C')
+    
+    # Linha
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, 45, 200, 45)
+    
+    # Data (horário de Brasília)
+    brasilia_time = get_horario_brasilia()
+    pdf.set_y(48)
+    pdf.set_font('Arial', '', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 5, f'Emissão: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horário de Brasília)', 0, 1, 'R')
+    
+    # ============================================
+    # TEXTO EXPLICATIVO (antes do Panorama Geral)
+    # ============================================
+    pdf.set_y(58)
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(80, 80, 80)
+    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamentos da unidade, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.')
+    pdf.ln(3)
+    
+    # ============================================
+    # MÉTRICAS DO PERÍODO
+    # ============================================
+    total_periodo = len(df_periodo)
+    desenvolvidos_periodo = len(df_periodo[df_periodo['Status'] == 'Desenvolvido'])
+    comissionados_periodo = len(df_periodo[df_periodo['Status'] == 'Comissionado'])
+    validados_periodo = len(df_periodo[df_periodo['Status'] == 'Validado'])
+    revisao_periodo = len(df_periodo[df_periodo['Status'] == 'Necessário Revisão'])
+    
+    pct_comiss_periodo = (comissionados_periodo / total_periodo * 100) if total_periodo > 0 else 0
+    pct_valid_periodo = (validados_periodo / total_periodo * 100) if total_periodo > 0 else 0
+    pct_revisao_periodo = (revisao_periodo / total_periodo * 100) if total_periodo > 0 else 0
+    pct_desenv_periodo = (desenvolvidos_periodo / total_periodo * 100) if total_periodo > 0 else 0
+    
+    # ============================================
+    # MÉTRICAS DO ACUMULADO (TODOS OS DADOS DA UNIDADE)
+    # ============================================
+    total_acumulado = len(df_acumulado)
+    desenvolvidos_acumulado = len(df_acumulado[df_acumulado['Status'] == 'Desenvolvido'])
+    comissionados_acumulado = len(df_acumulado[df_acumulado['Status'] == 'Comissionado'])
+    validados_acumulado = len(df_acumulado[df_acumulado['Status'] == 'Validado'])
+    revisao_acumulado = len(df_acumulado[df_acumulado['Status'] == 'Necessário Revisão'])
+    
+    pct_comiss_acumulado = (comissionados_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
+    pct_valid_acumulado = (validados_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
+    pct_revisao_acumulado = (revisao_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
+    pct_desenv_acumulado = (desenvolvidos_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
+    
+    # ============================================
+    # PÁGINA 1 - PANORAMA, PROGRESSO, DISTRIBUIÇÃO, TIPOS
+    # ============================================
+    
+    # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA
+    y_pos = pdf.get_y() + 5
+    
+    pdf.set_y(y_pos)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '1. PANORAMA GERAL - PERÍODO SELECIONADO', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    
+    # Posição inicial dos cards
+    card_y = pdf.get_y() + 5
+    
+    # CARD 1: DESENVOLVIDOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(10, card_y, 45, 42, 'F')
+    pdf.set_xy(15, card_y + 4)
+    pdf.set_font('Arial', 'B', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'DESENVOLVIDOS', 0, 1)
+    pdf.set_xy(15, card_y + 14)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 7, str(desenvolvidos_periodo), 0, 1)
+    pdf.set_xy(15, card_y + 30)
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, f'({pct_desenv_periodo:.0f}%)', 0, 1)
+    
+    # CARD 2: COMISSIONADOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(60, card_y, 45, 42, 'F')
+    pdf.set_xy(65, card_y + 4)
+    pdf.set_font('Arial', 'B', 8)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 4, 'COMISSIONADOS', 0, 1)
+    pdf.set_xy(65, card_y + 14)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 7, str(comissionados_periodo), 0, 1)
+    pdf.set_xy(65, card_y + 30)
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 4, f'({pct_comiss_periodo:.0f}%)', 0, 1)
+    
+    # CARD 3: VALIDADOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(110, card_y, 45, 42, 'F')
+    pdf.set_xy(115, card_y + 4)
+    pdf.set_font('Arial', 'B', 8)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 4, 'VALIDADOS', 0, 1)
+    pdf.set_xy(115, card_y + 14)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 7, str(validados_periodo), 0, 1)
+    pdf.set_xy(115, card_y + 30)
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 4, f'({pct_valid_periodo:.0f}%)', 0, 1)
+    
+    # CARD 4: EM REVISÃO
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(160, card_y, 40, 42, 'F')
+    pdf.set_xy(165, card_y + 4)
+    pdf.set_font('Arial', 'B', 8)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 4, 'EM REVISÃO', 0, 1)
+    pdf.set_xy(165, card_y + 14)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 7, str(revisao_periodo), 0, 1)
+    pdf.set_xy(165, card_y + 30)
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 4, f'({pct_revisao_periodo:.0f}%)', 0, 1)
+    
+    pdf.ln(45)
+    
+    # ============================================
+    # PROGRESSO DO COMISSIONAMENTO - PERÍODO
+    # ============================================
+    bar_y = pdf.get_y() + 2
+    
+    pdf.set_y(bar_y)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO - PERÍODO', 0, 1)
+    
+    # Barra Comissionados
+    pdf.set_y(bar_y + 7)
+    pdf.set_font('Arial', '', 9)
+    pdf.cell(45, 6, 'Comissionados:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(55, bar_y + 7, 110, 5, 'F')
+    pdf.set_fill_color(2, 138, 159)
+    pdf.rect(55, bar_y + 7, 110 * (pct_comiss_periodo / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 5)
+    pdf.cell(20, 6, f'{comissionados_periodo} ({pct_comiss_periodo:.0f}%)', 0, 1)
+    
+    # Barra Validados
+    pdf.set_y(bar_y + 14)
+    pdf.cell(45, 6, 'Validados:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(55, bar_y + 14, 110, 5, 'F')
+    pdf.set_fill_color(46, 125, 50)
+    pdf.rect(55, bar_y + 14, 110 * (pct_valid_periodo / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 12)
+    pdf.cell(20, 6, f'{validados_periodo} ({pct_valid_periodo:.0f}%)', 0, 1)
+    
+    # Barra Em Revisão
+    pdf.set_y(bar_y + 21)
+    pdf.cell(45, 6, 'Em Revisão:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(55, bar_y + 21, 110, 5, 'F')
+    pdf.set_fill_color(245, 124, 0)
+    pdf.rect(55, bar_y + 21, 110 * (pct_revisao_periodo / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 19)
+    pdf.cell(20, 6, f'{revisao_periodo} ({pct_revisao_periodo:.0f}%)', 0, 1)
+    
+    pdf.ln(8)
+    
+    # ============================================
+    # 2. DISTRIBUIÇÃO POR STATUS - PERÍODO
+    # ============================================
+    dist_y = pdf.get_y() + 2
+    
+    pdf.set_y(dist_y)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS - PERÍODO', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    status_counts = df_periodo['Status'].value_counts()
+    for status, qtd in status_counts.items():
+        pct = (qtd / total_periodo * 100) if total_periodo > 0 else 0
+        pdf.cell(15, 5, '', 0, 0)
+        pdf.cell(0, 5, f'{status}: {qtd} ({pct:.1f}%)', 0, 1)
+    
+    pdf.ln(3)
+    
+    # ============================================
+    # 3. TIPOS DE EQUIPAMENTOS - PERÍODO
+    # ============================================
+    tipo_y = pdf.get_y()
+    
+    pdf.set_y(tipo_y)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS - PERÍODO', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    
+    pdf.set_font('Arial', '', 10)
+    y_offset = pdf.get_y() + 3
+    
+    if 'Tipo' in df_periodo.columns and not df_periodo['Tipo'].dropna().empty:
+        tipo_counts = df_periodo['Tipo'].value_counts().head(8)
+        for tipo, qtd in tipo_counts.items():
+            pct = (qtd / total_periodo * 100) if total_periodo > 0 else 0
+            pdf.set_y(y_offset)
+            pdf.cell(15, 5, '', 0, 0)
+            pdf.cell(0, 5, f'{tipo}: {qtd} ({pct:.0f}%)', 0, 1)
+            y_offset += 5
     else:
-        msg_alerta = f"✅ Gargalo controlado: {pct_revisao:.1f}% em revisão"
-        cor_alerta = '#2E7D32'
+        pdf.set_y(y_offset)
+        pdf.cell(0, 5, 'Não há dados de tipos de equipamento disponíveis.', 0, 1)
+        y_offset += 5
     
-    fig_status.add_annotation(
-        text=msg_alerta,
-        x=0.5,
-        y=-0.18,
-        xref='paper',
-        yref='paper',
-        showarrow=False,
-        font=dict(size=12, color=cor_alerta, weight='bold'),
-        bgcolor='rgba(255,255,255,0.9)',
-        bordercolor=cor_alerta,
-        borderwidth=1,
-        borderpad=4
-    )
+    # ============================================
+    # PÁGINA 2 - ACUMULADO DA UNIDADE (COM GRÁFICO)
+    # ============================================
+    pdf.add_page()
     
-    resumo_texto = f"✓ {pct_validado:.1f}% concluídos | ⚠️ {pct_pendente:.1f}% pendentes"
+    pdf.set_y(25)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
     
-    fig_status.add_annotation(
-        text=resumo_texto,
-        x=0.5,
-        y=-0.28,
-        xref='paper',
-        yref='paper',
-        showarrow=False,
-        font=dict(size=10, color='#6b7280'),
-        bgcolor='rgba(255,255,255,0.8)',
-        borderwidth=0
-    )
+    # Gerar gráfico de barras com dados ACUMULADOS
+    fig = gerar_grafico_barras_vertical(total_acumulado, comissionados_acumulado, validados_acumulado, revisao_acumulado)
     
-    fig_status.update_layout(
-        showlegend=False,
-        height=450,
-        margin=dict(t=50, b=90, l=20, r=20),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        title_font=dict(size=16, color='#1f2937'),
-        title_x=0.5
-    )
+    # Salvar gráfico como imagem
+    temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
     
-    return fig_status
-
-# ============================================
-# INTERFACE PRINCIPAL
-# ============================================
-
-# Carregar dados
-if 'df' not in st.session_state:
-    with st.spinner("🔄 Carregando dados..."):
-        df, fonte = load_data()
-        st.session_state.df = df
-        st.session_state.fonte = fonte
-else:
-    df = st.session_state.df
-    fonte = st.session_state.fonte
-
-if df is None or df.empty:
-    st.error("❌ Não foi possível carregar os dados.")
-    st.stop()
-
-# HEADER EXECUTIVO COM LOGO
-logo_base64, mime_type = get_logo_base64()
-
-if logo_base64:
-    header_logo_html = f'<img src="data:{mime_type};base64,{logo_base64}" alt="Logo Energisa">'
-else:
-    header_logo_html = '<div style="font-size: 35px;">⚡</div>'
-
-st.markdown(f"""
-<div class="header-executivo">
-    <div class="header-conteudo">
-        <div class="header-logo">
-            {header_logo_html}
-        </div>
-        <div class="header-titulo">
-            <h1>Monitoring Center</h1>
-            <p>Acompanhamento de Comissionamento das unidades - EMT | ETO</p>
-        </div>
-        <div class="header-data">
-            📅 {datetime.now().strftime('%d/%m/%Y')}
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================
-# SIDEBAR COM FILTROS
-# ============================================
-
-with st.sidebar:
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h3 style="color: #005973; margin-bottom: 0.5rem;">🎯 Filtros</h3>
-        <p style="color: #6b7280; font-size: 0.85rem;">Selecione os critérios para análise</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Adicionar imagem ao PDF
+    pdf.image(temp_img.name, x=30, w=150)
+    os.unlink(temp_img.name)
     
-    # FILTRO DE ANO
-    st.markdown('<div class="filter-title">📅 Ano</div>', unsafe_allow_html=True)
+    pdf.ln(20)
     
-    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
-    anos_opcoes = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
+    # Texto complementar do acumulado
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Resumo da Unidade (Todos os Registros):', 0, 1, 'L')
+    pdf.set_font('Arial', '', 9)
+    pdf.cell(0, 5, f'Total de Equipamentos Cadastrados: {total_acumulado}', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Comissionados e Aguardando Validação: {comissionados_acumulado} ({pct_comiss_acumulado:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Validados: {validados_acumulado} ({pct_valid_acumulado:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_acumulado} ({pct_revisao_acumulado:.1f}%)', 0, 1)
     
-    ano_selecionado = st.selectbox(
-        "Selecione o ano",
-        options=anos_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_ano"
-    )
+    pdf.ln(10)
     
-    # FILTRO DE MÊS
-    st.markdown('<div class="filter-title" style="margin-top: 1rem;">📆 Mês</div>', unsafe_allow_html=True)
+    # ============================================
+    # PÁGINA 3 - PERFORMANCE POR RESPONSÁVEL
+    # ============================================
+    pdf.add_page()
     
-    meses_nomes = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+    pdf.set_y(25)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSÁVEL', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
-    mes_selecionado = st.selectbox(
-        "Selecione o mês",
-        options=meses_nomes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_mes"
-    )
+    col_resp = 'Resp_Com'
+    y_offset = pdf.get_y() + 5
     
-    st.markdown("---")
-    
-    # FILTRO DE EMPRESA
-    st.markdown('<div class="filter-title">🏢 Empresa</div>', unsafe_allow_html=True)
-    
-    empresas_opcoes = ["Todas"] + sorted(df['Empresa'].unique().tolist())
-    empresa_selecionada = st.selectbox(
-        "Selecione a empresa",
-        options=empresas_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_empresa"
-    )
-    
-    # FILTRO DE TIPO DE EQUIPAMENTO
-    st.markdown('<div class="filter-title">🔧 Tipo Equipamento</div>', unsafe_allow_html=True)
-    
-    if 'Tipo' in df.columns:
-        tipos_opcoes = ["Todos"] + sorted(df['Tipo'].unique().tolist())
-        tipo_selecionado = st.selectbox(
-            "Selecione o tipo",
-            options=tipos_opcoes,
-            index=0,
-            label_visibility="collapsed",
-            key="filtro_tipo"
-        )
-    else:
-        tipo_selecionado = "Todos"
-    
-    # FILTRO DE STATUS
-    st.markdown('<div class="filter-title">📊 Status</div>', unsafe_allow_html=True)
-    
-    status_opcoes = ["Todos"] + sorted(df['Status'].unique().tolist())
-    status_selecionado = st.selectbox(
-        "Selecione o status",
-        options=status_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_status"
-    )
-    
-    st.markdown("---")
-    
-    # Botão Limpar Filtros
-    if st.button("🔄 Limpar Filtros", use_container_width=True):
-        limpar_filtros()
-        st.rerun()
-
-# ============================================
-# APLICAR FILTROS
-# ============================================
-
-df_filtrado = df.copy()
-
-if ano_selecionado != "Todos os Anos" and 'Ano' in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado['Ano'] == ano_selecionado]
-
-if mes_selecionado != "Todos os Meses" and 'Mes_Nome' in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado['Mes_Nome'] == mes_selecionado]
-
-if empresa_selecionada != "Todas":
-    df_filtrado = df_filtrado[df_filtrado['Empresa'] == empresa_selecionada]
-
-if tipo_selecionado != "Todos" and 'Tipo' in df_filtrado.columns:
-    df_filtrado = df_filtrado[df_filtrado['Tipo'] == tipo_selecionado]
-
-if status_selecionado != "Todos":
-    df_filtrado = df_filtrado[df_filtrado['Status'] == status_selecionado]
-
-# ============================================
-# ADICIONAR BOTÕES DO PDF COM FILTRO DE MÊS
-# ============================================
-with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 📄 Exportar Relatório")
-    
-    # Filtro de período para o relatório
-    st.markdown('<div class="filter-title">📅 Período do Relatório</div>', unsafe_allow_html=True)
-    
-    # Anos disponíveis
-    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
-    anos_opcoes_rel = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
-    
-    ano_relatorio = st.selectbox(
-        "Ano",
-        options=anos_opcoes_rel,
-        index=0,
-        key="filtro_ano_relatorio",
-        label_visibility="collapsed"
-    )
-    
-    # Meses disponíveis
-    meses_opcoes_rel = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    
-    mes_relatorio = st.selectbox(
-        "Mês",
-        options=meses_opcoes_rel,
-        index=0,
-        key="filtro_mes_relatorio",
-        label_visibility="collapsed"
-    )
-    
-    st.markdown("---")
-    
-    # Botão para gerar relatório EMT
-    from pdf_generator import adicionar_botao_pdf_empresa
-    adicionar_botao_pdf_empresa(df_filtrado, "EMT", mes_relatorio, ano_relatorio)
-    
-    # Botão para gerar relatório ETO
-    adicionar_botao_pdf_empresa(df_filtrado, "ETO", mes_relatorio, ano_relatorio)
-
-# ============================================
-# ESTATÍSTICAS RÁPIDAS NA SIDEBAR
-# ============================================
-
-with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 📊 Visão Rápida")
-    
-    total_filtrado = len(df_filtrado)
-    em_andamento = len(df_filtrado[df_filtrado['Status'].isin(['Desenvolvido', 'Comissionado'])])
-    finalizados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
-    revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
-    
-    st.markdown(f"""
-    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f; border: 1px solid #e5e7eb;">
-        <div style="display: flex; justify-content: space-between;">
-            <span>📦 Total:</span> <strong>{total_filtrado}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>⚙️ Em andamento:</span> <strong>{em_andamento}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>✅ Finalizados:</span> <strong>{finalizados}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>📝 Em revisão:</span> <strong>{revisao}</strong>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============================================
-# PAINEL PRINCIPAL
-# ============================================
-
-if not df_filtrado.empty:
-    # Contagens por status
-    qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
-    qtd_aguardando_validacao = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
-    qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
-    qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
-    
-    total_comissionados = qtd_aguardando_validacao + qtd_validados
-    total_fluxo = qtd_desenvolvidos + qtd_aguardando_validacao + qtd_validados + qtd_revisao
-    
-    taxa_desenv_para_comiss = (total_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
-    taxa_comiss_para_valid = (qtd_validados / total_comissionados * 100) if total_comissionados > 0 else 0
-    taxa_valid_sobre_total = (qtd_validados / total_fluxo * 100) if total_fluxo > 0 else 0
-    taxa_revisao_sobre_total = (qtd_revisao / total_fluxo * 100) if total_fluxo > 0 else 0
-    
-    # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Progress Tracker")
-    
-    with st.expander("ℹ️ Detalhes dos cálculos", expanded=False):
-        st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 1</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos}</div>
-                <div style="font-weight: 500;">Desenvolvidos</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando comissionamento</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_desenv_para_comiss:.1f}% já comissionados
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_aguardando_validacao}</div>
-                <div style="font-weight: 500;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando validação</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_comiss_para_valid:.1f}% já validados
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 3</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados}</div>
-                <div style="font-weight: 500;">Validados</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Processo concluído</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    ✓ {taxa_valid_sobre_total:.1f}% do total
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">GARGALO</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
-                <div style="font-weight: 500;">Em Revisão</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando correções</div>
-                <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
-                    ⚠️ {taxa_revisao_sobre_total:.1f}% em revisão
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # TABS PARA ANÁLISES DETALHADAS
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Visão Executiva", 
-        "📈 Evolução Temporal",
-        "👥 Performance por Responsável",
-        "📋 Detalhamento"
-    ])
-    
-    with tab1:
-        st.markdown("### 📊 Análise Comparativa por Empresa")
+    if col_resp in df_periodo.columns:
+        df_resp = df_periodo[df_periodo[col_resp] != 'Não atribuído']
         
-        col1, col2 = st.columns(2)
-        
-        for idx, empresa in enumerate(['EMT', 'ETO']):
-            with col1 if idx == 0 else col2:
-                df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
+        if not df_resp.empty:
+            pdf.set_y(y_offset)
+            pdf.set_font('Arial', 'B', 9)
+            pdf.cell(0, 6, 'Comissionados por Responsável (Período):', 0, 1)
+            y_offset += 6
+            
+            pdf.set_y(y_offset)
+            pdf.set_font('Arial', 'B', 8)
+            pdf.set_fill_color(200, 220, 240)
+            pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
+            pdf.cell(35, 7, 'Comissionados', 1, 0, 'C', 1)
+            pdf.cell(35, 7, 'Validados', 1, 0, 'C', 1)
+            pdf.cell(45, 7, 'Taxa Sucesso', 1, 1, 'C', 1)
+            y_offset += 7
+            
+            pdf.set_font('Arial', '', 8)
+            pdf.set_fill_color(255, 255, 255)
+            
+            top_resp = df_resp[col_resp].value_counts().head(8).index.tolist()
+            for resp in top_resp:
+                df_item = df_resp[df_resp[col_resp] == resp]
+                total_resp = len(df_item)
+                validados_resp = len(df_item[df_item['Status'] == 'Validado'])
+                taxa = (validados_resp / total_resp * 100) if total_resp > 0 else 0
                 
-                if not df_emp.empty:
-                    total_emp = len(df_emp)
-                    aguardando_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
-                    validados_emp = len(df_emp[df_emp['Status'] == 'Validado'])
-                    comissionados_total_emp = aguardando_emp + validados_emp
+                nome = str(resp)[:30]
+                pdf.set_y(y_offset)
+                pdf.cell(70, 6, nome, 1, 0, 'L')
+                pdf.cell(35, 6, str(total_resp), 1, 0, 'C')
+                pdf.cell(35, 6, str(validados_resp), 1, 0, 'C')
+                pdf.cell(45, 6, f'{taxa:.0f}%', 1, 1, 'C')
+                y_offset += 6
+            
+            y_offset += 4
+            
+            # Equipamentos em revisão
+            df_revisao = df_periodo[df_periodo['Status'] == 'Necessário Revisão']
+            
+            if not df_revisao.empty:
+                pdf.set_y(y_offset)
+                pdf.set_font('Arial', 'B', 9)
+                pdf.set_text_color(245, 124, 0)
+                pdf.cell(0, 6, 'Equipamentos em Revisão por Responsável:', 0, 1)
+                pdf.set_text_color(0, 0, 0)
+                y_offset += 6
+                
+                pdf.set_y(y_offset)
+                pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(255, 220, 200)
+                pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
+                pdf.cell(35, 7, 'Em Revisão', 1, 0, 'C', 1)
+                pdf.cell(80, 7, 'Equipamentos', 1, 1, 'C', 1)
+                y_offset += 7
+                
+                pdf.set_font('Arial', '', 7)
+                pdf.set_fill_color(255, 255, 255)
+                
+                revisao_por_resp = df_revisao[col_resp].value_counts().head(8)
+                for resp, qtd in revisao_por_resp.items():
+                    equipamentos = df_revisao[df_revisao[col_resp] == resp]['Codigo'].head(3).tolist()
+                    equip_str = ', '.join([str(e) for e in equipamentos if pd.notna(e)])
+                    if len(equipamentos) > 3:
+                        equip_str += '...'
                     
-                    st.markdown(f"""
-                    <div class="company-card">
-                        <div class="company-title" style="color: {CORES[empresa]};">{empresa}</div>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            <div class="company-metric">
-                                <div class="company-metric-value" style="color: #005973;">{total_emp}</div>
-                                <div class="company-metric-label">Equipamentos cadastrados</div>
-                            </div>
-                            <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{comissionados_total_emp}</div>
-                                <div class="company-metric-label">Comissionados no total</div>
-                            </div>
-                            <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Validado']};">{validados_emp}</div>
-                                <div class="company-metric-label">Validados (concluídos)</div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <div style="background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Progresso do fluxo:</span>
-                                    <strong>{((comissionados_total_emp)/total_emp*100):.1f}%</strong>
-                                </div>
-                                <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
-                                    <div style="width: {((comissionados_total_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
-        st.markdown("### 📊 Distribuição do Portfólio")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            fig_status = criar_grafico_pizza_status(df_filtrado)
-            st.plotly_chart(fig_status, use_container_width=True)
-        
-        with col2:
-            if 'Tipo' in df_filtrado.columns:
-                tipo_counts = df_filtrado['Tipo'].value_counts().head(8).reset_index()
-                tipo_counts.columns = ['Tipo', 'Quantidade']
-                
-                fig_tipo = px.bar(
-                    tipo_counts,
-                    x='Quantidade',
-                    y='Tipo',
-                    orientation='h',
-                    title='Tipos de Equipamento',
-                    color='Quantidade',
-                    color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
-                    text='Quantidade'
-                )
-                fig_tipo.update_traces(
-                    textposition='outside',
-                    texttemplate='%{text}',
-                    hovertemplate='<b>%{y}</b><br>Quantidade: %{x}<extra></extra>'
-                )
-                fig_tipo.update_layout(
-                    height=450,
-                    margin=dict(t=50, b=10, l=10, r=10),
-                    xaxis_title="Quantidade",
-                    yaxis_title="",
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    title_font=dict(size=14, color='#1f2937')
-                )
-                st.plotly_chart(fig_tipo, use_container_width=True)
-    
-    with tab2:
-        st.markdown("### 📈 Evolução do Fluxo")
-        
-        if 'Criado' in df_filtrado.columns:
-            df_filtrado['Mes_Ano_Label'] = df_filtrado['Criado'].dt.strftime('%b/%Y')
-            df_filtrado['Ano_Mes'] = df_filtrado['Criado'].dt.strftime('%Y-%m')
-            
-            evolucao = df_filtrado.groupby(['Ano_Mes', 'Mes_Ano_Label', 'Status']).size().reset_index(name='Quantidade')
-            evolucao = evolucao.sort_values('Ano_Mes')
-            
-            fig_evolucao = px.line(
-                evolucao,
-                x='Mes_Ano_Label',
-                y='Quantidade',
-                color='Status',
-                markers=True,
-                title='Evolução Mensal por Status',
-                color_discrete_map=CORES
-            )
-            fig_evolucao.update_traces(marker=dict(size=8), line=dict(width=2))
-            fig_evolucao.update_layout(
-                height=400,
-                xaxis_title="Mês",
-                yaxis_title="Quantidade",
-                hovermode='x unified',
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_evolucao, use_container_width=True)
-            
-            fig_barras = px.bar(
-                evolucao,
-                x='Mes_Ano_Label',
-                y='Quantidade',
-                color='Status',
-                title='Distribuição Mensal por Status',
-                color_discrete_map=CORES,
-                barmode='stack',
-                text='Quantidade'
-            )
-            fig_barras.update_traces(textposition='inside', texttemplate='%{text}')
-            fig_barras.update_layout(
-                height=400,
-                xaxis_title="Mês",
-                yaxis_title="Quantidade",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            st.plotly_chart(fig_barras, use_container_width=True)
-    
-    with tab3:
-        st.markdown("### 👥 Performance por Responsável")
-        
-        tipo_resp = st.radio(
-            "Selecionar tipo:",
-            options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
-            horizontal=True,
-            key='tipo_resp_tab'
-        )
-        
-        mapa_colunas = {
-            'Desenvolvimento': 'Resp_Dev',
-            'Comissionamento': 'Resp_Com',
-            'Auditoria': 'Resp_Audit'
-        }
-        
-        col_resp = mapa_colunas[tipo_resp]
-        
-        if col_resp not in df_filtrado.columns:
-            st.warning(f"⚠️ Coluna '{col_resp}' não encontrada nos dados.")
+                    nome = str(resp)[:30]
+                    pdf.set_y(y_offset)
+                    pdf.cell(70, 6, nome, 1, 0, 'L')
+                    pdf.cell(35, 6, str(qtd), 1, 0, 'C')
+                    pdf.cell(80, 6, equip_str[:50], 1, 1, 'C')
+                    y_offset += 6
         else:
-            df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
-            
-            if df_resp.empty:
-                st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado.")
-            else:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    ranking = df_resp[col_resp].value_counts().head(10).reset_index()
-                    ranking.columns = ['Responsável', 'Quantidade']
-                    
-                    fig_ranking = px.bar(
-                        ranking,
-                        x='Quantidade',
-                        y='Responsável',
-                        orientation='h',
-                        title=f'Top 10 Responsáveis - {tipo_resp}',
-                        color='Quantidade',
-                        color_continuous_scale=['#e0f7fa', '#028a9f', '#005973'],
-                        text='Quantidade'
-                    )
-                    fig_ranking.update_traces(
-                        textposition='outside',
-                        texttemplate='%{text}',
-                        hovertemplate='<b>%{y}</b><br>Atividades: %{x}<extra></extra>'
-                    )
-                    fig_ranking.update_layout(
-                        height=400,
-                        xaxis_title="Quantidade de Atividades",
-                        yaxis_title="",
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)'
-                    )
-                    st.plotly_chart(fig_ranking, use_container_width=True)
-                
-                with col2:
-                    sucesso = []
-                    for resp in ranking['Responsável'].head(10):
-                        df_resp_item = df_resp[df_resp[col_resp] == resp]
-                        total = len(df_resp_item)
-                        if total > 0:
-                            sucesso_count = len(df_resp_item[df_resp_item['Status'] == 'Validado'])
-                            taxa = (sucesso_count / total) * 100
-                            sucesso.append({
-                                'Responsável': resp,
-                                'Taxa de Sucesso': taxa,
-                                'Validados': sucesso_count,
-                                'Total': total
-                            })
-                    
-                    if sucesso:
-                        df_sucesso = pd.DataFrame(sucesso).sort_values('Taxa de Sucesso', ascending=False)
-                        
-                        fig_sucesso = px.bar(
-                            df_sucesso,
-                            x='Taxa de Sucesso',
-                            y='Responsável',
-                            orientation='h',
-                            title=f'Taxa de Sucesso por Responsável - {tipo_resp}',
-                            color='Taxa de Sucesso',
-                            color_continuous_scale=['#e8f5e9', '#2e7d32'],
-                            text=df_sucesso['Taxa de Sucesso'].round(1).astype(str) + '%'
-                        )
-                        fig_sucesso.update_traces(
-                            textposition='outside',
-                            texttemplate='%{text}',
-                            hovertemplate='<b>%{y}</b><br>Taxa de Sucesso: %{x:.1f}%<br>Validados: %{customdata[0]}/%{customdata[1]}<extra></extra>',
-                            customdata=df_sucesso[['Validados', 'Total']].values
-                        )
-                        fig_sucesso.update_layout(
-                            height=400,
-                            xaxis_title="Taxa de Sucesso (%)",
-                            xaxis_range=[0, 100],
-                            yaxis_title="",
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)'
-                        )
-                        st.plotly_chart(fig_sucesso, use_container_width=True)
-                
-                st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
-                
-                top_resp = ranking['Responsável'].head(8).tolist()
-                df_top = df_resp[df_resp[col_resp].isin(top_resp)]
-                
-                dist_status = df_top.groupby([col_resp, 'Status']).size().reset_index(name='Quantidade')
-                
-                if not dist_status.empty:
-                    fig_dist = px.bar(
-                        dist_status,
-                        x=col_resp,
-                        y='Quantidade',
-                        color='Status',
-                        title=f'Distribuição de Status por Responsável de {tipo_resp}',
-                        barmode='stack',
-                        color_discrete_map=CORES,
-                        text='Quantidade'
-                    )
-                    fig_dist.update_traces(textposition='inside', texttemplate='%{text}')
-                    fig_dist.update_layout(
-                        height=450,
-                        xaxis_tickangle=45,
-                        xaxis_title="",
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                    )
-                    st.plotly_chart(fig_dist, use_container_width=True)
+            pdf.set_y(y_offset)
+            pdf.set_font('Arial', '', 10)
+            pdf.cell(0, 6, 'Não há dados de responsáveis disponíveis.', 0, 1)
+    else:
+        pdf.set_y(y_offset)
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
-    with tab4:
-        st.markdown("### 📋 Detalhamento dos Registros")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Total de Registros", len(df_filtrado))
-        with col2:
-            st.metric("Empresas", len(df_filtrado['Empresa'].unique()))
-        with col3:
-            if 'Tipo' in df_filtrado.columns:
-                st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()))
-            else:
-                st.metric("Tipos de Equipamento", 0)
-        with col4:
-            st.metric("Responsáveis Desenvolvimento", len(df_filtrado['Resp_Dev'].unique()))
-        
-        colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Resp_Dev', 'Resp_Com', 'Resp_Audit']
-        colunas_existentes = [c for c in colunas_mostrar if c in df_filtrado.columns]
-        
-        if colunas_existentes:
-            df_display = df_filtrado[colunas_existentes].copy()
-            st.dataframe(df_display, use_container_width=True)
-        
-        with st.expander("📊 Estatísticas Detalhadas"):
-            st.markdown("**Distribuição por Status:**")
-            status_counts = df_filtrado['Status'].value_counts().reset_index()
-            status_counts.columns = ['Status', 'Quantidade']
-            total_linhas = len(df_filtrado)
-            
-            percentuais = []
-            for qtd in status_counts['Quantidade']:
-                percentual = (qtd / total_linhas * 100) if total_linhas > 0 else 0
-                percentuais.append(f"{percentual:.1f}%")
-            
-            status_counts['Percentual'] = percentuais
-            st.dataframe(status_counts, use_container_width=True)
-            
-            if 'Tipo' in df_filtrado.columns:
-                st.markdown("**Distribuição por Tipo de Equipamento:**")
-                tipo_counts = df_filtrado['Tipo'].value_counts().reset_index()
-                tipo_counts.columns = ['Tipo', 'Quantidade']
-                st.dataframe(tipo_counts.head(15), use_container_width=True)
+    # ============================================
+    # PÁGINA 4 - EQUIPE RESPONSÁVEL (ASSINATURAS)
+    # ============================================
+    pdf.add_page()
     
+    pdf.set_y(30)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '6. EQUIPE RESPONSÁVEL', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(10)
     
-    # FOOTER
-    st.markdown(f"""
-    <div class="footer">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
-            </div>
-            <div>
-                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-            </div>
-            <div style="color: #6b7280;">
-                {len(df_filtrado)} registros • {fonte.upper()}
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Documento Elaborado por
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Documento Elaborado por:', 0, 1, 'L')
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira - SRE', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'kewin.ferreira@energisa.com.br', 0, 1, 'L')
+    pdf.ln(6)
+    
+    # Núcleo de Gestão
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Núcleo de Gestão:', 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Caio Alexandre da Silva Medeiros - Gestão', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'caio.medeiros@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Ramiza Alves Irineu Seabra - BP', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'ramiza.irineu@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Bruna Moura Maciel - BP', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'bruna.maciel@energisa.com.br', 0, 1, 'L')
+    pdf.ln(6)
+    
+    # Aprovado por
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Aprovado por:', 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Mauricio Dias Avelino - Coord Tech Proj Sist Operativos', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'mauricio.avelino@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Cassio Fernando Bazana Nonenmacher - Ger Tecnologia Operativa', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'cassio.bazana@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Savio Ricardo Muniz Aires da Costa - Ger Automação Telecom', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'savio.ricardo@energisa.com.br', 0, 1, 'L')
+    
+    # Rodapé final
+    pdf.set_y(-15)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
+    
+    # Gerar arquivo
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+        pdf.output(tmp.name)
+        return tmp.name
 
-else:
-    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
-    
-    st.markdown(f"""
-    <div class="footer">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
-            </div>
-            <div>
-                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+
+def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
+    """
+    Adiciona botão no Streamlit para gerar e baixar o PDF da empresa selecionada
+    """
+    if st.button(f"📊 Gerar Relatório {empresa}", use_container_width=True, key=f"btn_pdf_{empresa}"):
+        if df_filtrado.empty:
+            st.warning("Não há dados para gerar o relatório.")
+            return
+        
+        # Filtrar dados da empresa
+        df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa]
+        
+        if df_empresa.empty:
+            st.warning(f"Não há dados para a empresa {empresa} com os filtros selecionados.")
+            return
+        
+        with st.spinner(f"Gerando relatório da {empresa}..."):
+            try:
+                pdf_path = gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado, ano_selecionado)
+                
+                with open(pdf_path, 'rb') as f:
+                    pdf_bytes = f.read()
+                
+                # Criar nome do arquivo com período se houver filtro
+                nome_arquivo = f"relatorio_{empresa}"
+                if mes_selecionado and mes_selecionado != "Todos os Meses":
+                    nome_arquivo += f"_{mes_selecionado}"
+                if ano_selecionado and ano_selecionado != "Todos os Anos":
+                    nome_arquivo += f"_{ano_selecionado}"
+                nome_arquivo += f"_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                
+                st.success(f"Relatório da {empresa} gerado com sucesso!")
+                
+                st.download_button(
+                    label=f"Baixar Relatório {empresa}",
+                    data=pdf_bytes,
+                    file_name=nome_arquivo,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key=f"btn_download_{empresa}"
+                )
+                
+                os.unlink(pdf_path)
+                
+            except Exception as e:
+                st.error(f"Erro ao gerar PDF: {str(e)}")
