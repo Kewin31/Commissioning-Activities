@@ -255,7 +255,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(162, card_y + 40)
     pdf.cell(0, 3, f'× 100 = {pct_revisao_filtrado:.0f}%', 0, 1)
     
-    pdf.ln(55)
+    pdf.ln(20)
     
     # ============================================
     # PROGRESSO DO COMISSIONAMENTO (DADOS FILTRADOS)
