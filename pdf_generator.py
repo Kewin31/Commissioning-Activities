@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Texto Explicativo e Assinaturas Corrigidas
+# pdf_generator.py - Versão com Texto Explicativo, Assinaturas e Métricas de Cálculo
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -154,7 +154,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # PÁGINA 1 - PANORAMA, PROGRESSO, DISTRIBUIÇÃO, TIPOS
     # ============================================
     
-    # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA
+    # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA COM MÉTRICAS DE CÁLCULO
     y_pos = pdf.get_y() + 5
     
     pdf.set_y(y_pos)
@@ -167,71 +167,95 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # Posição inicial dos cards
     card_y = pdf.get_y() + 5
     
-    # CARD 1: DESENVOLVIDOS
+    # CARD 1: DESENVOLVIDOS (com cálculo)
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(10, card_y, 45, 42, 'F')
-    pdf.set_xy(15, card_y + 4)
-    pdf.set_font('Arial', 'B', 8)
+    pdf.rect(10, card_y, 45, 52, 'F')
+    pdf.set_xy(12, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, 'DESENVOLVIDOS', 0, 1)
-    pdf.set_xy(15, card_y + 14)
+    pdf.set_xy(12, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 7, str(desenvolvidos_filtrado), 0, 1)
-    pdf.set_xy(15, card_y + 30)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_xy(12, card_y + 28)
+    pdf.set_font('Arial', '', 8)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, f'({pct_desenv_filtrado:.0f}%)', 0, 1)
+    pdf.set_xy(12, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= {desenvolvidos_filtrado} / {total_filtrado}', 0, 1)
+    pdf.set_xy(12, card_y + 40)
+    pdf.cell(0, 3, f'× 100 = {pct_desenv_filtrado:.0f}%', 0, 1)
     
-    # CARD 2: COMISSIONADOS
+    # CARD 2: COMISSIONADOS (com cálculo)
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(60, card_y, 45, 42, 'F')
-    pdf.set_xy(65, card_y + 4)
-    pdf.set_font('Arial', 'B', 8)
+    pdf.rect(60, card_y, 45, 52, 'F')
+    pdf.set_xy(62, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 4, 'COMISSIONADOS', 0, 1)
-    pdf.set_xy(65, card_y + 14)
+    pdf.set_xy(62, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 7, str(comissionados_filtrado), 0, 1)
-    pdf.set_xy(65, card_y + 30)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_xy(62, card_y + 28)
+    pdf.set_font('Arial', '', 8)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 4, f'({pct_comiss_filtrado:.0f}%)', 0, 1)
+    pdf.set_xy(62, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= {comissionados_filtrado} / {total_filtrado}', 0, 1)
+    pdf.set_xy(62, card_y + 40)
+    pdf.cell(0, 3, f'× 100 = {pct_comiss_filtrado:.0f}%', 0, 1)
     
-    # CARD 3: VALIDADOS
+    # CARD 3: VALIDADOS (com cálculo)
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(110, card_y, 45, 42, 'F')
-    pdf.set_xy(115, card_y + 4)
-    pdf.set_font('Arial', 'B', 8)
+    pdf.rect(110, card_y, 45, 52, 'F')
+    pdf.set_xy(112, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 4, 'VALIDADOS', 0, 1)
-    pdf.set_xy(115, card_y + 14)
+    pdf.set_xy(112, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 7, str(validados_filtrado), 0, 1)
-    pdf.set_xy(115, card_y + 30)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_xy(112, card_y + 28)
+    pdf.set_font('Arial', '', 8)
     pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 4, f'({pct_valid_filtrado:.0f}%)', 0, 1)
+    pdf.set_xy(112, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= {validados_filtrado} / {total_filtrado}', 0, 1)
+    pdf.set_xy(112, card_y + 40)
+    pdf.cell(0, 3, f'× 100 = {pct_valid_filtrado:.0f}%', 0, 1)
     
-    # CARD 4: EM REVISÃO
+    # CARD 4: EM REVISÃO (com cálculo)
     pdf.set_fill_color(240, 248, 255)
-    pdf.rect(160, card_y, 40, 42, 'F')
-    pdf.set_xy(165, card_y + 4)
-    pdf.set_font('Arial', 'B', 8)
+    pdf.rect(160, card_y, 40, 52, 'F')
+    pdf.set_xy(162, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 4, 'EM REVISÃO', 0, 1)
-    pdf.set_xy(165, card_y + 14)
+    pdf.set_xy(162, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 7, str(revisao_filtrado), 0, 1)
-    pdf.set_xy(165, card_y + 30)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_xy(162, card_y + 28)
+    pdf.set_font('Arial', '', 8)
     pdf.set_text_color(245, 124, 0)
     pdf.cell(0, 4, f'({pct_revisao_filtrado:.0f}%)', 0, 1)
+    pdf.set_xy(162, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= {revisao_filtrado} / {total_filtrado}', 0, 1)
+    pdf.set_xy(162, card_y + 40)
+    pdf.cell(0, 3, f'× 100 = {pct_revisao_filtrado:.0f}%', 0, 1)
     
-    pdf.ln(45)
+    pdf.ln(55)
     
     # ============================================
     # PROGRESSO DO COMISSIONAMENTO (DADOS FILTRADOS)
