@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão Corrigida com Lógica de Acumulado
+# pdf_generator.py - Versão com Acumulado até o Mês Selecionado
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -45,7 +45,51 @@ def get_horario_brasilia():
     brasilia_time = utc_now - timedelta(hours=3)
     return brasilia_time
 
-def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, revisao):
+def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_selecionado=None):
+    """
+    Filtra dados acumulados até o período selecionado
+    Se nenhum filtro for aplicado, retorna todos os dados
+    """
+    df_result = df.copy()
+    
+    # Se não há filtro de mês/ano, retorna todos os dados
+    if (not mes_selecionado or mes_selecionado == "Todos os Meses") and \
+       (not ano_selecionado or ano_selecionado == "Todos os Anos"):
+        return df_result
+    
+    # Mapeamento de meses para números
+    meses_map = {
+        "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
+        "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
+        "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
+    }
+    
+    # Se tem filtro de ano
+    if ano_selecionado and ano_selecionado != "Todos os Anos":
+        if 'Ano' in df_result.columns:
+            # Se tem filtro de mês também
+            if mes_selecionado and mes_selecionado != "Todos os Meses":
+                mes_num = meses_map.get(mes_selecionado, 0)
+                if mes_num > 0 and 'Mes' in df_result.columns:
+                    # Filtra até o mês/ano selecionado
+                    df_result = df_result[
+                        (df_result['Ano'] < ano_selecionado) |
+                        ((df_result['Ano'] == ano_selecionado) & (df_result['Mes'] <= mes_num))
+                    ]
+                else:
+                    # Filtra até o ano selecionado
+                    df_result = df_result[df_result['Ano'] <= ano_selecionado]
+            else:
+                # Apenas filtro de ano - pega até o ano selecionado
+                df_result = df_result[df_result['Ano'] <= ano_selecionado]
+    else:
+        # Apenas filtro de mês (sem ano específico) - não faz sentido acumular
+        # Neste caso, mostra todos os dados
+        pass
+    
+    return df_result
+
+def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, revisao, periodo_texto=""):
     """Gera gráfico de barras verticais para o acumulado"""
     fig, ax = plt.subplots(figsize=(8, 4))
     
@@ -62,7 +106,10 @@ def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, rev
                 ha='center', va='bottom', fontsize=9, fontweight='bold')
     
     ax.set_ylabel('Quantidade', fontsize=10)
-    ax.set_title(f'Total de Equipamentos Desenvolvidos: {total}', fontsize=11, fontweight='bold', pad=15)
+    titulo = f'Total de Equipamentos Desenvolvidos: {total}'
+    if periodo_texto:
+        titulo += f'\n{periodo_texto}'
+    ax.set_title(titulo, fontsize=11, fontweight='bold', pad=15)
     ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     
@@ -79,10 +126,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     if df_empresa.empty:
         raise ValueError(f"Nao ha dados para a empresa {empresa}")
     
-    # DADOS ACUMULADOS DA UNIDADE (TODOS OS DADOS CADASTRADOS - SEM FILTRO DE MÊS/ANO)
-    df_empresa_acumulado = df_empresa.copy()
+    # ============================================
+    # DADOS ACUMULADOS ATÉ O PERÍODO SELECIONADO
+    # ============================================
+    # Usa a função que filtra dados até o período selecionado
+    df_empresa_acumulado = filtrar_dados_acumulados_ate_periodo(df_empresa, mes_selecionado, ano_selecionado)
     
-    # APLICAR FILTRO DE MÊS E ANO APENAS PARA OS DADOS EXIBIDOS NO RELATÓRIO (NÃO PARA O ACUMULADO)
+    # ============================================
+    # DADOS FILTRADOS (APENAS O PERÍODO SELECIONADO)
+    # ============================================
     df_empresa_filtrado = df_empresa.copy()
     
     if mes_selecionado and mes_selecionado != "Todos os Meses":
@@ -97,19 +149,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         raise ValueError(f"Nao ha dados para a empresa {empresa} com os filtros selecionados.")
     
     # ============================================
-    # MÉTRICAS ACUMULADAS (DADOS FILTRADOS)
+    # MÉTRICAS ACUMULADAS (DADOS FILTRADOS - PERÍODO SELECIONADO)
     # ============================================
-    # Desenvolvidos = Desenvolvido + Comissionado + Validado + Necessário Revisão
     desenvolvidos_acum_filtrado = calcular_desenvolvidos_acumulado(df_empresa_filtrado)
-    # Comissionados = Comissionado + Validado + Necessário Revisão
     comissionados_acum_filtrado = calcular_comissionados_acumulado(df_empresa_filtrado)
-    # Validados = Validado
     validados_acum_filtrado = calcular_validados_acumulado(df_empresa_filtrado)
-    # Aguardando comissionamento
     aguardando_comiss_filtrado = calcular_aguardando_comissionamento(df_empresa_filtrado)
-    # Aguardando validação
     aguardando_valid_filtrado = calcular_aguardando_validacao(df_empresa_filtrado)
-    # Em revisão
     revisao_filtrado = calcular_em_revisao(df_empresa_filtrado)
     
     total_filtrado = len(df_empresa_filtrado)
@@ -120,22 +166,28 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pct_revisao_filtrado = (revisao_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
     pct_aguardando_comiss_filtrado = (aguardando_comiss_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
     
-    # Taxa de progresso (Comissionados / Desenvolvidos)
-    taxa_progresso_filtrado = pct_comiss_filtrado
-    
     # ============================================
-    # MÉTRICAS ACUMULADAS (TODOS OS DADOS - SEM FILTRO)
+    # MÉTRICAS ACUMULADAS (ATÉ O PERÍODO SELECIONADO)
     # ============================================
     desenvolvidos_acum_total = calcular_desenvolvidos_acumulado(df_empresa_acumulado)
     comissionados_acum_total = calcular_comissionados_acumulado(df_empresa_acumulado)
     validados_acum_total = calcular_validados_acumulado(df_empresa_acumulado)
     revisao_total = calcular_em_revisao(df_empresa_acumulado)
     
-    total_acumulado = len(df_empresa_acumulado)
-    
     pct_comiss_total = (comissionados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
     pct_valid_total = (validados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
     pct_revisao_total = (revisao_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    
+    # Texto do período para o gráfico acumulado
+    periodo_acumulado_texto = ""
+    if mes_selecionado and mes_selecionado != "Todos os Meses":
+        periodo_acumulado_texto = f"Acumulado até {mes_selecionado}"
+        if ano_selecionado and ano_selecionado != "Todos os Anos":
+            periodo_acumulado_texto += f"/{ano_selecionado}"
+    elif ano_selecionado and ano_selecionado != "Todos os Anos":
+        periodo_acumulado_texto = f"Acumulado até {ano_selecionado}"
+    else:
+        periodo_acumulado_texto = "Acumulado Geral (Todos os períodos)"
     
     # Criar PDF
     pdf = FPDF()
@@ -204,7 +256,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(y_pos)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '1. PANORAMA GERAL (ACUMULADO)', 0, 1, 'L')
+    pdf.cell(0, 8, '1. PANORAMA GERAL (Acumulado no Período)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -309,7 +361,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(bar_y)
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (ACUMULADO)', 0, 1)
+    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (Acumulado no Período)', 0, 1)
     
     # Barra Comissionados (sobre Desenvolvidos)
     pdf.set_y(bar_y + 7)
@@ -352,14 +404,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(5)
     
     # ============================================
-    # 2. DISTRIBUIÇÃO POR STATUS (DADOS FILTRADOS - NÃO ACUMULADO)
+    # 2. DISTRIBUIÇÃO POR STATUS (Status Atual - Não Acumulado)
     # ============================================
     dist_y = pdf.get_y() + 2
     
     pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS (Status Atual)', 0, 1, 'L')
+    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS (Status Atual no Período)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(3)
@@ -374,14 +426,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(3)
     
     # ============================================
-    # 3. TIPOS DE EQUIPAMENTOS (DADOS FILTRADOS)
+    # 3. TIPOS DE EQUIPAMENTOS
     # ============================================
     tipo_y = pdf.get_y()
     
     pdf.set_y(tipo_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS', 0, 1, 'L')
+    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS (Período)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -402,20 +454,26 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         y_offset += 5
     
     # ============================================
-    # PÁGINA 2 - ACUMULADO DA UNIDADE (COM GRÁFICO - DADOS TOTAIS CADASTRADOS)
+    # PÁGINA 2 - ACUMULADO ATÉ O PERÍODO SELECIONADO
     # ============================================
     pdf.add_page()
     
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE (TODOS OS CADASTROS)', 0, 1, 'L')
+    pdf.cell(0, 8, f'4. ACUMULADO {periodo_acumulado_texto.upper()}', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # Gerar gráfico de barras com os dados ACUMULADOS (TODOS OS CADASTROS)
-    fig = gerar_grafico_barras_vertical(desenvolvidos_acum_total, comissionados_acum_total, validados_acum_total, revisao_total)
+    # Gerar gráfico de barras com os dados ACUMULADOS ATÉ O PERÍODO
+    fig = gerar_grafico_barras_vertical(
+        desenvolvidos_acum_total, 
+        comissionados_acum_total, 
+        validados_acum_total, 
+        revisao_total,
+        periodo_acumulado_texto
+    )
     
     # Salvar gráfico como imagem
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
@@ -428,10 +486,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.ln(20)
     
-    # Texto complementar do acumulado (COM DADOS TOTAIS CADASTRADOS)
+    # Texto complementar do acumulado
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, 'Resumo da Unidade (Acumulado Geral):', 0, 1, 'L')
+    pdf.cell(0, 6, f'Resumo {periodo_acumulado_texto}:', 0, 1, 'L')
     pdf.set_font('Arial', '', 9)
     pdf.cell(0, 5, f'Total de Equipamentos Desenvolvidos: {desenvolvidos_acum_total}', 0, 1)
     pdf.cell(0, 5, f'Equipamentos Comissionados (Acumulado): {comissionados_acum_total} ({pct_comiss_total:.1f}% dos desenvolvidos)', 0, 1)
@@ -446,14 +504,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(10)
     
     # ============================================
-    # PÁGINA 3 - PERFORMANCE POR RESPONSÁVEL (DADOS FILTRADOS)
+    # PÁGINA 3 - PERFORMANCE POR RESPONSÁVEL (DADOS DO PERÍODO)
     # ============================================
     pdf.add_page()
     
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSÁVEL', 0, 1, 'L')
+    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSÁVEL (Período)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
