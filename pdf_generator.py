@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Texto Explicativo, Assinaturas e Métricas de Cálculo
+# pdf_generator.py - Versão Corrigida com Lógica de Acumulado
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -10,18 +10,47 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 
+# ============================================
+# FUNÇÕES DE CÁLCULO ACUMULADO
+# ============================================
+def calcular_desenvolvidos_acumulado(df):
+    """Calcula o total acumulado de desenvolvidos"""
+    status_incluidos = ['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão']
+    return len(df[df['Status'].isin(status_incluidos)])
+
+def calcular_comissionados_acumulado(df):
+    """Calcula o total acumulado de comissionados"""
+    status_incluidos = ['Comissionado', 'Validado', 'Necessário Revisão']
+    return len(df[df['Status'].isin(status_incluidos)])
+
+def calcular_validados_acumulado(df):
+    """Calcula o total acumulado de validados"""
+    return len(df[df['Status'] == 'Validado'])
+
+def calcular_aguardando_comissionamento(df):
+    """Calcula quantos estão aguardando comissionamento"""
+    return len(df[df['Status'] == 'Desenvolvido'])
+
+def calcular_aguardando_validacao(df):
+    """Calcula quantos estão aguardando validação"""
+    return len(df[df['Status'] == 'Comissionado'])
+
+def calcular_em_revisao(df):
+    """Calcula quantos estão em revisão"""
+    return len(df[df['Status'] == 'Necessário Revisão'])
+
 def get_horario_brasilia():
     """Retorna o horário atual de Brasília (UTC-3)"""
     utc_now = datetime.now(timezone.utc)
     brasilia_time = utc_now - timedelta(hours=3)
     return brasilia_time
 
-def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
+def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, revisao):
     """Gera gráfico de barras verticais para o acumulado"""
     fig, ax = plt.subplots(figsize=(8, 4))
     
-    categorias = ['Comissionados\n+ Aguardando', 'Validados', 'Em Revisão']
-    valores = [comissionados, validados, revisao]
+    categorias = ['Comissionados\n(Acumulado)', 'Validados\n(Acumulado)', 'Em Revisão']
+    valores = [comissionados_acum, validados_acum, revisao]
     cores = ['#028a9f', '#2E7D32', '#F57C00']
     
     bars = ax.bar(categorias, valores, color=cores, width=0.6, edgecolor='white', linewidth=1.5)
@@ -33,7 +62,7 @@ def gerar_grafico_barras_vertical(total, comissionados, validados, revisao):
                 ha='center', va='bottom', fontsize=9, fontweight='bold')
     
     ax.set_ylabel('Quantidade', fontsize=10)
-    ax.set_title(f'Total de Equipamentos: {total}', fontsize=11, fontweight='bold', pad=15)
+    ax.set_title(f'Total de Equipamentos Desenvolvidos: {total}', fontsize=11, fontweight='bold', pad=15)
     ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     
@@ -67,27 +96,46 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     if df_empresa_filtrado.empty:
         raise ValueError(f"Nao ha dados para a empresa {empresa} com os filtros selecionados.")
     
-    # Métricas para o relatório (dados filtrados)
+    # ============================================
+    # MÉTRICAS ACUMULADAS (DADOS FILTRADOS)
+    # ============================================
+    # Desenvolvidos = Desenvolvido + Comissionado + Validado + Necessário Revisão
+    desenvolvidos_acum_filtrado = calcular_desenvolvidos_acumulado(df_empresa_filtrado)
+    # Comissionados = Comissionado + Validado + Necessário Revisão
+    comissionados_acum_filtrado = calcular_comissionados_acumulado(df_empresa_filtrado)
+    # Validados = Validado
+    validados_acum_filtrado = calcular_validados_acumulado(df_empresa_filtrado)
+    # Aguardando comissionamento
+    aguardando_comiss_filtrado = calcular_aguardando_comissionamento(df_empresa_filtrado)
+    # Aguardando validação
+    aguardando_valid_filtrado = calcular_aguardando_validacao(df_empresa_filtrado)
+    # Em revisão
+    revisao_filtrado = calcular_em_revisao(df_empresa_filtrado)
+    
     total_filtrado = len(df_empresa_filtrado)
-    desenvolvidos_filtrado = len(df_empresa_filtrado[df_empresa_filtrado['Status'] == 'Desenvolvido'])
-    comissionados_filtrado = len(df_empresa_filtrado[df_empresa_filtrado['Status'] == 'Comissionado'])
-    validados_filtrado = len(df_empresa_filtrado[df_empresa_filtrado['Status'] == 'Validado'])
-    revisao_filtrado = len(df_empresa_filtrado[df_empresa_filtrado['Status'] == 'Necessário Revisão'])
     
-    pct_comiss_filtrado = (comissionados_filtrado / total_filtrado * 100) if total_filtrado > 0 else 0
-    pct_valid_filtrado = (validados_filtrado / total_filtrado * 100) if total_filtrado > 0 else 0
-    pct_revisao_filtrado = (revisao_filtrado / total_filtrado * 100) if total_filtrado > 0 else 0
-    pct_desenv_filtrado = (desenvolvidos_filtrado / total_filtrado * 100) if total_filtrado > 0 else 0
+    # Percentuais sobre o total de DESENVOLVIDOS
+    pct_comiss_filtrado = (comissionados_acum_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_valid_filtrado = (validados_acum_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_revisao_filtrado = (revisao_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_aguardando_comiss_filtrado = (aguardando_comiss_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
     
-    # Métricas para o ACUMULADO DA UNIDADE (TODOS OS DADOS CADASTRADOS)
+    # Taxa de progresso (Comissionados / Desenvolvidos)
+    taxa_progresso_filtrado = pct_comiss_filtrado
+    
+    # ============================================
+    # MÉTRICAS ACUMULADAS (TODOS OS DADOS - SEM FILTRO)
+    # ============================================
+    desenvolvidos_acum_total = calcular_desenvolvidos_acumulado(df_empresa_acumulado)
+    comissionados_acum_total = calcular_comissionados_acumulado(df_empresa_acumulado)
+    validados_acum_total = calcular_validados_acumulado(df_empresa_acumulado)
+    revisao_total = calcular_em_revisao(df_empresa_acumulado)
+    
     total_acumulado = len(df_empresa_acumulado)
-    comissionados_acumulado = len(df_empresa_acumulado[df_empresa_acumulado['Status'] == 'Comissionado'])
-    validados_acumulado = len(df_empresa_acumulado[df_empresa_acumulado['Status'] == 'Validado'])
-    revisao_acumulado = len(df_empresa_acumulado[df_empresa_acumulado['Status'] == 'Necessário Revisão'])
     
-    pct_comiss_acumulado = (comissionados_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
-    pct_valid_acumulado = (validados_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
-    pct_revisao_acumulado = (revisao_acumulado / total_acumulado * 100) if total_acumulado > 0 else 0
+    pct_comiss_total = (comissionados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    pct_valid_total = (validados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    pct_revisao_total = (revisao_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
     
     # Criar PDF
     pdf = FPDF()
@@ -138,7 +186,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 5, f'Emissão: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horário de Brasília)', 0, 1, 'R')
     
     # ============================================
-    # TEXTO EXPLICATIVO (antes do Panorama Geral)
+    # TEXTO EXPLICATIVO
     # ============================================
     pdf.set_y(58)
     pdf.set_font('Arial', 'I', 9)
@@ -147,27 +195,23 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(3)
     
     # ============================================
-    # MÉTRICAS (DADOS FILTRADOS)
-    # ============================================
-    
-    # ============================================
     # PÁGINA 1 - PANORAMA, PROGRESSO, DISTRIBUIÇÃO, TIPOS
     # ============================================
     
-    # 1. PANORAMA GERAL - 4 CARDS EM UMA LINHA COM MÉTRICAS DE CÁLCULO
+    # 1. PANORAMA GERAL - 4 CARDS COM MÉTRICAS ACUMULADAS
     y_pos = pdf.get_y() + 5
     
     pdf.set_y(y_pos)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '1. PANORAMA GERAL', 0, 1, 'L')
+    pdf.cell(0, 8, '1. PANORAMA GERAL (ACUMULADO)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
     # Posição inicial dos cards
     card_y = pdf.get_y() + 5
     
-    # CARD 1: DESENVOLVIDOS (com cálculo)
+    # CARD 1: DESENVOLVIDOS (ACUMULADO)
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(10, card_y, 45, 52, 'F')
     pdf.set_xy(12, card_y + 4)
@@ -177,19 +221,19 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(12, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 7, str(desenvolvidos_filtrado), 0, 1)
+    pdf.cell(0, 7, str(desenvolvidos_acum_filtrado), 0, 1)
     pdf.set_xy(12, card_y + 28)
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 4, f'({pct_desenv_filtrado:.0f}%)', 0, 1)
+    pdf.cell(0, 4, f'Aguardando: {aguardando_comiss_filtrado}', 0, 1)
     pdf.set_xy(12, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= {desenvolvidos_filtrado} / {total_filtrado}', 0, 1)
+    pdf.cell(0, 3, f'= Desenv+Comiss+Valid+Rev', 0, 1)
     pdf.set_xy(12, card_y + 40)
-    pdf.cell(0, 3, f'× 100 = {pct_desenv_filtrado:.0f}%', 0, 1)
+    pdf.cell(0, 3, f'({pct_aguardando_comiss_filtrado:.0f}% aguardando)', 0, 1)
     
-    # CARD 2: COMISSIONADOS (com cálculo)
+    # CARD 2: COMISSIONADOS (ACUMULADO)
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(60, card_y, 45, 52, 'F')
     pdf.set_xy(62, card_y + 4)
@@ -199,19 +243,19 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(62, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(2, 138, 159)
-    pdf.cell(0, 7, str(comissionados_filtrado), 0, 1)
+    pdf.cell(0, 7, str(comissionados_acum_filtrado), 0, 1)
     pdf.set_xy(62, card_y + 28)
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(2, 138, 159)
-    pdf.cell(0, 4, f'({pct_comiss_filtrado:.0f}%)', 0, 1)
+    pdf.cell(0, 4, f'Aguardando: {aguardando_valid_filtrado}', 0, 1)
     pdf.set_xy(62, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= {comissionados_filtrado} / {total_filtrado}', 0, 1)
+    pdf.cell(0, 3, f'= Comiss+Valid+Rev', 0, 1)
     pdf.set_xy(62, card_y + 40)
-    pdf.cell(0, 3, f'× 100 = {pct_comiss_filtrado:.0f}%', 0, 1)
+    pdf.cell(0, 3, f'({pct_comiss_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
-    # CARD 3: VALIDADOS (com cálculo)
+    # CARD 3: VALIDADOS (ACUMULADO)
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(110, card_y, 45, 52, 'F')
     pdf.set_xy(112, card_y + 4)
@@ -221,19 +265,19 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(112, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(46, 125, 50)
-    pdf.cell(0, 7, str(validados_filtrado), 0, 1)
+    pdf.cell(0, 7, str(validados_acum_filtrado), 0, 1)
     pdf.set_xy(112, card_y + 28)
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(46, 125, 50)
-    pdf.cell(0, 4, f'({pct_valid_filtrado:.0f}%)', 0, 1)
+    pdf.cell(0, 4, 'Concluídos', 0, 1)
     pdf.set_xy(112, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= {validados_filtrado} / {total_filtrado}', 0, 1)
+    pdf.cell(0, 3, f'= Validados', 0, 1)
     pdf.set_xy(112, card_y + 40)
-    pdf.cell(0, 3, f'× 100 = {pct_valid_filtrado:.0f}%', 0, 1)
+    pdf.cell(0, 3, f'({pct_valid_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
-    # CARD 4: EM REVISÃO (com cálculo)
+    # CARD 4: EM REVISÃO
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(160, card_y, 40, 52, 'F')
     pdf.set_xy(162, card_y + 4)
@@ -247,68 +291,75 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(162, card_y + 28)
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(245, 124, 0)
-    pdf.cell(0, 4, f'({pct_revisao_filtrado:.0f}%)', 0, 1)
+    pdf.cell(0, 4, 'Gargalo', 0, 1)
     pdf.set_xy(162, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= {revisao_filtrado} / {total_filtrado}', 0, 1)
+    pdf.cell(0, 3, f'= Necessário Revisão', 0, 1)
     pdf.set_xy(162, card_y + 40)
-    pdf.cell(0, 3, f'× 100 = {pct_revisao_filtrado:.0f}%', 0, 1)
+    pdf.cell(0, 3, f'({pct_revisao_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
     pdf.ln(20)
     
     # ============================================
-    # PROGRESSO DO COMISSIONAMENTO (DADOS FILTRADOS)
+    # PROGRESSO DO COMISSIONAMENTO (ACUMULADO)
     # ============================================
     bar_y = pdf.get_y() + 2
     
     pdf.set_y(bar_y)
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO', 0, 1)
+    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (ACUMULADO)', 0, 1)
     
-    # Barra Comissionados
+    # Barra Comissionados (sobre Desenvolvidos)
     pdf.set_y(bar_y + 7)
     pdf.set_font('Arial', '', 9)
-    pdf.cell(45, 6, 'Comissionados:', 0, 0)
+    pdf.cell(55, 6, 'Comissionados:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, bar_y + 7, 110, 5, 'F')
+    pdf.rect(65, bar_y + 7, 100, 5, 'F')
     pdf.set_fill_color(2, 138, 159)
-    pdf.rect(55, bar_y + 7, 110 * (pct_comiss_filtrado / 100), 5, 'F')
+    pdf.rect(65, bar_y + 7, 100 * (pct_comiss_filtrado / 100), 5, 'F')
     pdf.set_xy(170, bar_y + 5)
-    pdf.cell(20, 6, f'{comissionados_filtrado} ({pct_comiss_filtrado:.0f}%)', 0, 1)
+    pdf.cell(20, 6, f'{comissionados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_comiss_filtrado:.0f}%)', 0, 1)
     
-    # Barra Validados
+    # Barra Validados (sobre Desenvolvidos)
     pdf.set_y(bar_y + 14)
-    pdf.cell(45, 6, 'Validados:', 0, 0)
+    pdf.cell(55, 6, 'Validados:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, bar_y + 14, 110, 5, 'F')
+    pdf.rect(65, bar_y + 14, 100, 5, 'F')
     pdf.set_fill_color(46, 125, 50)
-    pdf.rect(55, bar_y + 14, 110 * (pct_valid_filtrado / 100), 5, 'F')
+    pdf.rect(65, bar_y + 14, 100 * (pct_valid_filtrado / 100), 5, 'F')
     pdf.set_xy(170, bar_y + 12)
-    pdf.cell(20, 6, f'{validados_filtrado} ({pct_valid_filtrado:.0f}%)', 0, 1)
+    pdf.cell(20, 6, f'{validados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_valid_filtrado:.0f}%)', 0, 1)
     
-    # Barra Em Revisão
+    # Barra Em Revisão (sobre Desenvolvidos)
     pdf.set_y(bar_y + 21)
-    pdf.cell(45, 6, 'Em Revisão:', 0, 0)
+    pdf.cell(55, 6, 'Em Revisão:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
-    pdf.rect(55, bar_y + 21, 110, 5, 'F')
+    pdf.rect(65, bar_y + 21, 100, 5, 'F')
     pdf.set_fill_color(245, 124, 0)
-    pdf.rect(55, bar_y + 21, 110 * (pct_revisao_filtrado / 100), 5, 'F')
+    pdf.rect(65, bar_y + 21, 100 * (pct_revisao_filtrado / 100), 5, 'F')
     pdf.set_xy(170, bar_y + 19)
-    pdf.cell(20, 6, f'{revisao_filtrado} ({pct_revisao_filtrado:.0f}%)', 0, 1)
+    pdf.cell(20, 6, f'{revisao_filtrado}/{desenvolvidos_acum_filtrado} ({pct_revisao_filtrado:.0f}%)', 0, 1)
     
-    pdf.ln(8)
+    # Taxa de validação (Validados / Comissionados)
+    taxa_valid_comiss = (validados_acum_filtrado / comissionados_acum_filtrado * 100) if comissionados_acum_filtrado > 0 else 0
+    pdf.set_y(bar_y + 30)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {validados_acum_filtrado}/{comissionados_acum_filtrado} = {taxa_valid_comiss:.0f}%', 0, 1)
+    
+    pdf.ln(5)
     
     # ============================================
-    # 2. DISTRIBUIÇÃO POR STATUS (DADOS FILTRADOS)
+    # 2. DISTRIBUIÇÃO POR STATUS (DADOS FILTRADOS - NÃO ACUMULADO)
     # ============================================
     dist_y = pdf.get_y() + 2
     
     pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS', 0, 1, 'L')
+    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS (Status Atual)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(3)
@@ -358,13 +409,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE', 0, 1, 'L')
+    pdf.cell(0, 8, '4. ACUMULADO DA UNIDADE (TODOS OS CADASTROS)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
     # Gerar gráfico de barras com os dados ACUMULADOS (TODOS OS CADASTROS)
-    fig = gerar_grafico_barras_vertical(total_acumulado, comissionados_acumulado, validados_acumulado, revisao_acumulado)
+    fig = gerar_grafico_barras_vertical(desenvolvidos_acum_total, comissionados_acum_total, validados_acum_total, revisao_total)
     
     # Salvar gráfico como imagem
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
@@ -382,10 +433,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'Resumo da Unidade (Acumulado Geral):', 0, 1, 'L')
     pdf.set_font('Arial', '', 9)
-    pdf.cell(0, 5, f'Total de Equipamentos Cadastrados: {total_acumulado}', 0, 1)
-    pdf.cell(0, 5, f'Equipamentos Comissionados e Aguardando Validação: {comissionados_acumulado} ({pct_comiss_acumulado:.1f}%)', 0, 1)
-    pdf.cell(0, 5, f'Equipamentos Validados: {validados_acumulado} ({pct_valid_acumulado:.1f}%)', 0, 1)
-    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_acumulado} ({pct_revisao_acumulado:.1f}%)', 0, 1)
+    pdf.cell(0, 5, f'Total de Equipamentos Desenvolvidos: {desenvolvidos_acum_total}', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Comissionados (Acumulado): {comissionados_acum_total} ({pct_comiss_total:.1f}% dos desenvolvidos)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Validados (Acumulado): {validados_acum_total} ({pct_valid_total:.1f}% dos desenvolvidos)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_total} ({pct_revisao_total:.1f}% dos desenvolvidos)', 0, 1)
+    
+    # Taxa de validação sobre comissionados (total)
+    taxa_valid_comiss_total = (validados_acum_total / comissionados_acum_total * 100) if comissionados_acum_total > 0 else 0
+    pdf.ln(3)
+    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {taxa_valid_comiss_total:.1f}%', 0, 1)
     
     pdf.ln(10)
     
@@ -487,7 +543,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
     # ============================================
-    # PÁGINA 4 - EQUIPE RESPONSÁVEL (ASSINATURAS ATUALIZADAS)
+    # PÁGINA 4 - EQUIPE RESPONSÁVEL (ASSINATURAS)
     # ============================================
     pdf.add_page()
     
