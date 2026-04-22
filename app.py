@@ -502,18 +502,20 @@ def mostrar_popup_calculos():
     """Mostra popup com explicação dos cálculos"""
     popup_html = """
     <div class="info-popup">
-        <strong>📊 Como as taxas são calculadas:</strong><br><br>
-        <strong>ETAPA 1 → 2:</strong> (Comissionados + Validados) / Desenvolvidos × 100<br>
-        <em>Percentual do desenvolvimento que já passou pelo comissionamento</em><br><br>
-        <strong>ETAPA 2 → 3:</strong> Validados / (Comissionados + Validados) × 100<br>
-        <em>Percentual dos equipamentos comissionados que já foram validados</em><br><br>
-        <strong>ETAPA 3:</strong> Validados / Total do Fluxo × 100<br>
-        <em>Percentual de equipamentos validados sobre o total do fluxo</em><br><br>
-        <strong>GARGALO:</strong> Em Revisão / Total do Fluxo × 100<br>
-        <em>Percentual de equipamentos que necessitam de revisão</em><br><br>
+        <strong>📊 Como as taxas são calculadas (ACUMULADO):</strong><br><br>
+        <strong>DESENVOLVIDOS:</strong> Desenvolvido + Comissionado + Validado + Necessário Revisão<br>
+        <em>Total de equipamentos que já iniciaram o fluxo</em><br><br>
+        <strong>COMISSIONADOS:</strong> Comissionado + Validado + Necessário Revisão<br>
+        <em>Total de equipamentos que já passaram pelo comissionamento</em><br><br>
+        <strong>VALIDADOS:</strong> Validados<br>
+        <em>Total de equipamentos com processo concluído</em><br><br>
+        <strong>ETAPA 1 → 2:</strong> Comissionados / Desenvolvidos × 100<br>
+        <em>Percentual dos desenvolvidos que já foram comissionados</em><br><br>
+        <strong>ETAPA 2 → 3:</strong> Validados / Comissionados × 100<br>
+        <em>Percentual dos comissionados que já foram validados</em><br><br>
         <strong>Legenda:</strong><br>
-        • <span style="color:#2E7D32;">Desenvolvidos</span>: Aguardando comissionamento<br>
-        • <span style="color:#028a9f;">Aguardando Validação</span>: Comissionados pendentes<br>
+        • <span style="color:#2E7D32;">Desenvolvidos</span>: Já iniciaram o fluxo<br>
+        • <span style="color:#028a9f;">Comissionados</span>: Já passaram pelo comissionamento<br>
         • <span style="color:#005973;">Validados</span>: Processo concluído<br>
         • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
     </div>
@@ -624,6 +626,35 @@ def criar_grafico_pizza_status(df_filtrado):
     )
     
     return fig_status
+
+# ============================================
+# FUNÇÕES DE CÁLCULO ACUMULADO
+# ============================================
+def calcular_desenvolvidos_acumulado(df):
+    """Calcula o total acumulado de desenvolvidos"""
+    status_incluidos = ['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão']
+    return len(df[df['Status'].isin(status_incluidos)])
+
+def calcular_comissionados_acumulado(df):
+    """Calcula o total acumulado de comissionados"""
+    status_incluidos = ['Comissionado', 'Validado', 'Necessário Revisão']
+    return len(df[df['Status'].isin(status_incluidos)])
+
+def calcular_validados_acumulado(df):
+    """Calcula o total acumulado de validados"""
+    return len(df[df['Status'] == 'Validado'])
+
+def calcular_aguardando_comissionamento(df):
+    """Calcula quantos estão aguardando comissionamento (status Desenvolvido)"""
+    return len(df[df['Status'] == 'Desenvolvido'])
+
+def calcular_aguardando_validacao(df):
+    """Calcula quantos estão aguardando validação (status Comissionado)"""
+    return len(df[df['Status'] == 'Comissionado'])
+
+def calcular_em_revisao(df):
+    """Calcula quantos estão em revisão"""
+    return len(df[df['Status'] == 'Necessário Revisão'])
 
 # ============================================
 # INTERFACE PRINCIPAL
@@ -855,22 +886,21 @@ with st.sidebar:
 # ============================================
 
 if not df_filtrado.empty:
-    # Contagens por status
-    qtd_desenvolvidos = len(df_filtrado[df_filtrado['Status'] == 'Desenvolvido'])
-    qtd_aguardando_validacao = len(df_filtrado[df_filtrado['Status'] == 'Comissionado'])
-    qtd_validados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
-    qtd_revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
+    # Cálculos acumulados
+    qtd_desenvolvidos_acum = calcular_desenvolvidos_acumulado(df_filtrado)
+    qtd_comissionados_acum = calcular_comissionados_acumulado(df_filtrado)
+    qtd_validados_acum = calcular_validados_acumulado(df_filtrado)
+    qtd_aguardando_comiss = calcular_aguardando_comissionamento(df_filtrado)
+    qtd_aguardando_valid = calcular_aguardando_validacao(df_filtrado)
+    qtd_revisao = calcular_em_revisao(df_filtrado)
     
-    total_comissionados = qtd_aguardando_validacao + qtd_validados
-    total_fluxo = qtd_desenvolvidos + qtd_aguardando_validacao + qtd_validados + qtd_revisao
-    
-    taxa_desenv_para_comiss = (total_comissionados / qtd_desenvolvidos * 100) if qtd_desenvolvidos > 0 else 0
-    taxa_comiss_para_valid = (qtd_validados / total_comissionados * 100) if total_comissionados > 0 else 0
-    taxa_valid_sobre_total = (qtd_validados / total_fluxo * 100) if total_fluxo > 0 else 0
-    taxa_revisao_sobre_total = (qtd_revisao / total_fluxo * 100) if total_fluxo > 0 else 0
+    # Taxas
+    taxa_desenv_para_comiss = (qtd_comissionados_acum / qtd_desenvolvidos_acum * 100) if qtd_desenvolvidos_acum > 0 else 0
+    taxa_comiss_para_valid = (qtd_validados_acum / qtd_comissionados_acum * 100) if qtd_comissionados_acum > 0 else 0
+    taxa_valid_sobre_desenv = (qtd_validados_acum / qtd_desenvolvidos_acum * 100) if qtd_desenvolvidos_acum > 0 else 0
     
     # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Progress Tracker")
+    st.markdown("### 🔄 Progress Tracker (Acumulado)")
     
     with st.expander("ℹ️ Detalhes dos cálculos", expanded=False):
         st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
@@ -882,11 +912,13 @@ if not df_filtrado.empty:
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 1</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos}</div>
-                <div style="font-weight: 500;">Desenvolvidos</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando comissionamento</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_desenv_para_comiss:.1f}% já comissionados
+                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos_acum}</div>
+                <div style="font-weight: 500; font-size: 1.1rem;">Desenvolvidos</div>
+                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
+                    Aguardando comissionamento: <strong>{qtd_aguardando_comiss}</strong>
+                </div>
+                <div style="margin-top: 0.8rem; background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
+                    <strong>→ {taxa_desenv_para_comiss:.1f}%</strong> já comissionados
                 </div>
             </div>
         </div>
@@ -897,11 +929,13 @@ if not df_filtrado.empty:
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_aguardando_validacao}</div>
-                <div style="font-weight: 500;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando validação</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    → {taxa_comiss_para_valid:.1f}% já validados
+                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados_acum}</div>
+                <div style="font-weight: 500; font-size: 1.1rem;">Comissionados</div>
+                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
+                    Aguardando validação: <strong>{qtd_aguardando_valid}</strong>
+                </div>
+                <div style="margin-top: 0.8rem; background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
+                    <strong>→ {taxa_comiss_para_valid:.1f}%</strong> já validados
                 </div>
             </div>
         </div>
@@ -912,26 +946,42 @@ if not df_filtrado.empty:
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 3</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados}</div>
-                <div style="font-weight: 500;">Validados</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Processo concluído</div>
-                <div style="margin-top: 0.5rem; background: #e0f7fa; border-radius: 20px; padding: 0.3rem;">
-                    ✓ {taxa_valid_sobre_total:.1f}% do total
+                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados_acum}</div>
+                <div style="font-weight: 500; font-size: 1.1rem;">Validados</div>
+                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
+                    Processo concluído
+                </div>
+                <div style="margin-top: 0.8rem; background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
+                    <strong>✓ {taxa_valid_sobre_desenv:.1f}%</strong> dos desenvolvidos
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
+        pct_revisao = (qtd_revisao / qtd_desenvolvidos_acum * 100) if qtd_desenvolvidos_acum > 0 else 0
+        
+        if pct_revisao > 10:
+            cor_alerta = '#F57C00'
+            icone = '⚠️'
+        elif pct_revisao > 5:
+            cor_alerta = '#FFA726'
+            icone = '📌'
+        else:
+            cor_alerta = '#2E7D32'
+            icone = '✅'
+        
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">GARGALO</div>
-                <div style="font-size: 1.8rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
-                <div style="font-weight: 500;">Em Revisão</div>
-                <div style="font-size: 0.85rem; color: #6b7280;">Aguardando correções</div>
-                <div style="margin-top: 0.5rem; background: #fff3e0; border-radius: 20px; padding: 0.3rem;">
-                    ⚠️ {taxa_revisao_sobre_total:.1f}% em revisão
+                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_revisao}</div>
+                <div style="font-weight: 500; font-size: 1.1rem;">Em Revisão</div>
+                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
+                    Aguardando correções
+                </div>
+                <div style="margin-top: 0.8rem; background: #fff3e0; border-radius: 20px; padding: 0.5rem;">
+                    <strong>{icone} {pct_revisao:.1f}%</strong> dos desenvolvidos
                 </div>
             </div>
         </div>
@@ -946,7 +996,7 @@ if not df_filtrado.empty:
     ])
     
     with tab1:
-        st.markdown("### 📊 Análise Comparativa por Empresa")
+        st.markdown("### 📊 Análise Comparativa por Empresa (Acumulado)")
         
         col1, col2 = st.columns(2)
         
@@ -955,36 +1005,37 @@ if not df_filtrado.empty:
                 df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
                 
                 if not df_emp.empty:
-                    total_emp = len(df_emp)
-                    aguardando_emp = len(df_emp[df_emp['Status'] == 'Comissionado'])
-                    validados_emp = len(df_emp[df_emp['Status'] == 'Validado'])
-                    comissionados_total_emp = aguardando_emp + validados_emp
+                    desenvolvidos_emp = calcular_desenvolvidos_acumulado(df_emp)
+                    comissionados_emp = calcular_comissionados_acumulado(df_emp)
+                    validados_emp = calcular_validados_acumulado(df_emp)
+                    
+                    progresso_emp = (comissionados_emp / desenvolvidos_emp * 100) if desenvolvidos_emp > 0 else 0
                     
                     st.markdown(f"""
                     <div class="company-card">
                         <div class="company-title" style="color: {CORES[empresa]};">{empresa}</div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: #005973;">{total_emp}</div>
-                                <div class="company-metric-label">Equipamentos cadastrados</div>
+                                <div class="company-metric-value" style="color: #005973;">{desenvolvidos_emp}</div>
+                                <div class="company-metric-label">Desenvolvidos</div>
                             </div>
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{comissionados_total_emp}</div>
-                                <div class="company-metric-label">Comissionados no total</div>
+                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{comissionados_emp}</div>
+                                <div class="company-metric-label">Comissionados</div>
                             </div>
                             <div class="company-metric">
                                 <div class="company-metric-value" style="color: {CORES['Validado']};">{validados_emp}</div>
-                                <div class="company-metric-label">Validados (concluídos)</div>
+                                <div class="company-metric-label">Validados</div>
                             </div>
                         </div>
                         <div style="margin-top: 1rem;">
                             <div style="background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span>Progresso do fluxo:</span>
-                                    <strong>{((comissionados_total_emp)/total_emp*100):.1f}%</strong>
+                                    <strong>{progresso_emp:.1f}%</strong>
                                 </div>
                                 <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
-                                    <div style="width: {((comissionados_total_emp)/total_emp*100)}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
+                                    <div style="width: {progresso_emp}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -1031,29 +1082,69 @@ if not df_filtrado.empty:
                 st.plotly_chart(fig_tipo, use_container_width=True)
     
     with tab2:
-        st.markdown("### 📈 Evolução do Fluxo")
+        st.markdown("### 📈 Evolução do Fluxo (Acumulado)")
         
         if 'Criado' in df_filtrado.columns:
-            df_filtrado['Mes_Ano_Label'] = df_filtrado['Criado'].dt.strftime('%b/%Y')
+            # Preparar dados acumulados por mês
             df_filtrado['Ano_Mes'] = df_filtrado['Criado'].dt.strftime('%Y-%m')
+            df_filtrado['Mes_Ano_Label'] = df_filtrado['Criado'].dt.strftime('%b/%Y')
             
-            evolucao = df_filtrado.groupby(['Ano_Mes', 'Mes_Ano_Label', 'Status']).size().reset_index(name='Quantidade')
-            evolucao = evolucao.sort_values('Ano_Mes')
+            meses_ordenados = sorted(df_filtrado['Ano_Mes'].unique())
             
-            fig_evolucao = px.line(
-                evolucao,
-                x='Mes_Ano_Label',
-                y='Quantidade',
-                color='Status',
-                markers=True,
-                title='Evolução Mensal por Status',
-                color_discrete_map=CORES
-            )
-            fig_evolucao.update_traces(marker=dict(size=8), line=dict(width=2))
+            evolucao_acum = []
+            for mes in meses_ordenados:
+                df_ate_mes = df_filtrado[df_filtrado['Ano_Mes'] <= mes]
+                label_mes = df_filtrado[df_filtrado['Ano_Mes'] == mes]['Mes_Ano_Label'].iloc[0]
+                
+                desenvolvidos = calcular_desenvolvidos_acumulado(df_ate_mes)
+                comissionados = calcular_comissionados_acumulado(df_ate_mes)
+                validados = calcular_validados_acumulado(df_ate_mes)
+                
+                evolucao_acum.append({
+                    'Ano_Mes': mes,
+                    'Mes_Ano_Label': label_mes,
+                    'Desenvolvidos': desenvolvidos,
+                    'Comissionados': comissionados,
+                    'Validados': validados
+                })
+            
+            df_evolucao = pd.DataFrame(evolucao_acum)
+            
+            # Gráfico de linhas
+            fig_evolucao = go.Figure()
+            
+            fig_evolucao.add_trace(go.Scatter(
+                x=df_evolucao['Mes_Ano_Label'],
+                y=df_evolucao['Desenvolvidos'],
+                name='Desenvolvidos',
+                line=dict(color=CORES['Desenvolvido'], width=3),
+                mode='lines+markers',
+                marker=dict(size=8)
+            ))
+            
+            fig_evolucao.add_trace(go.Scatter(
+                x=df_evolucao['Mes_Ano_Label'],
+                y=df_evolucao['Comissionados'],
+                name='Comissionados',
+                line=dict(color=CORES['Comissionado'], width=3),
+                mode='lines+markers',
+                marker=dict(size=8)
+            ))
+            
+            fig_evolucao.add_trace(go.Scatter(
+                x=df_evolucao['Mes_Ano_Label'],
+                y=df_evolucao['Validados'],
+                name='Validados',
+                line=dict(color=CORES['Validado'], width=3),
+                mode='lines+markers',
+                marker=dict(size=8)
+            ))
+            
             fig_evolucao.update_layout(
+                title='Evolução Acumulada do Fluxo',
                 height=400,
                 xaxis_title="Mês",
-                yaxis_title="Quantidade",
+                yaxis_title="Quantidade Acumulada",
                 hovermode='x unified',
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1061,12 +1152,16 @@ if not df_filtrado.empty:
             )
             st.plotly_chart(fig_evolucao, use_container_width=True)
             
+            # Evolução mensal (não acumulada)
+            evolucao_mensal = df_filtrado.groupby(['Ano_Mes', 'Mes_Ano_Label', 'Status']).size().reset_index(name='Quantidade')
+            evolucao_mensal = evolucao_mensal.sort_values('Ano_Mes')
+            
             fig_barras = px.bar(
-                evolucao,
+                evolucao_mensal,
                 x='Mes_Ano_Label',
                 y='Quantidade',
                 color='Status',
-                title='Distribuição Mensal por Status',
+                title='Distribuição Mensal por Status (Não Acumulado)',
                 color_discrete_map=CORES,
                 barmode='stack',
                 text='Quantidade'
@@ -1254,7 +1349,29 @@ if not df_filtrado.empty:
                 tipo_counts = df_filtrado['Tipo'].value_counts().reset_index()
                 tipo_counts.columns = ['Tipo', 'Quantidade']
                 st.dataframe(tipo_counts.head(15), use_container_width=True)
-    
+            
+            st.markdown("---")
+            st.markdown("### 📊 Resumo Acumulado")
+            
+            resumo_acum = pd.DataFrame({
+                'Métrica': [
+                    'Desenvolvidos (Acumulado)',
+                    'Comissionados (Acumulado)',
+                    'Validados (Acumulado)',
+                    'Aguardando Comissionamento',
+                    'Aguardando Validação',
+                    'Em Revisão'
+                ],
+                'Quantidade': [
+                    qtd_desenvolvidos_acum,
+                    qtd_comissionados_acum,
+                    qtd_validados_acum,
+                    qtd_aguardando_comiss,
+                    qtd_aguardando_valid,
+                    qtd_revisao
+                ]
+            })
+            st.dataframe(resumo_acum, use_container_width=True, hide_index=True)
     
     # FOOTER
     st.markdown(f"""
