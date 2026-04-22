@@ -496,6 +496,21 @@ def limpar_filtros():
             del st.session_state[key]
 
 # ============================================
+# FUNÇÃO PARA LIMPAR CACHE E RECARREGAR DADOS
+# ============================================
+def limpar_cache_e_recarregar():
+    """Limpa o cache e força o recarregamento dos dados"""
+    # Limpa o cache da função load_data
+    load_data.clear()
+    # Remove os dados da sessão
+    if 'df' in st.session_state:
+        del st.session_state['df']
+    if 'fonte' in st.session_state:
+        del st.session_state['fonte']
+    # Atualiza o timestamp
+    st.session_state.ultima_atualizacao = datetime.now()
+
+# ============================================
 # FUNÇÃO PARA POPUP DE INFORMAÇÕES
 # ============================================
 def mostrar_popup_calculos():
@@ -666,6 +681,7 @@ if 'df' not in st.session_state:
         df, fonte = load_data()
         st.session_state.df = df
         st.session_state.fonte = fonte
+        st.session_state.ultima_atualizacao = datetime.now()
 else:
     df = st.session_state.df
     fonte = st.session_state.fonte
@@ -782,10 +798,31 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Botão Limpar Filtros
-    if st.button("🔄 Limpar Filtros", use_container_width=True):
-        limpar_filtros()
-        st.rerun()
+    # Botões de ação
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Limpar", use_container_width=True, help="Limpar todos os filtros"):
+            limpar_filtros()
+            st.rerun()
+    
+    with col2:
+        if st.button("🔄 Atualizar", use_container_width=True, help="Força a leitura da base de dados do GitHub"):
+            with st.spinner("🔄 Atualizando dados do GitHub..."):
+                limpar_cache_e_recarregar()
+                st.rerun()
+    
+    # Informação da fonte dos dados
+    st.markdown("---")
+    if fonte == "github":
+        st.success(f"✅ Dados carregados do GitHub")
+    elif fonte == "local":
+        st.info(f"📁 Dados carregados localmente")
+    elif fonte == "exemplo":
+        st.warning(f"⚠️ Usando dados de exemplo")
+    
+    # Última atualização
+    if 'ultima_atualizacao' in st.session_state:
+        st.caption(f"Última atualização: {st.session_state.ultima_atualizacao.strftime('%d/%m/%Y %H:%M')}")
 
 # ============================================
 # APLICAR FILTROS
@@ -845,7 +882,6 @@ with st.sidebar:
     st.markdown("---")
     
     # Botão para gerar relatório EMT
-    from pdf_generator import adicionar_botao_pdf_empresa
     adicionar_botao_pdf_empresa(df_filtrado, "EMT", mes_relatorio, ano_relatorio)
     
     # Botão para gerar relatório ETO
@@ -1381,7 +1417,7 @@ if not df_filtrado.empty:
                 <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
             </div>
             <div>
-                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                Última atualização: {st.session_state.get('ultima_atualizacao', datetime.now()).strftime('%d/%m/%Y %H:%M')}
             </div>
             <div style="color: #6b7280;">
                 {len(df_filtrado)} registros • {fonte.upper()}
@@ -1400,7 +1436,7 @@ else:
                 <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
             </div>
             <div>
-                Última atualização: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+                Última atualização: {st.session_state.get('ultima_atualizacao', datetime.now()).strftime('%d/%m/%Y %H:%M')}
             </div>
         </div>
     </div>
