@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão com Acumulado até o Mês Selecionado
+# pdf_generator.py - Versão com Análise de Motivos de Revisão
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -48,44 +48,32 @@ def get_horario_brasilia():
 def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_selecionado=None):
     """
     Filtra dados acumulados até o período selecionado
-    Se nenhum filtro for aplicado, retorna todos os dados
     """
     df_result = df.copy()
     
-    # Se não há filtro de mês/ano, retorna todos os dados
     if (not mes_selecionado or mes_selecionado == "Todos os Meses") and \
        (not ano_selecionado or ano_selecionado == "Todos os Anos"):
         return df_result
     
-    # Mapeamento de meses para números
     meses_map = {
         "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
         "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
         "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
     }
     
-    # Se tem filtro de ano
     if ano_selecionado and ano_selecionado != "Todos os Anos":
         if 'Ano' in df_result.columns:
-            # Se tem filtro de mês também
             if mes_selecionado and mes_selecionado != "Todos os Meses":
                 mes_num = meses_map.get(mes_selecionado, 0)
                 if mes_num > 0 and 'Mes' in df_result.columns:
-                    # Filtra até o mês/ano selecionado
                     df_result = df_result[
                         (df_result['Ano'] < ano_selecionado) |
                         ((df_result['Ano'] == ano_selecionado) & (df_result['Mes'] <= mes_num))
                     ]
                 else:
-                    # Filtra até o ano selecionado
                     df_result = df_result[df_result['Ano'] <= ano_selecionado]
             else:
-                # Apenas filtro de ano - pega até o ano selecionado
                 df_result = df_result[df_result['Ano'] <= ano_selecionado]
-    else:
-        # Apenas filtro de mês (sem ano específico) - não faz sentido acumular
-        # Neste caso, mostra todos os dados
-        pass
     
     return df_result
 
@@ -116,6 +104,37 @@ def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, rev
     plt.tight_layout()
     return fig
 
+def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
+    """Gera gráfico de pizza para motivos de revisão"""
+    fig, ax = plt.subplots(figsize=(7, 5))
+    
+    cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
+             '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0']
+    
+    wedges, texts, autotexts = ax.pie(
+        motivos_count.values,
+        labels=motivos_count.index,
+        autopct='%1.1f%%',
+        colors=cores[:len(motivos_count)],
+        startangle=90,
+        pctdistance=0.85
+    )
+    
+    # Melhorar legibilidade
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(8)
+        autotext.set_fontweight('bold')
+    
+    for text in texts:
+        text.set_fontsize(7)
+    
+    ax.set_title(f'Distribuição dos Motivos de Revisão\nTotal: {total_motivos} equipamentos', 
+                 fontsize=11, fontweight='bold', pad=20)
+    
+    plt.tight_layout()
+    return fig
+
 def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
     """
     Gera relatório PDF executivo para uma empresa específica
@@ -126,15 +145,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     if df_empresa.empty:
         raise ValueError(f"Nao ha dados para a empresa {empresa}")
     
-    # ============================================
     # DADOS ACUMULADOS ATÉ O PERÍODO SELECIONADO
-    # ============================================
-    # Usa a função que filtra dados até o período selecionado
     df_empresa_acumulado = filtrar_dados_acumulados_ate_periodo(df_empresa, mes_selecionado, ano_selecionado)
     
-    # ============================================
     # DADOS FILTRADOS (APENAS O PERÍODO SELECIONADO)
-    # ============================================
     df_empresa_filtrado = df_empresa.copy()
     
     if mes_selecionado and mes_selecionado != "Todos os Meses":
@@ -178,6 +192,23 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pct_valid_total = (validados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
     pct_revisao_total = (revisao_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
     
+    # ============================================
+    # ANÁLISE DE MOTIVOS DE REVISÃO
+    # ============================================
+    tem_motivos = False
+    motivos_count = None
+    total_com_motivo = 0
+    
+    if 'Motivo_Revisao' in df_empresa_filtrado.columns:
+        df_motivos = df_empresa_filtrado[df_empresa_filtrado['Motivo_Revisao'].notna() & 
+                                          (df_empresa_filtrado['Motivo_Revisao'] != '') &
+                                          (df_empresa_filtrado['Motivo_Revisao'] != 'N/A')]
+        
+        if not df_motivos.empty:
+            tem_motivos = True
+            motivos_count = df_motivos['Motivo_Revisao'].value_counts()
+            total_com_motivo = len(df_motivos)
+    
     # Texto do período para o gráfico acumulado
     periodo_acumulado_texto = ""
     if mes_selecionado and mes_selecionado != "Todos os Meses":
@@ -197,7 +228,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # ============================================
     # CABEÇALHO
     # ============================================
-    # Logo
     try:
         for logo in ["Logo_Energisa.png", "logo_energisa.png", "energisa.png"]:
             if os.path.exists(logo):
@@ -206,18 +236,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     except:
         pass
     
-    # Título
     pdf.set_y(15)
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 89, 115)
     pdf.cell(0, 8, 'RELATÓRIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
-    # Subtítulo
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(2, 138, 159)
     pdf.cell(0, 6, f'UNIDADE {empresa}', 0, 1, 'C')
     
-    # Período (se houver filtro)
     if mes_selecionado and mes_selecionado != "Todos os Meses":
         pdf.set_font('Arial', 'I', 10)
         pdf.set_text_color(100, 100, 100)
@@ -226,11 +253,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             periodo_texto += f'/{ano_selecionado}'
         pdf.cell(0, 5, periodo_texto, 0, 1, 'C')
     
-    # Linha
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, 45, 200, 45)
     
-    # Data (horário de Brasília)
     brasilia_time = get_horario_brasilia()
     pdf.set_y(48)
     pdf.set_font('Arial', '', 9)
@@ -247,10 +272,8 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(3)
     
     # ============================================
-    # PÁGINA 1 - PANORAMA, PROGRESSO, DISTRIBUIÇÃO, TIPOS
+    # 1. PANORAMA GERAL
     # ============================================
-    
-    # 1. PANORAMA GERAL - 4 CARDS COM MÉTRICAS ACUMULADAS
     y_pos = pdf.get_y() + 5
     
     pdf.set_y(y_pos)
@@ -260,10 +283,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
-    # Posição inicial dos cards
     card_y = pdf.get_y() + 5
     
-    # CARD 1: DESENVOLVIDOS (ACUMULADO)
+    # CARD 1: DESENVOLVIDOS
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(10, card_y, 45, 52, 'F')
     pdf.set_xy(12, card_y + 4)
@@ -285,7 +307,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(12, card_y + 40)
     pdf.cell(0, 3, f'({pct_aguardando_comiss_filtrado:.0f}% aguardando)', 0, 1)
     
-    # CARD 2: COMISSIONADOS (ACUMULADO)
+    # CARD 2: COMISSIONADOS
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(60, card_y, 45, 52, 'F')
     pdf.set_xy(62, card_y + 4)
@@ -307,7 +329,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(62, card_y + 40)
     pdf.cell(0, 3, f'({pct_comiss_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
-    # CARD 3: VALIDADOS (ACUMULADO)
+    # CARD 3: VALIDADOS
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(110, card_y, 45, 52, 'F')
     pdf.set_xy(112, card_y + 4)
@@ -354,7 +376,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(20)
     
     # ============================================
-    # PROGRESSO DO COMISSIONAMENTO (ACUMULADO)
+    # PROGRESSO DO COMISSIONAMENTO
     # ============================================
     bar_y = pdf.get_y() + 2
     
@@ -363,7 +385,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (Acumulado no Período)', 0, 1)
     
-    # Barra Comissionados (sobre Desenvolvidos)
+    # Barra Comissionados
     pdf.set_y(bar_y + 7)
     pdf.set_font('Arial', '', 9)
     pdf.cell(55, 6, 'Comissionados:', 0, 0)
@@ -374,7 +396,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(170, bar_y + 5)
     pdf.cell(20, 6, f'{comissionados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_comiss_filtrado:.0f}%)', 0, 1)
     
-    # Barra Validados (sobre Desenvolvidos)
+    # Barra Validados
     pdf.set_y(bar_y + 14)
     pdf.cell(55, 6, 'Validados:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
@@ -384,7 +406,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(170, bar_y + 12)
     pdf.cell(20, 6, f'{validados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_valid_filtrado:.0f}%)', 0, 1)
     
-    # Barra Em Revisão (sobre Desenvolvidos)
+    # Barra Em Revisão
     pdf.set_y(bar_y + 21)
     pdf.cell(55, 6, 'Em Revisão:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
@@ -394,7 +416,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(170, bar_y + 19)
     pdf.cell(20, 6, f'{revisao_filtrado}/{desenvolvidos_acum_filtrado} ({pct_revisao_filtrado:.0f}%)', 0, 1)
     
-    # Taxa de validação (Validados / Comissionados)
+    # Taxa de validação
     taxa_valid_comiss = (validados_acum_filtrado / comissionados_acum_filtrado * 100) if comissionados_acum_filtrado > 0 else 0
     pdf.set_y(bar_y + 30)
     pdf.set_font('Arial', 'I', 8)
@@ -404,7 +426,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(5)
     
     # ============================================
-    # 2. DISTRIBUIÇÃO POR STATUS (Status Atual - Não Acumulado)
+    # 2. DISTRIBUIÇÃO POR STATUS
     # ============================================
     dist_y = pdf.get_y() + 2
     
@@ -454,19 +476,91 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         y_offset += 5
     
     # ============================================
-    # PÁGINA 2 - ACUMULADO ATÉ O PERÍODO SELECIONADO
+    # 🆕 4. MOTIVOS DE REVISÃO (SE HOUVER)
+    # ============================================
+    if tem_motivos:
+        # Verificar se cabe na página atual ou precisa de nova página
+        if pdf.get_y() > 200:
+            pdf.add_page()
+        
+        motivos_y = pdf.get_y() + 5
+        
+        pdf.set_y(motivos_y)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.set_text_color(0, 89, 115)
+        pdf.cell(0, 8, '4. MOTIVOS DE REVISÃO REGISTRADOS', 0, 1, 'L')
+        pdf.set_draw_color(2, 138, 159)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+        
+        # Resumo dos motivos
+        pdf.set_font('Arial', 'B', 9)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 5, f'Total de equipamentos com motivo registrado: {total_com_motivo}', 0, 1)
+        pdf.ln(3)
+        
+        # Tabela de motivos
+        pdf.set_font('Arial', 'B', 8)
+        pdf.set_fill_color(200, 220, 240)
+        pdf.cell(80, 7, 'Motivo', 1, 0, 'C', 1)
+        pdf.cell(30, 7, 'Quantidade', 1, 0, 'C', 1)
+        pdf.cell(30, 7, 'Percentual', 1, 1, 'C', 1)
+        
+        pdf.set_font('Arial', '', 8)
+        pdf.set_fill_color(255, 255, 255)
+        
+        for motivo, qtd in motivos_count.items():
+            pct = (qtd / total_com_motivo * 100) if total_com_motivo > 0 else 0
+            
+            # Cor de fundo baseada no tipo de motivo
+            if 'E-MAIL' in motivo.upper():
+                pdf.set_text_color(198, 40, 40)
+            elif 'APR' in motivo.upper():
+                pdf.set_text_color(245, 124, 0)
+            elif 'MEDIÇÃO' in motivo.upper() or 'MEDICAO' in motivo.upper():
+                pdf.set_text_color(106, 27, 154)
+            elif 'EQUIPAMENTO' in motivo.upper():
+                pdf.set_text_color(21, 101, 192)
+            elif 'CARD' in motivo.upper() or 'RELATÓRIO' in motivo.upper() or 'NOME' in motivo.upper():
+                pdf.set_text_color(0, 131, 143)
+            else:
+                pdf.set_text_color(0, 0, 0)
+            
+            pdf.cell(80, 6, motivo[:45], 1, 0, 'L')
+            pdf.cell(30, 6, str(qtd), 1, 0, 'C')
+            pdf.cell(30, 6, f'{pct:.1f}%', 1, 1, 'C')
+        
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(3)
+        
+        # Gráfico de pizza dos motivos
+        if pdf.get_y() > 180:
+            pdf.add_page()
+        
+        fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
+        
+        temp_img_motivos = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig_motivos)
+        
+        pdf.image(temp_img_motivos.name, x=30, w=150)
+        os.unlink(temp_img_motivos.name)
+    
+    # ============================================
+    # PÁGINA - ACUMULADO ATÉ O PERÍODO
     # ============================================
     pdf.add_page()
     
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, f'4. ACUMULADO {periodo_acumulado_texto.upper()}', 0, 1, 'L')
+    # Ajustar numeração baseado se tem motivos ou não
+    secao_num = '5.' if tem_motivos else '4.'
+    pdf.cell(0, 8, f'{secao_num} ACUMULADO {periodo_acumulado_texto.upper()}', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # Gerar gráfico de barras com os dados ACUMULADOS ATÉ O PERÍODO
     fig = gerar_grafico_barras_vertical(
         desenvolvidos_acum_total, 
         comissionados_acum_total, 
@@ -475,18 +569,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         periodo_acumulado_texto
     )
     
-    # Salvar gráfico como imagem
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
     fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close(fig)
     
-    # Adicionar imagem ao PDF
     pdf.image(temp_img.name, x=30, w=150)
     os.unlink(temp_img.name)
     
     pdf.ln(20)
     
-    # Texto complementar do acumulado
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, f'Resumo {periodo_acumulado_texto}:', 0, 1, 'L')
@@ -496,7 +587,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 5, f'Equipamentos Validados (Acumulado): {validados_acum_total} ({pct_valid_total:.1f}% dos desenvolvidos)', 0, 1)
     pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_total} ({pct_revisao_total:.1f}% dos desenvolvidos)', 0, 1)
     
-    # Taxa de validação sobre comissionados (total)
     taxa_valid_comiss_total = (validados_acum_total / comissionados_acum_total * 100) if comissionados_acum_total > 0 else 0
     pdf.ln(3)
     pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {taxa_valid_comiss_total:.1f}%', 0, 1)
@@ -504,14 +594,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(10)
     
     # ============================================
-    # PÁGINA 3 - PERFORMANCE POR RESPONSÁVEL (DADOS DO PERÍODO)
+    # PÁGINA - PERFORMANCE POR RESPONSÁVEL
     # ============================================
     pdf.add_page()
     
+    secao_perf = '6.' if tem_motivos else '5.'
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '5. PERFORMANCE POR RESPONSÁVEL (Período)', 0, 1, 'L')
+    pdf.cell(0, 8, f'{secao_perf} PERFORMANCE POR RESPONSÁVEL (Período)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -601,14 +692,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
     # ============================================
-    # PÁGINA 4 - EQUIPE RESPONSÁVEL (ASSINATURAS)
+    # PÁGINA - EQUIPE RESPONSÁVEL (ASSINATURAS)
     # ============================================
     pdf.add_page()
     
+    secao_equipe = '7.' if tem_motivos else '6.'
     pdf.set_y(30)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '6. EQUIPE RESPONSÁVEL', 0, 1, 'L')
+    pdf.cell(0, 8, f'{secao_equipe} EQUIPE RESPONSÁVEL', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(10)
@@ -700,7 +792,6 @@ def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_
             st.warning("Não há dados para gerar o relatório.")
             return
         
-        # Filtrar dados da empresa
         df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa]
         
         if df_empresa.empty:
@@ -714,7 +805,6 @@ def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_
                 with open(pdf_path, 'rb') as f:
                     pdf_bytes = f.read()
                 
-                # Criar nome do arquivo com período se houver filtro
                 nome_arquivo = f"relatorio_{empresa}"
                 if mes_selecionado and mes_selecionado != "Todos os Meses":
                     nome_arquivo += f"_{mes_selecionado}"
