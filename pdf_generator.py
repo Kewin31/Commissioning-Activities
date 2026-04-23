@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão Final com Gráfico de Motivos Melhorado
+# pdf_generator.py - Versão Final com Gráfico de Pizza Limpo
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -46,9 +46,7 @@ def get_horario_brasilia():
     return brasilia_time
 
 def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_selecionado=None):
-    """
-    Filtra dados acumulados até o período selecionado
-    """
+    """Filtra dados acumulados até o período selecionado"""
     df_result = df.copy()
     
     if (not mes_selecionado or mes_selecionado == "Todos os Meses") and \
@@ -107,79 +105,69 @@ def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, rev
 def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
     """
     Gera gráfico de pizza para motivos de revisão
-    Versão com labels externas, porcentagens coloridas e círculo central
+    APENAS A PIZZA - sem legenda, sem tabela, sem bordas
     """
-    fig, ax = plt.subplots(figsize=(14, 9))
+    # Criar figura com fundo branco
+    fig, ax = plt.subplots(figsize=(10, 10))
+    fig.patch.set_facecolor('white')
     
-    # Paleta de cores expandida
+    # Paleta de cores
     cores = [
-        '#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
+        '#C62828', '#E53935', '#F57C00', '#FF6F00', '#6A1B9A', 
         '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
-        '#FF6F00', '#4A148C', '#0D47A1', '#B71C1C', '#004D40',
-        '#BF360C', '#311B92', '#1A237E', '#0D5302', '#827717'
+        '#D32F2F', '#4A148C', '#0D47A1', '#B71C1C', '#004D40'
     ]
     
     # Preparar dados
     valores = motivos_count.values.tolist()
     labels_originais = motivos_count.index.tolist()
     
-    # Criar labels encurtadas para o gráfico
-    labels_curtas = []
-    for nome in labels_originais:
-        if len(nome) > 25:
-            nome = nome[:22] + '...'
-        labels_curtas.append(nome)
+    # Criar labels com nome + porcentagem
+    labels_personalizadas = []
+    for nome, qtd in zip(labels_originais, valores):
+        pct = (qtd / total_motivos * 100) if total_motivos > 0 else 0
+        # Encurtar nomes muito longos
+        if len(nome) > 28:
+            nome = nome[:25] + '...'
+        labels_personalizadas.append(f'{nome}\n{qtd} equip. ({pct:.1f}%)')
     
-    # Criar a pizza
+    # Criar a pizza (donut)
     wedges, texts = ax.pie(
         valores,
-        labels=labels_curtas,
+        labels=labels_personalizadas,
         colors=cores[:len(motivos_count)],
         startangle=90,
-        labeldistance=1.08,
-        wedgeprops=dict(width=0.45, edgecolor='white', linewidth=2),
-        textprops={'fontsize': 8, 'color': '#333333', 'fontweight': 'bold'}
+        labeldistance=1.15,
+        wedgeprops=dict(width=0.4, edgecolor='white', linewidth=3),
+        textprops={'fontsize': 7.5, 'color': '#333333', 'fontweight': 'bold'}
     )
     
-    # Adicionar porcentagens DENTRO de cada fatia com cor de fundo
-    for i, (wedge, qtd) in enumerate(zip(wedges, valores)):
+    # Ajustar labels para evitar sobreposição
+    for i, (wedge, text) in enumerate(zip(wedges, texts)):
         ang = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
-        x = np.cos(np.radians(ang)) * 0.65
-        y = np.sin(np.radians(ang)) * 0.65
         
-        pct_val = (qtd / total_motivos * 100) if total_motivos > 0 else 0
-        
-        # Texto com porcentagem dentro da fatia
-        ax.annotate(
-            f'{pct_val:.1f}%',
-            xy=(x, y),
-            ha='center',
-            va='center',
-            fontsize=9,
-            fontweight='bold',
-            color='white',
-            bbox=dict(
-                boxstyle="round,pad=0.3",
-                fc=cores[i],
-                ec='white',
-                alpha=0.9,
-                linewidth=1
-            )
-        )
+        # Ajustar posição vertical
+        y_pos = text.get_position()[1]
+        if 70 < ang < 110:
+            text.set_y(y_pos - 0.04)
+        elif 250 < ang < 290:
+            text.set_y(y_pos + 0.04)
+        elif 340 < ang or ang < 20:
+            text.set_y(y_pos + 0.02)
+        elif 160 < ang < 200:
+            text.set_y(y_pos - 0.02)
     
     # Círculo central
-    centre_circle = plt.Circle((0, 0), 0.30, fc='white', linewidth=1.5, edgecolor='#e0e0e0')
+    centre_circle = plt.Circle((0, 0), 0.22, fc='white', linewidth=2, edgecolor='#cccccc')
     ax.add_artist(centre_circle)
     
     # Texto central
     ax.text(0, 0.06, f'{total_motivos}', ha='center', va='center', 
-            fontsize=24, fontweight='bold', color='#1f2937')
-    ax.text(0, -0.08, 'equipamentos', ha='center', va='center', 
-            fontsize=10, color='#666666')
-    ax.text(0, -0.18, 'com motivo', ha='center', va='center', 
-            fontsize=9, color='#999999')
+            fontsize=28, fontweight='bold', color='#1f2937')
+    ax.text(0, -0.10, 'equipamentos', ha='center', va='center', 
+            fontsize=10, color='#6b7280')
     
-    # Título principal
+    # Título
     ax.set_title(
         'Distribuição dos Motivos de Revisão',
         fontsize=14,
@@ -188,24 +176,17 @@ def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
         color='#1f2937'
     )
     
-    # Legenda complementar (para labels que foram encurtadas)
-    legend_labels = []
-    for original, curto in zip(labels_originais, labels_curtas):
-        if original != curto:
-            legend_labels.append(f'{curto} = {original}')
+    # Garantir que a pizza fique circular (não oval)
+    ax.set_aspect('equal')
     
-    if legend_labels:
-        ax.text(0, -1.2, '\n'.join(legend_labels), 
-                ha='center', va='top', fontsize=6, color='#999999',
-                style='italic', transform=ax.transAxes)
+    # Remover margens extras
+    plt.tight_layout(pad=1.5)
     
-    plt.tight_layout()
     return fig
 
 def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
-    """
-    Gera relatório PDF executivo para uma empresa específica
-    """
+    """Gera relatório PDF executivo para uma empresa específica"""
+    
     # Filtrar dados da empresa
     df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa].copy()
     
@@ -336,7 +317,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(58)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(80, 80, 80)
-    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamentos da unidade, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.')
+    pdf.multi_cell(0, 5, 'Este relatorio tem como objetivo apresentar o status atual do processo de comissionamentos da unidade, fornecendo uma visao consolidada do progresso, identificando gargalos e apoiando a tomada de decisao para otimizacao dos recursos e prazos.')
     pdf.ln(3)
     
     # ============================================
@@ -347,7 +328,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(y_pos)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '1. PANORAMA GERAL (Acumulado no Período)', 0, 1, 'L')
+    pdf.cell(0, 8, '1. PANORAMA GERAL (Acumulado no Periodo)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -371,7 +352,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(12, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= Desenv+Comiss+Valid+Rev', 0, 1)
+    pdf.cell(0, 3, '= Desenv+Comiss+Valid+Rev', 0, 1)
     pdf.set_xy(12, card_y + 40)
     pdf.cell(0, 3, f'({pct_aguardando_comiss_filtrado:.0f}% aguardando)', 0, 1)
     
@@ -393,7 +374,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(62, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= Comiss+Valid+Rev', 0, 1)
+    pdf.cell(0, 3, '= Comiss+Valid+Rev', 0, 1)
     pdf.set_xy(62, card_y + 40)
     pdf.cell(0, 3, f'({pct_comiss_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
@@ -411,21 +392,21 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(112, card_y + 28)
     pdf.set_font('Arial', '', 8)
     pdf.set_text_color(46, 125, 50)
-    pdf.cell(0, 4, 'Concluídos', 0, 1)
+    pdf.cell(0, 4, 'Concluidos', 0, 1)
     pdf.set_xy(112, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= Validados', 0, 1)
+    pdf.cell(0, 3, '= Validados', 0, 1)
     pdf.set_xy(112, card_y + 40)
     pdf.cell(0, 3, f'({pct_valid_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
-    # CARD 4: EM REVISÃO
+    # CARD 4: EM REVISAO
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(160, card_y, 40, 52, 'F')
     pdf.set_xy(162, card_y + 4)
     pdf.set_font('Arial', 'B', 7)
     pdf.set_text_color(245, 124, 0)
-    pdf.cell(0, 4, 'EM REVISÃO', 0, 1)
+    pdf.cell(0, 4, 'EM REVISAO', 0, 1)
     pdf.set_xy(162, card_y + 12)
     pdf.set_font('Arial', 'B', 18)
     pdf.set_text_color(245, 124, 0)
@@ -437,7 +418,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_xy(162, card_y + 35)
     pdf.set_font('Arial', 'I', 6)
     pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 3, f'= Necessário Revisão', 0, 1)
+    pdf.cell(0, 3, '= Necessario Revisao', 0, 1)
     pdf.set_xy(162, card_y + 40)
     pdf.cell(0, 3, f'({pct_revisao_filtrado:.0f}% dos desenvolvidos)', 0, 1)
     
@@ -451,7 +432,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(bar_y)
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (Acumulado no Período)', 0, 1)
+    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (Acumulado no Periodo)', 0, 1)
     
     pdf.set_y(bar_y + 7)
     pdf.set_font('Arial', '', 9)
@@ -475,7 +456,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(20, 6, f'{validados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_valid_filtrado:.0f}%)', 0, 1)
     
     pdf.set_y(bar_y + 21)
-    pdf.cell(55, 6, 'Em Revisão:', 0, 0)
+    pdf.cell(55, 6, 'Em Revisao:', 0, 0)
     pdf.set_fill_color(220, 220, 220)
     pdf.rect(65, bar_y + 21, 100, 5, 'F')
     pdf.set_fill_color(245, 124, 0)
@@ -488,19 +469,19 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(bar_y + 30)
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {validados_acum_filtrado}/{comissionados_acum_filtrado} = {taxa_valid_comiss:.0f}%', 0, 1)
+    pdf.cell(0, 5, f'Taxa de validacao sobre comissionados: {validados_acum_filtrado}/{comissionados_acum_filtrado} = {taxa_valid_comiss:.0f}%', 0, 1)
     
     pdf.ln(5)
     
     # ============================================
-    # 2. DISTRIBUIÇÃO POR STATUS
+    # 2. DISTRIBUICAO POR STATUS
     # ============================================
     dist_y = pdf.get_y() + 2
     
     pdf.set_y(dist_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS (Status Atual no Período)', 0, 1, 'L')
+    pdf.cell(0, 8, '2. DISTRIBUICAO POR STATUS (Status Atual no Periodo)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(3)
@@ -522,7 +503,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(tipo_y)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS (Período)', 0, 1, 'L')
+    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS (Periodo)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -539,13 +520,14 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             y_offset += 5
     else:
         pdf.set_y(y_offset)
-        pdf.cell(0, 5, 'Não há dados de tipos de equipamento disponíveis.', 0, 1)
+        pdf.cell(0, 5, 'Nao ha dados de tipos de equipamento disponiveis.', 0, 1)
         y_offset += 5
     
     # ============================================
-    # 4. MOTIVOS DE REVISÃO (SE HOUVER)
+    # 4. MOTIVOS DE REVISAO (SE HOUVER) - APENAS TABELA + GRAFICO PIZZA
     # ============================================
     if tem_motivos:
+        # Verificar se precisa de nova pagina
         if pdf.get_y() > 200:
             pdf.add_page()
         
@@ -554,7 +536,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         pdf.set_y(motivos_y)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(0, 89, 115)
-        pdf.cell(0, 8, '4. MOTIVOS DE REVISÃO REGISTRADOS', 0, 1, 'L')
+        pdf.cell(0, 8, '4. MOTIVOS DE REVISAO REGISTRADOS', 0, 1, 'L')
         pdf.set_draw_color(2, 138, 159)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(5)
@@ -595,20 +577,26 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             pdf.cell(30, 6, f'{pct:.1f}%', 1, 1, 'C')
         
         pdf.set_text_color(0, 0, 0)
-        pdf.ln(3)
+        pdf.ln(5)
         
-        # Gráfico de motivos
-        if pdf.get_y() > 140:
-            pdf.add_page()
+        # Grafico de pizza - NOVA PÁGINA PARA FICAR GRANDE
+        pdf.add_page()
+        
+        pdf.set_font('Arial', 'B', 12)
+        pdf.set_text_color(0, 89, 115)
+        pdf.cell(0, 8, 'GRAFICO: Distribuicao dos Motivos de Revisao', 0, 1, 'L')
+        pdf.set_draw_color(2, 138, 159)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
         
         fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
         
         temp_img_motivos = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='white')
+        fig_motivos.savefig(temp_img_motivos.name, dpi=200, bbox_inches='tight', facecolor='white')
         plt.close(fig_motivos)
         
-        # Imagem mais larga para acomodar labels externas
-        pdf.image(temp_img_motivos.name, x=5, w=200)
+        # Centralizar a imagem na página
+        pdf.image(temp_img_motivos.name, x=15, y=pdf.get_y(), w=180)
         os.unlink(temp_img_motivos.name)
     
     # ============================================
@@ -649,11 +637,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 5, f'Total de Equipamentos Desenvolvidos: {desenvolvidos_acum_total}', 0, 1)
     pdf.cell(0, 5, f'Equipamentos Comissionados (Acumulado): {comissionados_acum_total} ({pct_comiss_total:.1f}% dos desenvolvidos)', 0, 1)
     pdf.cell(0, 5, f'Equipamentos Validados (Acumulado): {validados_acum_total} ({pct_valid_total:.1f}% dos desenvolvidos)', 0, 1)
-    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_total} ({pct_revisao_total:.1f}% dos desenvolvidos)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisao: {revisao_total} ({pct_revisao_total:.1f}% dos desenvolvidos)', 0, 1)
     
     taxa_valid_comiss_total = (validados_acum_total / comissionados_acum_total * 100) if comissionados_acum_total > 0 else 0
     pdf.ln(3)
-    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {taxa_valid_comiss_total:.1f}%', 0, 1)
+    pdf.cell(0, 5, f'Taxa de validacao sobre comissionados: {taxa_valid_comiss_total:.1f}%', 0, 1)
     
     pdf.ln(10)
     
@@ -666,7 +654,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, f'{secao_perf} PERFORMANCE POR RESPONSÁVEL (Período)', 0, 1, 'L')
+    pdf.cell(0, 8, f'{secao_perf} PERFORMANCE POR RESPONSÁVEL (Periodo)', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
@@ -679,13 +667,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         if not df_resp.empty:
             pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 9)
-            pdf.cell(0, 6, 'Comissionados por Responsável:', 0, 1)
+            pdf.cell(0, 6, 'Comissionados por Responsavel:', 0, 1)
             y_offset += 6
             
             pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 8)
             pdf.set_fill_color(200, 220, 240)
-            pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
+            pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Comissionados', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Validados', 1, 0, 'C', 1)
             pdf.cell(45, 7, 'Taxa Sucesso', 1, 1, 'C', 1)
@@ -717,15 +705,15 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
                 pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 9)
                 pdf.set_text_color(245, 124, 0)
-                pdf.cell(0, 6, 'Equipamentos em Revisão por Responsável:', 0, 1)
+                pdf.cell(0, 6, 'Equipamentos em Revisao por Responsavel:', 0, 1)
                 pdf.set_text_color(0, 0, 0)
                 y_offset += 6
                 
                 pdf.set_y(y_offset)
                 pdf.set_font('Arial', 'B', 8)
                 pdf.set_fill_color(255, 220, 200)
-                pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
-                pdf.cell(35, 7, 'Em Revisão', 1, 0, 'C', 1)
+                pdf.cell(70, 7, 'Responsavel', 1, 0, 'C', 1)
+                pdf.cell(35, 7, 'Em Revisao', 1, 0, 'C', 1)
                 pdf.cell(80, 7, 'Equipamentos', 1, 1, 'C', 1)
                 y_offset += 7
                 
@@ -748,11 +736,11 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         else:
             pdf.set_y(y_offset)
             pdf.set_font('Arial', '', 10)
-            pdf.cell(0, 6, 'Não há dados de responsáveis disponíveis.', 0, 1)
+            pdf.cell(0, 6, 'Nao ha dados de responsaveis disponiveis.', 0, 1)
     else:
         pdf.set_y(y_offset)
         pdf.set_font('Arial', '', 10)
-        pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
+        pdf.cell(0, 6, 'Coluna de responsaveis nao encontrada.', 0, 1)
     
     # ============================================
     # EQUIPE RESPONSÁVEL (ASSINATURAS)
@@ -780,10 +768,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, 'Núcleo de Gestão:', 0, 1, 'L')
+    pdf.cell(0, 6, 'Nucleo de Gestao:', 0, 1, 'L')
     
     pdf.set_font('Arial', '', 10)
-    pdf.cell(0, 5, 'Caio Alexandre da Silva Medeiros - Gestão', 0, 1, 'L')
+    pdf.cell(0, 5, 'Caio Alexandre da Silva Medeiros - Gestao', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, 'caio.medeiros@energisa.com.br', 0, 1, 'L')
@@ -826,16 +814,16 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 5, 'Savio Ricardo Muniz Aires da Costa - Ger Automação Telecom', 0, 1, 'L')
+    pdf.cell(0, 5, 'Savio Ricardo Muniz Aires da Costa - Ger Automacao Telecom', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, 'savio.ricardo@energisa.com.br', 0, 1, 'L')
     
-    # Rodapé final
+    # Rodape final
     pdf.set_y(-15)
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
+    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Pagina {pdf.page_no()}', 0, 0, 'C')
     
     # Gerar arquivo
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
@@ -844,9 +832,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
 
 
 def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
-    """
-    Adiciona botão no Streamlit para gerar e baixar o PDF da empresa selecionada
-    """
+    """Adiciona botão no Streamlit para gerar e baixar o PDF da empresa selecionada"""
     if st.button(f"📊 Gerar Relatório {empresa}", use_container_width=True, key=f"btn_pdf_{empresa}"):
         if df_filtrado.empty:
             st.warning("Não há dados para gerar o relatório.")
