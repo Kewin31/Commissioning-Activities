@@ -1,4 +1,4 @@
-# pdf_generator.py - VERSÃO EXECUTIVA
+# pdf_generator.py - Versão Final com Gráfico de Motivos Melhorado
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -11,34 +11,46 @@ matplotlib.use('Agg')
 import numpy as np
 
 # ============================================
-# FUNÇÕES DE CÁLCULO
+# FUNÇÕES DE CÁLCULO ACUMULADO
 # ============================================
 def calcular_desenvolvidos_acumulado(df):
+    """Calcula o total acumulado de desenvolvidos"""
     status_incluidos = ['Desenvolvido', 'Comissionado', 'Validado', 'Necessário Revisão']
     return len(df[df['Status'].isin(status_incluidos)])
 
 def calcular_comissionados_acumulado(df):
+    """Calcula o total acumulado de comissionados"""
     status_incluidos = ['Comissionado', 'Validado', 'Necessário Revisão']
     return len(df[df['Status'].isin(status_incluidos)])
 
 def calcular_validados_acumulado(df):
+    """Calcula o total acumulado de validados"""
     return len(df[df['Status'] == 'Validado'])
 
 def calcular_aguardando_comissionamento(df):
+    """Calcula quantos estão aguardando comissionamento"""
     return len(df[df['Status'] == 'Desenvolvido'])
 
 def calcular_aguardando_validacao(df):
+    """Calcula quantos estão aguardando validação"""
     return len(df[df['Status'] == 'Comissionado'])
 
 def calcular_em_revisao(df):
+    """Calcula quantos estão em revisão"""
     return len(df[df['Status'] == 'Necessário Revisão'])
 
 def get_horario_brasilia():
+    """Retorna o horário atual de Brasília (UTC-3)"""
     utc_now = datetime.now(timezone.utc)
-    return utc_now - timedelta(hours=3)
+    brasilia_time = utc_now - timedelta(hours=3)
+    return brasilia_time
 
 def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_selecionado=None):
+    """
+    Filtra dados acumulados até o período selecionado
+    """
     df_result = df.copy()
+    
     if (not mes_selecionado or mes_selecionado == "Todos os Meses") and \
        (not ano_selecionado or ano_selecionado == "Todos os Anos"):
         return df_result
@@ -62,631 +74,816 @@ def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_seleciona
                     df_result = df_result[df_result['Ano'] <= ano_selecionado]
             else:
                 df_result = df_result[df_result['Ano'] <= ano_selecionado]
+    
     return df_result
 
-# ============================================
-# GRÁFICOS MELHORADOS
-# ============================================
 def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, revisao, periodo_texto=""):
-    """Gráfico de barras vertical melhorado"""
-    fig, ax = plt.subplots(figsize=(10, 5))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
+    """Gera gráfico de barras verticais para o acumulado"""
+    fig, ax = plt.subplots(figsize=(8, 4))
     
-    categorias = ['Comissionados', 'Validados', 'Em Revisão']
+    categorias = ['Comissionados\n(Acumulado)', 'Validados\n(Acumulado)', 'Em Revisão']
     valores = [comissionados_acum, validados_acum, revisao]
     cores = ['#028a9f', '#2E7D32', '#F57C00']
     
-    bars = ax.bar(categorias, valores, color=cores, width=0.5, edgecolor='white', linewidth=2)
+    bars = ax.bar(categorias, valores, color=cores, width=0.6, edgecolor='white', linewidth=1.5)
     
-    # Adicionar valores e %
     for bar, val in zip(bars, valores):
         height = bar.get_height()
-        pct = (val / total * 100) if total > 0 else 0
-        ax.text(bar.get_x() + bar.get_width()/2., height + max(valores)*0.03,
-                f'{val}\n({pct:.0f}%)',
-                ha='center', va='bottom', fontsize=11, fontweight='bold', color='#1f2937')
+        ax.text(bar.get_x() + bar.get_width()/2., height + max(valores)*0.02,
+                f'{val}\n({val/total*100:.0f}%)' if total > 0 else '0',
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
     
-    ax.set_ylabel('Quantidade', fontsize=11, color='#374151')
-    ax.set_title(f'Total: {total} equipamentos desenvolvidos\n{periodo_texto}', 
-                 fontsize=13, fontweight='bold', color='#1f2937', pad=15)
-    ax.set_ylim(0, max(valores) * 1.25 if max(valores) > 0 else 10)
-    ax.grid(axis='y', alpha=0.2, linestyle='-', color='#d1d5db')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    ax.set_ylabel('Quantidade', fontsize=10)
+    titulo = f'Total de Equipamentos Desenvolvidos: {total}'
+    if periodo_texto:
+        titulo += f'\n{periodo_texto}'
+    ax.set_title(titulo, fontsize=11, fontweight='bold', pad=15)
+    ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
     
     plt.tight_layout()
     return fig
 
-def gerar_grafico_motivos_donut(motivos_count, total_motivos):
-    """Gráfico donut profissional para motivos"""
-    fig, ax = plt.subplots(figsize=(10, 8))
-    fig.patch.set_facecolor('white')
+def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
+    """
+    Gera gráfico de pizza para motivos de revisão
+    Versão com labels externas, porcentagens coloridas e círculo central
+    """
+    fig, ax = plt.subplots(figsize=(14, 9))
     
-    cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#FF8F00',
-             '#6A1B9A', '#1565C0', '#00838F', '#00695C', '#2E7D32']
+    # Paleta de cores expandida
+    cores = [
+        '#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
+        '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
+        '#FF6F00', '#4A148C', '#0D47A1', '#B71C1C', '#004D40',
+        '#BF360C', '#311B92', '#1A237E', '#0D5302', '#827717'
+    ]
     
+    # Preparar dados
     valores = motivos_count.values.tolist()
+    labels_originais = motivos_count.index.tolist()
     
-    # Criar labels curtas para o gráfico
+    # Criar labels encurtadas para o gráfico
     labels_curtas = []
-    for nome in motivos_count.index:
+    for nome in labels_originais:
         if len(nome) > 25:
             nome = nome[:22] + '...'
         labels_curtas.append(nome)
     
-    # Donut
+    # Criar a pizza
     wedges, texts = ax.pie(
         valores,
         labels=labels_curtas,
-        colors=cores[:len(valores)],
-        startangle=140,
-        labeldistance=1.12,
-        wedgeprops=dict(width=0.35, edgecolor='white', linewidth=2.5),
-        textprops={'fontsize': 8, 'fontweight': 'bold', 'color': '#374151'}
+        colors=cores[:len(motivos_count)],
+        startangle=90,
+        labeldistance=1.08,
+        wedgeprops=dict(width=0.45, edgecolor='white', linewidth=2),
+        textprops={'fontsize': 8, 'color': '#333333', 'fontweight': 'bold'}
     )
     
+    # Adicionar porcentagens DENTRO de cada fatia com cor de fundo
+    for i, (wedge, qtd) in enumerate(zip(wedges, valores)):
+        ang = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
+        x = np.cos(np.radians(ang)) * 0.65
+        y = np.sin(np.radians(ang)) * 0.65
+        
+        pct_val = (qtd / total_motivos * 100) if total_motivos > 0 else 0
+        
+        # Texto com porcentagem dentro da fatia
+        ax.annotate(
+            f'{pct_val:.1f}%',
+            xy=(x, y),
+            ha='center',
+            va='center',
+            fontsize=9,
+            fontweight='bold',
+            color='white',
+            bbox=dict(
+                boxstyle="round,pad=0.3",
+                fc=cores[i],
+                ec='white',
+                alpha=0.9,
+                linewidth=1
+            )
+        )
+    
     # Círculo central
-    centre_circle = plt.Circle((0, 0), 0.22, fc='white', linewidth=3, edgecolor='#005973')
+    centre_circle = plt.Circle((0, 0), 0.30, fc='white', linewidth=1.5, edgecolor='#e0e0e0')
     ax.add_artist(centre_circle)
     
-    ax.text(0, 0.06, f'{total_motivos}', ha='center', va='center',
-            fontsize=30, fontweight='bold', color='#005973')
-    ax.text(0, -0.12, 'equipamentos', ha='center', va='center',
-            fontsize=10, color='#6b7280')
+    # Texto central
+    ax.text(0, 0.06, f'{total_motivos}', ha='center', va='center', 
+            fontsize=24, fontweight='bold', color='#1f2937')
+    ax.text(0, -0.08, 'equipamentos', ha='center', va='center', 
+            fontsize=10, color='#666666')
+    ax.text(0, -0.18, 'com motivo', ha='center', va='center', 
+            fontsize=9, color='#999999')
     
-    ax.set_title('Distribuição dos Motivos de Revisão',
-                 fontsize=14, fontweight='bold', color='#1f2937', pad=25)
+    # Título principal
+    ax.set_title(
+        'Distribuição dos Motivos de Revisão',
+        fontsize=14,
+        fontweight='bold',
+        pad=30,
+        color='#1f2937'
+    )
     
-    plt.tight_layout(pad=2)
-    return fig
-
-def gerar_grafico_motivos_barras_horizontais(motivos_count, total_motivos):
-    """Gráfico de barras horizontais para motivos"""
-    fig, ax = plt.subplots(figsize=(10, 5))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
+    # Legenda complementar (para labels que foram encurtadas)
+    legend_labels = []
+    for original, curto in zip(labels_originais, labels_curtas):
+        if original != curto:
+            legend_labels.append(f'{curto} = {original}')
     
-    motivos_sorted = motivos_count.sort_values(ascending=True)
-    
-    cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#FF8F00',
-             '#6A1B9A', '#1565C0', '#00838F', '#00695C', '#2E7D32']
-    
-    bars = ax.barh(range(len(motivos_sorted)), motivos_sorted.values,
-                    color=cores[:len(motivos_sorted)], height=0.6,
-                    edgecolor='white', linewidth=1.5)
-    
-    for i, (motivo, qtd) in enumerate(zip(motivos_sorted.index, motivos_sorted.values)):
-        pct = (qtd / total_motivos * 100) if total_motivos > 0 else 0
-        ax.text(qtd + max(motivos_sorted.values)*0.02, i,
-                f'{qtd} ({pct:.1f}%)',
-                va='center', fontsize=9, fontweight='bold', color='#1f2937')
-    
-    # Encurtar labels
-    labels_y = [m[:35] + '...' if len(m) > 35 else m for m in motivos_sorted.index]
-    ax.set_yticks(range(len(motivos_sorted)))
-    ax.set_yticklabels(labels_y, fontsize=8)
-    ax.set_xlabel('Quantidade', fontsize=10, color='#6b7280')
-    ax.set_title(f'Motivos de Revisão - Total: {total_motivos} equipamentos',
-                 fontsize=13, fontweight='bold', color='#1f2937', pad=15)
-    ax.set_xlim(0, max(motivos_sorted.values) * 1.3)
-    ax.grid(axis='x', alpha=0.2, linestyle='-', color='#d1d5db')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    if legend_labels:
+        ax.text(0, -1.2, '\n'.join(legend_labels), 
+                ha='center', va='top', fontsize=6, color='#999999',
+                style='italic', transform=ax.transAxes)
     
     plt.tight_layout()
     return fig
 
-# ============================================
-# FUNÇÃO PRINCIPAL
-# ============================================
 def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
-    """Gera relatório executivo profissional"""
-    
+    """
+    Gera relatório PDF executivo para uma empresa específica
+    """
+    # Filtrar dados da empresa
     df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa].copy()
-    if df_empresa.empty:
-        raise ValueError(f"Nao ha dados para {empresa}")
     
+    if df_empresa.empty:
+        raise ValueError(f"Nao ha dados para a empresa {empresa}")
+    
+    # DADOS ACUMULADOS ATÉ O PERÍODO SELECIONADO
     df_empresa_acumulado = filtrar_dados_acumulados_ate_periodo(df_empresa, mes_selecionado, ano_selecionado)
     
+    # DADOS FILTRADOS (APENAS O PERÍODO SELECIONADO)
     df_empresa_filtrado = df_empresa.copy()
+    
     if mes_selecionado and mes_selecionado != "Todos os Meses":
         if 'Mes_Nome' in df_empresa_filtrado.columns:
             df_empresa_filtrado = df_empresa_filtrado[df_empresa_filtrado['Mes_Nome'] == mes_selecionado]
+    
     if ano_selecionado and ano_selecionado != "Todos os Anos":
         if 'Ano' in df_empresa_filtrado.columns:
             df_empresa_filtrado = df_empresa_filtrado[df_empresa_filtrado['Ano'] == ano_selecionado]
     
     if df_empresa_filtrado.empty:
-        raise ValueError(f"Sem dados para o período")
+        raise ValueError(f"Nao ha dados para a empresa {empresa} com os filtros selecionados.")
     
-    # Métricas
-    dev = calcular_desenvolvidos_acumulado(df_empresa_filtrado)
-    com = calcular_comissionados_acumulado(df_empresa_filtrado)
-    val = calcular_validados_acumulado(df_empresa_filtrado)
-    ag_com = calcular_aguardando_comissionamento(df_empresa_filtrado)
-    ag_val = calcular_aguardando_validacao(df_empresa_filtrado)
-    rev = calcular_em_revisao(df_empresa_filtrado)
+    # ============================================
+    # MÉTRICAS ACUMULADAS (DADOS FILTRADOS)
+    # ============================================
+    desenvolvidos_acum_filtrado = calcular_desenvolvidos_acumulado(df_empresa_filtrado)
+    comissionados_acum_filtrado = calcular_comissionados_acumulado(df_empresa_filtrado)
+    validados_acum_filtrado = calcular_validados_acumulado(df_empresa_filtrado)
+    aguardando_comiss_filtrado = calcular_aguardando_comissionamento(df_empresa_filtrado)
+    aguardando_valid_filtrado = calcular_aguardando_validacao(df_empresa_filtrado)
+    revisao_filtrado = calcular_em_revisao(df_empresa_filtrado)
     
-    total = len(df_empresa_filtrado)
+    total_filtrado = len(df_empresa_filtrado)
     
-    pct_com = (com / dev * 100) if dev > 0 else 0
-    pct_val = (val / dev * 100) if dev > 0 else 0
-    pct_rev = (rev / dev * 100) if dev > 0 else 0
+    pct_comiss_filtrado = (comissionados_acum_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_valid_filtrado = (validados_acum_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_revisao_filtrado = (revisao_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
+    pct_aguardando_comiss_filtrado = (aguardando_comiss_filtrado / desenvolvidos_acum_filtrado * 100) if desenvolvidos_acum_filtrado > 0 else 0
     
-    # Acumulado total
-    dev_t = calcular_desenvolvidos_acumulado(df_empresa_acumulado)
-    com_t = calcular_comissionados_acumulado(df_empresa_acumulado)
-    val_t = calcular_validados_acumulado(df_empresa_acumulado)
-    rev_t = calcular_em_revisao(df_empresa_acumulado)
+    # ============================================
+    # MÉTRICAS ACUMULADAS (ATÉ O PERÍODO)
+    # ============================================
+    desenvolvidos_acum_total = calcular_desenvolvidos_acumulado(df_empresa_acumulado)
+    comissionados_acum_total = calcular_comissionados_acumulado(df_empresa_acumulado)
+    validados_acum_total = calcular_validados_acumulado(df_empresa_acumulado)
+    revisao_total = calcular_em_revisao(df_empresa_acumulado)
     
-    # Motivos
+    pct_comiss_total = (comissionados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    pct_valid_total = (validados_acum_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    pct_revisao_total = (revisao_total / desenvolvidos_acum_total * 100) if desenvolvidos_acum_total > 0 else 0
+    
+    # ============================================
+    # ANÁLISE DE MOTIVOS DE REVISÃO
+    # ============================================
     tem_motivos = False
     motivos_count = None
-    total_mot = 0
+    total_com_motivo = 0
+    
     if 'Motivo_Revisao' in df_empresa_filtrado.columns:
-        df_mot = df_empresa_filtrado[df_empresa_filtrado['Motivo_Revisao'].notna() & 
-                                      (df_empresa_filtrado['Motivo_Revisao'] != '') &
-                                      (df_empresa_filtrado['Motivo_Revisao'] != 'N/A')]
-        if not df_mot.empty:
+        df_motivos = df_empresa_filtrado[df_empresa_filtrado['Motivo_Revisao'].notna() & 
+                                          (df_empresa_filtrado['Motivo_Revisao'] != '') &
+                                          (df_empresa_filtrado['Motivo_Revisao'] != 'N/A')]
+        
+        if not df_motivos.empty:
             tem_motivos = True
-            motivos_count = df_mot['Motivo_Revisao'].value_counts()
-            total_mot = len(df_mot)
+            motivos_count = df_motivos['Motivo_Revisao'].value_counts()
+            total_com_motivo = len(df_motivos)
     
-    # Período
+    # Texto do período
+    periodo_acumulado_texto = ""
     if mes_selecionado and mes_selecionado != "Todos os Meses":
-        periodo = mes_selecionado
+        periodo_acumulado_texto = f"Acumulado até {mes_selecionado}"
         if ano_selecionado and ano_selecionado != "Todos os Anos":
-            periodo += f"/{ano_selecionado}"
+            periodo_acumulado_texto += f"/{ano_selecionado}"
     elif ano_selecionado and ano_selecionado != "Todos os Anos":
-        periodo = str(ano_selecionado)
+        periodo_acumulado_texto = f"Acumulado até {ano_selecionado}"
     else:
-        periodo = "Todos os períodos"
-    
-    periodo_acum = f"Acumulado até {periodo}" if periodo != "Todos os períodos" else "Acumulado Geral"
-    
-    data_hora = get_horario_brasilia()
+        periodo_acumulado_texto = "Acumulado Geral (Todos os períodos)"
     
     # ============================================
     # CRIAR PDF
     # ============================================
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=20)
-    
-    # ============================================
-    # CAPA EXECUTIVA
-    # ============================================
     pdf.add_page()
     
-    # Fundo azul escuro
-    pdf.set_fill_color(0, 89, 115)
-    pdf.rect(0, 0, 210, 297, 'F')
-    
-    # Faixa central mais clara
-    pdf.set_fill_color(2, 138, 159)
-    pdf.rect(0, 75, 210, 130, 'F')
-    
-    # Linha decorativa superior
-    pdf.set_draw_color(4, 216, 215)
-    pdf.set_line_width(1.5)
-    pdf.line(30, 85, 180, 85)
-    
-    # Título
-    pdf.set_y(95)
-    pdf.set_font('Arial', 'B', 26)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 10, 'RELATÓRIO EXECUTIVO', 0, 1, 'C')
-    pdf.set_font('Arial', 'B', 18)
-    pdf.cell(0, 8, 'COMISSIONAMENTO SCADA', 0, 1, 'C')
-    
-    # Linha decorativa inferior
-    pdf.set_y(185)
-    pdf.set_draw_color(4, 216, 215)
-    pdf.line(30, 185, 180, 185)
-    
-    # Unidade
-    pdf.set_y(200)
-    pdf.set_font('Arial', 'B', 28)
-    pdf.set_text_color(4, 216, 215)
-    pdf.cell(0, 10, f'UNIDADE {empresa}', 0, 1, 'C')
-    
-    # Período
-    pdf.set_y(218)
-    pdf.set_font('Arial', '', 14)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 8, f'Período: {periodo}', 0, 1, 'C')
-    
-    # Data
-    pdf.set_y(265)
-    pdf.set_font('Arial', '', 9)
-    pdf.set_text_color(200, 200, 200)
-    pdf.cell(0, 5, f'Emitido em: {data_hora.strftime("%d/%m/%Y as %H:%M")} (Horario de Brasilia)', 0, 1, 'C')
-    pdf.cell(0, 5, 'CONFIDENCIAL - USO INTERNO ENERGISA', 0, 1, 'C')
-    
     # ============================================
-    # PÁGINA 2 - KPIs + PROGRESSO
+    # CABEÇALHO
     # ============================================
-    pdf.add_page()
+    try:
+        for logo in ["Logo_Energisa.png", "logo_energisa.png", "energisa.png"]:
+            if os.path.exists(logo):
+                pdf.image(logo, x=10, y=8, w=25)
+                break
+    except:
+        pass
     
-    # Cabeçalho
-    pdf.set_fill_color(0, 89, 115)
-    pdf.rect(0, 0, 210, 30, 'F')
-    pdf.set_y(8)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 8, f'DASHBOARD EXECUTIVO - UNIDADE {empresa}', 0, 1, 'C')
-    
-    # 4 Cards KPIs
-    y_cards = 38
-    card_w = 42
-    card_h = 40
-    gap = 5
-    x_start = 14
-    
-    cards = [
-        ('DESENVOLVIDOS', dev, ag_com, 'Aguardando', CORES['card1'] if 'CORES' in dir() else '#2E7D32'),
-        ('COMISSIONADOS', com, ag_val, 'Aguardando', CORES['card2'] if 'CORES' in dir() else '#028a9f'),
-        ('VALIDADO', val, 0, 'Concluido', CORES['card3'] if 'CORES' in dir() else '#005973'),
-        ('EM REVISÃO', rev, 0, 'Gargalo', CORES['card4'] if 'CORES' in dir() else '#F57C00'),
-    ]
-    
-    cores_cards = ['#2E7D32', '#028a9f', '#005973', '#F57C00']
-    
-    for i, (titulo, valor, extra, extra_label, _) in enumerate(cards):
-        x = x_start + i * (card_w + gap)
-        
-        # Fundo do card
-        pdf.set_fill_color(249, 250, 251)
-        pdf.set_draw_color(cores_cards[i])
-        pdf.set_line_width(1.5)
-        pdf.rect(x, y_cards, card_w, card_h, 'DF')
-        
-        # Título
-        pdf.set_xy(x + 2, y_cards + 4)
-        pdf.set_font('Arial', 'B', 7)
-        pdf.set_text_color(cores_cards[i])
-        pdf.cell(card_w - 4, 5, titulo, 0, 1, 'C')
-        
-        # Valor principal
-        pdf.set_xy(x + 2, y_cards + 14)
-        pdf.set_font('Arial', 'B', 20)
-        pdf.set_text_color(31, 41, 55)
-        pdf.cell(card_w - 4, 10, str(valor), 0, 1, 'C')
-        
-        # Extra
-        if extra > 0 and extra_label:
-            pdf.set_xy(x + 2, y_cards + 29)
-            pdf.set_font('Arial', '', 7)
-            pdf.set_text_color(107, 114, 128)
-            pdf.cell(card_w - 4, 5, f'{extra_label}: {extra}', 0, 1, 'C')
-    
-    # Barra de progresso
-    pdf.set_y(90)
-    pdf.set_font('Arial', 'B', 11)
+    pdf.set_y(15)
+    pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, 'PROGRESSO DO FLUXO', 0, 1)
+    pdf.cell(0, 8, 'RELATÓRIO DE COMISSIONAMENTO SCADA', 0, 1, 'C')
     
-    bar_x, bar_y = 15, 102
-    bar_w = 180
-    bar_h = 12
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 6, f'UNIDADE {empresa}', 0, 1, 'C')
     
-    pdf.set_fill_color(229, 231, 235)
-    pdf.rect(bar_x, bar_y, bar_w, bar_h, 'F')
+    if mes_selecionado and mes_selecionado != "Todos os Meses":
+        pdf.set_font('Arial', 'I', 10)
+        pdf.set_text_color(100, 100, 100)
+        periodo_texto = f'Período: {mes_selecionado}'
+        if ano_selecionado and ano_selecionado != "Todos os Anos":
+            periodo_texto += f'/{ano_selecionado}'
+        pdf.cell(0, 5, periodo_texto, 0, 1, 'C')
     
-    if dev > 0:
-        val_w = bar_w * (pct_val / 100)
-        com_w = bar_w * (pct_com / 100)
-        
-        pdf.set_fill_color(46, 125, 50)
-        if val_w > 0:
-            pdf.rect(bar_x, bar_y, val_w, bar_h, 'F')
-        
-        pdf.set_fill_color(2, 138, 159)
-        if com_w - val_w > 0:
-            pdf.rect(bar_x + val_w, bar_y, com_w - val_w, bar_h, 'F')
-        
-        pdf.set_fill_color(245, 124, 0)
-        rev_w = bar_w * (pct_rev / 100)
-        if rev_w > 0:
-            pdf.rect(bar_x + com_w, bar_y, rev_w, bar_h, 'F')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, 45, 200, 45)
     
-    # Labels da barra
-    pdf.set_y(118)
-    pdf.set_font('Arial', '', 8)
+    brasilia_time = get_horario_brasilia()
+    pdf.set_y(48)
+    pdf.set_font('Arial', '', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(60, 5, f'Validados: {val} ({pct_val:.0f}%)', 0, 0, 'L')
-    pdf.cell(60, 5, f'Comissionados: {com} ({pct_com:.0f}%)', 0, 0, 'C')
-    pdf.cell(60, 5, f'Em Revisão: {rev} ({pct_rev:.0f}%)', 0, 1, 'R')
+    pdf.cell(0, 5, f'Emissão: {brasilia_time.strftime("%d/%m/%Y - %H:%M")} (Horário de Brasília)', 0, 1, 'R')
     
-    # Taxa de validação
-    taxa_val = (val / com * 100) if com > 0 else 0
-    pdf.set_y(128)
+    # ============================================
+    # TEXTO EXPLICATIVO
+    # ============================================
+    pdf.set_y(58)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 5, f'Taxa de Validação sobre Comissionados: {val}/{com} = {taxa_val:.0f}%', 0, 1)
+    pdf.multi_cell(0, 5, 'Este relatório tem como objetivo apresentar o status atual do processo de comissionamentos da unidade, fornecendo uma visão consolidada do progresso, identificando gargalos e apoiando a tomada de decisão para otimização dos recursos e prazos.')
+    pdf.ln(3)
     
-    # Distribuição por Status
-    pdf.set_y(140)
-    pdf.set_font('Arial', 'B', 11)
+    # ============================================
+    # 1. PANORAMA GERAL
+    # ============================================
+    y_pos = pdf.get_y() + 5
+    
+    pdf.set_y(y_pos)
+    pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, 'DISTRIBUIÇÃO POR STATUS', 0, 1)
-    pdf.set_draw_color(4, 216, 215)
-    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.cell(0, 8, '1. PANORAMA GERAL (Acumulado no Período)', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    
+    card_y = pdf.get_y() + 5
+    
+    # CARD 1: DESENVOLVIDOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(10, card_y, 45, 52, 'F')
+    pdf.set_xy(12, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'DESENVOLVIDOS', 0, 1)
+    pdf.set_xy(12, card_y + 12)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 7, str(desenvolvidos_acum_filtrado), 0, 1)
+    pdf.set_xy(12, card_y + 28)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, f'Aguardando: {aguardando_comiss_filtrado}', 0, 1)
+    pdf.set_xy(12, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= Desenv+Comiss+Valid+Rev', 0, 1)
+    pdf.set_xy(12, card_y + 40)
+    pdf.cell(0, 3, f'({pct_aguardando_comiss_filtrado:.0f}% aguardando)', 0, 1)
+    
+    # CARD 2: COMISSIONADOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(60, card_y, 45, 52, 'F')
+    pdf.set_xy(62, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 4, 'COMISSIONADOS', 0, 1)
+    pdf.set_xy(62, card_y + 12)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 7, str(comissionados_acum_filtrado), 0, 1)
+    pdf.set_xy(62, card_y + 28)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(2, 138, 159)
+    pdf.cell(0, 4, f'Aguardando: {aguardando_valid_filtrado}', 0, 1)
+    pdf.set_xy(62, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= Comiss+Valid+Rev', 0, 1)
+    pdf.set_xy(62, card_y + 40)
+    pdf.cell(0, 3, f'({pct_comiss_filtrado:.0f}% dos desenvolvidos)', 0, 1)
+    
+    # CARD 3: VALIDADOS
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(110, card_y, 45, 52, 'F')
+    pdf.set_xy(112, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 4, 'VALIDADOS', 0, 1)
+    pdf.set_xy(112, card_y + 12)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 7, str(validados_acum_filtrado), 0, 1)
+    pdf.set_xy(112, card_y + 28)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(46, 125, 50)
+    pdf.cell(0, 4, 'Concluídos', 0, 1)
+    pdf.set_xy(112, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= Validados', 0, 1)
+    pdf.set_xy(112, card_y + 40)
+    pdf.cell(0, 3, f'({pct_valid_filtrado:.0f}% dos desenvolvidos)', 0, 1)
+    
+    # CARD 4: EM REVISÃO
+    pdf.set_fill_color(240, 248, 255)
+    pdf.rect(160, card_y, 40, 52, 'F')
+    pdf.set_xy(162, card_y + 4)
+    pdf.set_font('Arial', 'B', 7)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 4, 'EM REVISÃO', 0, 1)
+    pdf.set_xy(162, card_y + 12)
+    pdf.set_font('Arial', 'B', 18)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 7, str(revisao_filtrado), 0, 1)
+    pdf.set_xy(162, card_y + 28)
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(245, 124, 0)
+    pdf.cell(0, 4, 'Gargalo', 0, 1)
+    pdf.set_xy(162, card_y + 35)
+    pdf.set_font('Arial', 'I', 6)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 3, f'= Necessário Revisão', 0, 1)
+    pdf.set_xy(162, card_y + 40)
+    pdf.cell(0, 3, f'({pct_revisao_filtrado:.0f}% dos desenvolvidos)', 0, 1)
+    
+    pdf.ln(20)
+    
+    # ============================================
+    # PROGRESSO DO COMISSIONAMENTO
+    # ============================================
+    bar_y = pdf.get_y() + 2
+    
+    pdf.set_y(bar_y)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'PROGRESSO DO COMISSIONAMENTO (Acumulado no Período)', 0, 1)
+    
+    pdf.set_y(bar_y + 7)
+    pdf.set_font('Arial', '', 9)
+    pdf.cell(55, 6, 'Comissionados:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(65, bar_y + 7, 100, 5, 'F')
+    pdf.set_fill_color(2, 138, 159)
+    if pct_comiss_filtrado > 0:
+        pdf.rect(65, bar_y + 7, 100 * (pct_comiss_filtrado / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 5)
+    pdf.cell(20, 6, f'{comissionados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_comiss_filtrado:.0f}%)', 0, 1)
+    
+    pdf.set_y(bar_y + 14)
+    pdf.cell(55, 6, 'Validados:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(65, bar_y + 14, 100, 5, 'F')
+    pdf.set_fill_color(46, 125, 50)
+    if pct_valid_filtrado > 0:
+        pdf.rect(65, bar_y + 14, 100 * (pct_valid_filtrado / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 12)
+    pdf.cell(20, 6, f'{validados_acum_filtrado}/{desenvolvidos_acum_filtrado} ({pct_valid_filtrado:.0f}%)', 0, 1)
+    
+    pdf.set_y(bar_y + 21)
+    pdf.cell(55, 6, 'Em Revisão:', 0, 0)
+    pdf.set_fill_color(220, 220, 220)
+    pdf.rect(65, bar_y + 21, 100, 5, 'F')
+    pdf.set_fill_color(245, 124, 0)
+    if pct_revisao_filtrado > 0:
+        pdf.rect(65, bar_y + 21, 100 * (pct_revisao_filtrado / 100), 5, 'F')
+    pdf.set_xy(170, bar_y + 19)
+    pdf.cell(20, 6, f'{revisao_filtrado}/{desenvolvidos_acum_filtrado} ({pct_revisao_filtrado:.0f}%)', 0, 1)
+    
+    taxa_valid_comiss = (validados_acum_filtrado / comissionados_acum_filtrado * 100) if comissionados_acum_filtrado > 0 else 0
+    pdf.set_y(bar_y + 30)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {validados_acum_filtrado}/{comissionados_acum_filtrado} = {taxa_valid_comiss:.0f}%', 0, 1)
+    
     pdf.ln(5)
     
-    status_counts = df_empresa_filtrado['Status'].value_counts()
-    pdf.set_font('Arial', '', 9)
-    pdf.set_text_color(55, 65, 81)
-    for status, qtd in status_counts.items():
-        pct = (qtd / total * 100) if total > 0 else 0
-        pdf.cell(8, 5, '', 0, 0)
-        pdf.cell(80, 5, status, 0, 0)
-        pdf.cell(30, 5, str(qtd), 0, 0)
-        pdf.cell(0, 5, f'({pct:.1f}%)', 0, 1)
+    # ============================================
+    # 2. DISTRIBUIÇÃO POR STATUS
+    # ============================================
+    dist_y = pdf.get_y() + 2
     
-    # Tipos de Equipamento
-    if 'Tipo' in df_empresa_filtrado.columns:
-        pdf.set_y(pdf.get_y() + 5)
-        pdf.set_font('Arial', 'B', 11)
-        pdf.set_text_color(0, 89, 115)
-        pdf.cell(0, 8, 'TIPOS DE EQUIPAMENTO', 0, 1)
-        pdf.set_draw_color(4, 216, 215)
-        pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-        pdf.ln(5)
-        
-        tipo_counts = df_empresa_filtrado['Tipo'].value_counts().head(8)
-        pdf.set_font('Arial', '', 9)
-        pdf.set_text_color(55, 65, 81)
-        for tipo, qtd in tipo_counts.items():
-            pct = (qtd / total * 100) if total > 0 else 0
-            pdf.cell(8, 5, '', 0, 0)
-            pdf.cell(80, 5, tipo, 0, 0)
-            pdf.cell(30, 5, str(qtd), 0, 0)
-            pdf.cell(0, 5, f'({pct:.0f}%)', 0, 1)
+    pdf.set_y(dist_y)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '2. DISTRIBUIÇÃO POR STATUS (Status Atual no Período)', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    status_counts = df_empresa_filtrado['Status'].value_counts()
+    for status, qtd in status_counts.items():
+        pct = (qtd / total_filtrado * 100) if total_filtrado > 0 else 0
+        pdf.cell(15, 5, '', 0, 0)
+        pdf.cell(0, 5, f'{status}: {qtd} ({pct:.1f}%)', 0, 1)
+    
+    pdf.ln(3)
     
     # ============================================
-    # PÁGINA 3 - MOTIVOS DE REVISÃO
+    # 3. TIPOS DE EQUIPAMENTOS
+    # ============================================
+    tipo_y = pdf.get_y()
+    
+    pdf.set_y(tipo_y)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, '3. TIPOS DE EQUIPAMENTOS (Período)', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    
+    pdf.set_font('Arial', '', 10)
+    y_offset = pdf.get_y() + 3
+    
+    if 'Tipo' in df_empresa_filtrado.columns and not df_empresa_filtrado['Tipo'].dropna().empty:
+        tipo_counts = df_empresa_filtrado['Tipo'].value_counts().head(8)
+        for tipo, qtd in tipo_counts.items():
+            pct = (qtd / total_filtrado * 100) if total_filtrado > 0 else 0
+            pdf.set_y(y_offset)
+            pdf.cell(15, 5, '', 0, 0)
+            pdf.cell(0, 5, f'{tipo}: {qtd} ({pct:.0f}%)', 0, 1)
+            y_offset += 5
+    else:
+        pdf.set_y(y_offset)
+        pdf.cell(0, 5, 'Não há dados de tipos de equipamento disponíveis.', 0, 1)
+        y_offset += 5
+    
+    # ============================================
+    # 4. MOTIVOS DE REVISÃO (SE HOUVER)
     # ============================================
     if tem_motivos:
-        pdf.add_page()
+        if pdf.get_y() > 200:
+            pdf.add_page()
         
-        pdf.set_fill_color(0, 89, 115)
-        pdf.rect(0, 0, 210, 30, 'F')
-        pdf.set_y(8)
-        pdf.set_font('Arial', 'B', 14)
-        pdf.set_text_color(255, 255, 255)
-        pdf.cell(0, 8, 'ANÁLISE DE MOTIVOS DE REVISÃO', 0, 1, 'C')
+        motivos_y = pdf.get_y() + 5
         
-        # Tabela
-        pdf.set_y(40)
-        pdf.set_font('Arial', 'B', 9)
+        pdf.set_y(motivos_y)
+        pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(0, 89, 115)
-        pdf.cell(0, 6, f'Total: {total_mot} equipamentos com motivo registrado', 0, 1)
+        pdf.cell(0, 8, '4. MOTIVOS DE REVISÃO REGISTRADOS', 0, 1, 'L')
+        pdf.set_draw_color(2, 138, 159)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+        
+        pdf.set_font('Arial', 'B', 9)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 5, f'Total de equipamentos com motivo registrado: {total_com_motivo}', 0, 1)
         pdf.ln(3)
         
-        # Cabeçalho tabela
-        pdf.set_fill_color(0, 89, 115)
-        pdf.set_text_color(255, 255, 255)
+        # Tabela de motivos
         pdf.set_font('Arial', 'B', 8)
-        pdf.cell(8, 7, '#', 1, 0, 'C', 1)
-        pdf.cell(95, 7, 'Motivo', 1, 0, 'C', 1)
-        pdf.cell(30, 7, 'Qtd', 1, 0, 'C', 1)
-        pdf.cell(30, 7, '%', 1, 1, 'C', 1)
+        pdf.set_fill_color(200, 220, 240)
+        pdf.cell(85, 7, 'Motivo', 1, 0, 'C', 1)
+        pdf.cell(30, 7, 'Quantidade', 1, 0, 'C', 1)
+        pdf.cell(30, 7, 'Percentual', 1, 1, 'C', 1)
         
         pdf.set_font('Arial', '', 8)
-        for i, (motivo, qtd) in enumerate(motivos_count.items(), 1):
-            pct = (qtd / total_mot * 100) if total_mot > 0 else 0
+        pdf.set_fill_color(255, 255, 255)
+        
+        for motivo, qtd in motivos_count.items():
+            pct = (qtd / total_com_motivo * 100) if total_com_motivo > 0 else 0
             
             if 'E-MAIL' in motivo.upper():
                 pdf.set_text_color(198, 40, 40)
             elif 'APR' in motivo.upper():
                 pdf.set_text_color(245, 124, 0)
-            elif 'MEDIÇÃO' in motivo.upper():
+            elif 'MEDIÇÃO' in motivo.upper() or 'MEDICAO' in motivo.upper():
                 pdf.set_text_color(106, 27, 154)
             elif 'EQUIPAMENTO' in motivo.upper():
                 pdf.set_text_color(21, 101, 192)
-            elif 'CARD' in motivo.upper() or 'RELATÓRIO' in motivo.upper():
+            elif 'CARD' in motivo.upper() or 'RELATÓRIO' in motivo.upper() or 'NOME' in motivo.upper():
                 pdf.set_text_color(0, 131, 143)
             else:
-                pdf.set_text_color(55, 65, 81)
+                pdf.set_text_color(0, 0, 0)
             
-            pdf.set_fill_color(249, 250, 251) if i % 2 == 0 else pdf.set_fill_color(255, 255, 255)
-            
-            pdf.cell(8, 6, str(i), 1, 0, 'C', 1)
-            pdf.cell(95, 6, motivo[:55], 1, 0, 'L', 1)
-            pdf.cell(30, 6, str(qtd), 1, 0, 'C', 1)
-            pdf.cell(30, 6, f'{pct:.1f}%', 1, 1, 'C', 1)
+            pdf.cell(85, 6, motivo[:50], 1, 0, 'L')
+            pdf.cell(30, 6, str(qtd), 1, 0, 'C')
+            pdf.cell(30, 6, f'{pct:.1f}%', 1, 1, 'C')
         
         pdf.set_text_color(0, 0, 0)
+        pdf.ln(3)
         
-        # Gráfico em nova página
-        pdf.add_page()
+        # Gráfico de motivos
+        if pdf.get_y() > 140:
+            pdf.add_page()
         
-        pdf.set_fill_color(0, 89, 115)
-        pdf.rect(0, 0, 210, 30, 'F')
-        pdf.set_y(8)
-        pdf.set_font('Arial', 'B', 14)
-        pdf.set_text_color(255, 255, 255)
-        pdf.cell(0, 8, 'DISTRIBUIÇÃO DOS MOTIVOS DE REVISÃO', 0, 1, 'C')
+        fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
         
-        # Gerar gráfico donut
-        fig_motivos = gerar_grafico_motivos_donut(motivos_count, total_mot)
-        temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        fig_motivos.savefig(temp_img.name, dpi=200, bbox_inches='tight', facecolor='white')
+        temp_img_motivos = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='white')
         plt.close(fig_motivos)
         
-        pdf.image(temp_img.name, x=10, y=38, w=190)
-        os.unlink(temp_img.name)
+        # Imagem mais larga para acomodar labels externas
+        pdf.image(temp_img_motivos.name, x=5, w=200)
+        os.unlink(temp_img_motivos.name)
     
     # ============================================
-    # PÁGINA - ACUMULADO
+    # ACUMULADO ATÉ O PERÍODO
     # ============================================
     pdf.add_page()
     
-    pdf.set_fill_color(0, 89, 115)
-    pdf.rect(0, 0, 210, 30, 'F')
-    pdf.set_y(8)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 8, f'ACUMULADO: {periodo_acum.upper()}', 0, 1, 'C')
+    secao_num = '5.' if tem_motivos else '4.'
+    pdf.set_y(25)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, f'{secao_num} ACUMULADO {periodo_acumulado_texto.upper()}', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
     
-    fig = gerar_grafico_barras_vertical(dev_t, com_t, val_t, rev_t, periodo_acum)
+    fig = gerar_grafico_barras_vertical(
+        desenvolvidos_acum_total, 
+        comissionados_acum_total, 
+        validados_acum_total, 
+        revisao_total,
+        periodo_acumulado_texto
+    )
+    
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
     fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close(fig)
     
-    pdf.image(temp_img.name, x=20, y=40, w=170)
+    pdf.image(temp_img.name, x=30, w=150)
     os.unlink(temp_img.name)
     
-    pdf.set_y(180)
+    pdf.ln(20)
+    
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, f'Resumo {periodo_acum}:', 0, 1)
+    pdf.cell(0, 6, f'Resumo {periodo_acumulado_texto}:', 0, 1, 'L')
     pdf.set_font('Arial', '', 9)
-    pct_com_t = (com_t / dev_t * 100) if dev_t > 0 else 0
-    pct_val_t = (val_t / dev_t * 100) if dev_t > 0 else 0
-    pct_rev_t = (rev_t / dev_t * 100) if dev_t > 0 else 0
-    taxa_val_t = (val_t / com_t * 100) if com_t > 0 else 0
+    pdf.cell(0, 5, f'Total de Equipamentos Desenvolvidos: {desenvolvidos_acum_total}', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Comissionados (Acumulado): {comissionados_acum_total} ({pct_comiss_total:.1f}% dos desenvolvidos)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos Validados (Acumulado): {validados_acum_total} ({pct_valid_total:.1f}% dos desenvolvidos)', 0, 1)
+    pdf.cell(0, 5, f'Equipamentos em Revisão: {revisao_total} ({pct_revisao_total:.1f}% dos desenvolvidos)', 0, 1)
     
-    pdf.cell(0, 5, f'Desenvolvidos: {dev_t}', 0, 1)
-    pdf.cell(0, 5, f'Comissionados: {com_t} ({pct_com_t:.1f}%)', 0, 1)
-    pdf.cell(0, 5, f'Validados: {val_t} ({pct_val_t:.1f}%)', 0, 1)
-    pdf.cell(0, 5, f'Em Revisão: {rev_t} ({pct_rev_t:.1f}%)', 0, 1)
-    pdf.cell(0, 5, f'Taxa de Validação: {taxa_val_t:.1f}%', 0, 1)
+    taxa_valid_comiss_total = (validados_acum_total / comissionados_acum_total * 100) if comissionados_acum_total > 0 else 0
+    pdf.ln(3)
+    pdf.cell(0, 5, f'Taxa de validação sobre comissionados: {taxa_valid_comiss_total:.1f}%', 0, 1)
+    
+    pdf.ln(10)
     
     # ============================================
-    # PÁGINA - PERFORMANCE
+    # PERFORMANCE POR RESPONSÁVEL
     # ============================================
     pdf.add_page()
     
-    pdf.set_fill_color(0, 89, 115)
-    pdf.rect(0, 0, 210, 30, 'F')
-    pdf.set_y(8)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 8, 'PERFORMANCE POR RESPONSÁVEL', 0, 1, 'C')
-    
-    y_offset = 40
+    secao_perf = '6.' if tem_motivos else '5.'
+    pdf.set_y(25)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, f'{secao_perf} PERFORMANCE POR RESPONSÁVEL (Período)', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     
     col_resp = 'Resp_Com'
+    y_offset = pdf.get_y() + 5
+    
     if col_resp in df_empresa_filtrado.columns:
         df_resp = df_empresa_filtrado[df_empresa_filtrado[col_resp] != 'Não atribuído']
         
         if not df_resp.empty:
             pdf.set_y(y_offset)
             pdf.set_font('Arial', 'B', 9)
-            pdf.set_text_color(0, 89, 115)
             pdf.cell(0, 6, 'Comissionados por Responsável:', 0, 1)
-            y_offset += 8
+            y_offset += 6
             
-            # Cabeçalho
-            pdf.set_fill_color(0, 89, 115)
-            pdf.set_text_color(255, 255, 255)
-            pdf.set_font('Arial', 'B', 8)
             pdf.set_y(y_offset)
+            pdf.set_font('Arial', 'B', 8)
+            pdf.set_fill_color(200, 220, 240)
             pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
-            pdf.cell(35, 7, 'Total', 1, 0, 'C', 1)
+            pdf.cell(35, 7, 'Comissionados', 1, 0, 'C', 1)
             pdf.cell(35, 7, 'Validados', 1, 0, 'C', 1)
             pdf.cell(45, 7, 'Taxa Sucesso', 1, 1, 'C', 1)
             y_offset += 7
             
-            top_resp = df_resp[col_resp].value_counts().head(8).index.tolist()
             pdf.set_font('Arial', '', 8)
+            pdf.set_fill_color(255, 255, 255)
             
+            top_resp = df_resp[col_resp].value_counts().head(8).index.tolist()
             for resp in top_resp:
                 df_item = df_resp[df_resp[col_resp] == resp]
-                total_r = len(df_item)
-                val_r = len(df_item[df_item['Status'] == 'Validado'])
-                taxa_r = (val_r / total_r * 100) if total_r > 0 else 0
+                total_resp = len(df_item)
+                validados_resp = len(df_item[df_item['Status'] == 'Validado'])
+                taxa = (validados_resp / total_resp * 100) if total_resp > 0 else 0
                 
-                pdf.set_fill_color(249, 250, 251)
-                pdf.set_text_color(55, 65, 81)
+                nome = str(resp)[:30]
                 pdf.set_y(y_offset)
-                pdf.cell(70, 6, str(resp)[:30], 1, 0, 'L', 1)
-                pdf.cell(35, 6, str(total_r), 1, 0, 'C', 1)
-                pdf.cell(35, 6, str(val_r), 1, 0, 'C', 1)
-                
-                if taxa_r >= 80:
-                    pdf.set_text_color(46, 125, 50)
-                elif taxa_r >= 50:
-                    pdf.set_text_color(245, 124, 0)
-                else:
-                    pdf.set_text_color(198, 40, 40)
-                
-                pdf.cell(45, 6, f'{taxa_r:.0f}%', 1, 1, 'C', 1)
+                pdf.cell(70, 6, nome, 1, 0, 'L')
+                pdf.cell(35, 6, str(total_resp), 1, 0, 'C')
+                pdf.cell(35, 6, str(validados_resp), 1, 0, 'C')
+                pdf.cell(45, 6, f'{taxa:.0f}%', 1, 1, 'C')
                 y_offset += 6
+            
+            y_offset += 4
+            
+            df_revisao = df_empresa_filtrado[df_empresa_filtrado['Status'] == 'Necessário Revisão']
+            
+            if not df_revisao.empty:
+                pdf.set_y(y_offset)
+                pdf.set_font('Arial', 'B', 9)
+                pdf.set_text_color(245, 124, 0)
+                pdf.cell(0, 6, 'Equipamentos em Revisão por Responsável:', 0, 1)
+                pdf.set_text_color(0, 0, 0)
+                y_offset += 6
+                
+                pdf.set_y(y_offset)
+                pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(255, 220, 200)
+                pdf.cell(70, 7, 'Responsável', 1, 0, 'C', 1)
+                pdf.cell(35, 7, 'Em Revisão', 1, 0, 'C', 1)
+                pdf.cell(80, 7, 'Equipamentos', 1, 1, 'C', 1)
+                y_offset += 7
+                
+                pdf.set_font('Arial', '', 7)
+                pdf.set_fill_color(255, 255, 255)
+                
+                revisao_por_resp = df_revisao[col_resp].value_counts().head(8)
+                for resp, qtd in revisao_por_resp.items():
+                    equipamentos = df_revisao[df_revisao[col_resp] == resp]['Codigo'].head(3).tolist()
+                    equip_str = ', '.join([str(e) for e in equipamentos if pd.notna(e)])
+                    if len(equipamentos) > 3:
+                        equip_str += '...'
+                    
+                    nome = str(resp)[:30]
+                    pdf.set_y(y_offset)
+                    pdf.cell(70, 6, nome, 1, 0, 'L')
+                    pdf.cell(35, 6, str(qtd), 1, 0, 'C')
+                    pdf.cell(80, 6, equip_str[:50], 1, 1, 'C')
+                    y_offset += 6
+        else:
+            pdf.set_y(y_offset)
+            pdf.set_font('Arial', '', 10)
+            pdf.cell(0, 6, 'Não há dados de responsáveis disponíveis.', 0, 1)
+    else:
+        pdf.set_y(y_offset)
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(0, 6, 'Coluna de responsáveis não encontrada.', 0, 1)
     
     # ============================================
-    # PÁGINA - EQUIPE
+    # EQUIPE RESPONSÁVEL (ASSINATURAS)
     # ============================================
     pdf.add_page()
     
-    pdf.set_fill_color(0, 89, 115)
-    pdf.rect(0, 0, 210, 30, 'F')
-    pdf.set_y(8)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 8, 'EQUIPE RESPONSÁVEL', 0, 1, 'C')
+    secao_equipe = '7.' if tem_motivos else '6.'
+    pdf.set_y(30)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(0, 89, 115)
+    pdf.cell(0, 8, f'{secao_equipe} EQUIPE RESPONSÁVEL', 0, 1, 'L')
+    pdf.set_draw_color(2, 138, 159)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(10)
     
-    equipe = [
-        ('Kewin Marcel Ramirez Ferreira', 'SRE - Elaboração', 'kewin.ferreira@energisa.com.br'),
-        ('Caio Alexandre da Silva Medeiros', 'Gestão', 'caio.medeiros@energisa.com.br'),
-        ('Ramiza Alves Irineu Seabra', 'BP', 'ramiza.irineu@energisa.com.br'),
-        ('Bruna Moura Maciel', 'BP', 'bruna.maciel@energisa.com.br'),
-        ('Mauricio Dias Avelino', 'Coord Tech Proj Sist Operativos', 'mauricio.avelino@energisa.com.br'),
-        ('Cassio Fernando Bazana Nonenmacher', 'Ger Tecnologia Operativa', 'cassio.bazana@energisa.com.br'),
-        ('Savio Ricardo Muniz Aires da Costa', 'Ger Automação Telecom', 'savio.ricardo@energisa.com.br'),
-    ]
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Documento Elaborado por:', 0, 1, 'L')
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira - SRE', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'kewin.ferreira@energisa.com.br', 0, 1, 'L')
+    pdf.ln(8)
     
-    y = 45
-    for nome, cargo, email in equipe:
-        pdf.set_fill_color(249, 250, 251)
-        pdf.set_draw_color(2, 138, 159)
-        pdf.rect(20, y, 170, 22, 'DF')
-        
-        pdf.set_xy(25, y + 3)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.set_text_color(0, 89, 115)
-        pdf.cell(0, 6, nome, 0, 1)
-        
-        pdf.set_x(25)
-        pdf.set_font('Arial', '', 8)
-        pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 5, f'{cargo} | {email}', 0, 1)
-        
-        y += 28
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Núcleo de Gestão:', 0, 1, 'L')
     
-    # Rodapé
-    pdf.set_y(-20)
-    pdf.set_font('Arial', 'I', 7)
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Caio Alexandre da Silva Medeiros - Gestão', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'caio.medeiros@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Ramiza Alves Irineu Seabra - BP', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'ramiza.irineu@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Bruna Moura Maciel - BP', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'bruna.maciel@energisa.com.br', 0, 1, 'L')
+    pdf.ln(8)
+    
+    pdf.set_font('Arial', 'B', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 6, 'Aprovado por:', 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 5, 'Mauricio Dias Avelino - Coord Tech Proj Sist Operativos', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'mauricio.avelino@energisa.com.br', 0, 1, 'L')
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Cassio Fernando Bazana Nonenmacher - Ger Tecnologia Operativa', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'cassio.bazana@energisa.com.br', 0, 1, 'L')
+    pdf.ln(3)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Savio Ricardo Muniz Aires da Costa - Ger Automação Telecom', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'savio.ricardo@energisa.com.br', 0, 1, 'L')
+    
+    # Rodapé final
+    pdf.set_y(-15)
+    pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | {data_hora.strftime("%d/%m/%Y %H:%M")} | Pagina {pdf.page_no()}/{{nb}}', 0, 0, 'C')
+    pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
     
-    # Salvar
+    # Gerar arquivo
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
         pdf.output(tmp.name)
         return tmp.name
 
 
 def adicionar_botao_pdf_empresa(df_filtrado, empresa, mes_selecionado=None, ano_selecionado=None):
-    """Botão Streamlit"""
+    """
+    Adiciona botão no Streamlit para gerar e baixar o PDF da empresa selecionada
+    """
     if st.button(f"📊 Gerar Relatório {empresa}", use_container_width=True, key=f"btn_pdf_{empresa}"):
         if df_filtrado.empty:
-            st.warning("Sem dados.")
+            st.warning("Não há dados para gerar o relatório.")
             return
         
-        with st.spinner(f"Gerando relatório executivo da {empresa}..."):
+        df_empresa = df_filtrado[df_filtrado['Empresa'] == empresa]
+        
+        if df_empresa.empty:
+            st.warning(f"Não há dados para a empresa {empresa} com os filtros selecionados.")
+            return
+        
+        with st.spinner(f"Gerando relatório da {empresa}..."):
             try:
                 pdf_path = gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado, ano_selecionado)
                 
                 with open(pdf_path, 'rb') as f:
                     pdf_bytes = f.read()
                 
-                nome = f"Relatorio_{empresa}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                nome_arquivo = f"relatorio_{empresa}"
+                if mes_selecionado and mes_selecionado != "Todos os Meses":
+                    nome_arquivo += f"_{mes_selecionado}"
+                if ano_selecionado and ano_selecionado != "Todos os Anos":
+                    nome_arquivo += f"_{ano_selecionado}"
+                nome_arquivo += f"_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
                 
-                st.success(f"✅ Relatório da {empresa} gerado com sucesso!")
-                st.download_button("📥 Baixar PDF", pdf_bytes, nome, "application/pdf", use_container_width=True)
+                st.success(f"Relatório da {empresa} gerado com sucesso!")
+                
+                st.download_button(
+                    label=f"Baixar Relatório {empresa}",
+                    data=pdf_bytes,
+                    file_name=nome_arquivo,
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key=f"btn_download_{empresa}"
+                )
                 
                 os.unlink(pdf_path)
+                
             except Exception as e:
-                st.error(f"Erro: {str(e)}")
+                st.error(f"Erro ao gerar PDF: {str(e)}")
