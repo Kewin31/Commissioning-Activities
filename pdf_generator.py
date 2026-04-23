@@ -1,4 +1,4 @@
-# pdf_generator.py - Versão Final com Gráfico de Motivos Melhorado
+# pdf_generator.py - Versão Final com Análise de Motivos de Revisão
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -105,99 +105,125 @@ def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, rev
     return fig
 
 def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
-    """
-    Gera gráfico de pizza para motivos de revisão
-    Versão com labels externas, porcentagens coloridas e círculo central
-    """
-    fig, ax = plt.subplots(figsize=(14, 9))
+    """Gera gráfico de pizza para motivos de revisão - VERSÃO MELHORADA"""
+    fig, ax = plt.subplots(figsize=(10, 7))
     
-    # Paleta de cores expandida
-    cores = [
-        '#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
-        '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
-        '#FF6F00', '#4A148C', '#0D47A1', '#B71C1C', '#004D40',
-        '#BF360C', '#311B92', '#1A237E', '#0D5302', '#827717'
-    ]
+    cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
+             '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
+             '#FF6F00', '#4A148C', '#0D47A1', '#B71C1C', '#004D40']
     
-    # Preparar dados
-    valores = motivos_count.values.tolist()
-    labels_originais = motivos_count.index.tolist()
-    
-    # Criar labels encurtadas para o gráfico
-    labels_curtas = []
-    for nome in labels_originais:
-        if len(nome) > 25:
-            nome = nome[:22] + '...'
-        labels_curtas.append(nome)
-    
-    # Criar a pizza
-    wedges, texts = ax.pie(
-        valores,
-        labels=labels_curtas,
+    # Criar a pizza sem labels diretas para evitar sobreposição
+    wedges, texts, autotexts = ax.pie(
+        motivos_count.values,
+        labels=None,
+        autopct='',
         colors=cores[:len(motivos_count)],
         startangle=90,
-        labeldistance=1.08,
-        wedgeprops=dict(width=0.45, edgecolor='white', linewidth=2),
-        textprops={'fontsize': 8, 'color': '#333333', 'fontweight': 'bold'}
+        pctdistance=0.6,
+        explode=[0.03] * len(motivos_count)
     )
     
-    # Adicionar porcentagens DENTRO de cada fatia com cor de fundo
-    for i, (wedge, qtd) in enumerate(zip(wedges, valores)):
-        ang = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
-        x = np.cos(np.radians(ang)) * 0.65
-        y = np.sin(np.radians(ang)) * 0.65
+    # Criar legenda personalizada com porcentagens
+    legend_labels = []
+    for i, (motivo, qtd) in enumerate(zip(motivos_count.index, motivos_count.values)):
+        pct = (qtd / total_motivos * 100) if total_motivos > 0 else 0
         
-        pct_val = (qtd / total_motivos * 100) if total_motivos > 0 else 0
+        # Abreviar nomes muito longos
+        nome_curto = motivo
+        if len(nome_curto) > 35:
+            nome_curto = nome_curto[:32] + '...'
         
-        # Texto com porcentagem dentro da fatia
-        ax.annotate(
-            f'{pct_val:.1f}%',
-            xy=(x, y),
-            ha='center',
+        legend_labels.append(f'{nome_curto}\n{qtd} equip. ({pct:.1f}%)')
+    
+    # Adicionar legenda do lado direito
+    legend = ax.legend(
+        wedges,
+        legend_labels,
+        title="Motivos de Revisão",
+        loc='center left',
+        bbox_to_anchor=(1, 0, 0.5, 1),
+        fontsize=8,
+        title_fontsize=10,
+        frameon=True,
+        fancybox=True,
+        shadow=True,
+        borderpad=1
+    )
+    
+    # Adicionar quantidade no centro
+    centre_circle = plt.Circle((0, 0), 0.50, fc='white', linewidth=2, edgecolor='#e0e0e0')
+    ax.add_artist(centre_circle)
+    
+    ax.text(0, 0, f'{total_motivos}', 
+            ha='center', va='center', fontsize=20, fontweight='bold', color='#333333')
+    ax.text(0, -0.12, 'equipamentos', 
+            ha='center', va='center', fontsize=9, color='#666666')
+    ax.text(0, -0.22, 'com motivo', 
+            ha='center', va='center', fontsize=9, color='#666666')
+    
+    ax.set_title(f'Distribuição dos Motivos de Revisão', 
+                 fontsize=12, fontweight='bold', pad=20, color='#1f2937')
+    
+    plt.tight_layout()
+    return fig
+
+def gerar_grafico_motivos_barras(motivos_count, total_motivos):
+    """Gera gráfico de barras horizontais para motivos de revisão"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Ordenar por quantidade
+    motivos_sorted = motivos_count.sort_values(ascending=True)
+    
+    cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
+             '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
+             '#FF6F00', '#4A148C', '#0D47A1', '#B71C1C', '#004D40']
+    
+    # Criar barras horizontais
+    bars = ax.barh(
+        range(len(motivos_sorted)),
+        motivos_sorted.values,
+        color=cores[:len(motivos_sorted)],
+        edgecolor='white',
+        linewidth=1.5,
+        height=0.7
+    )
+    
+    # Adicionar labels
+    for i, (motivo, qtd) in enumerate(zip(motivos_sorted.index, motivos_sorted.values)):
+        pct = (qtd / total_motivos * 100) if total_motivos > 0 else 0
+        
+        # Nome abreviado para o eixo Y
+        nome_curto = motivo
+        if len(nome_curto) > 40:
+            nome_curto = nome_curto[:37] + '...'
+        
+        # Label no final da barra
+        ax.text(
+            qtd + max(motivos_sorted.values) * 0.02,
+            i,
+            f'{qtd} ({pct:.1f}%)',
             va='center',
             fontsize=9,
             fontweight='bold',
-            color='white',
-            bbox=dict(
-                boxstyle="round,pad=0.3",
-                fc=cores[i],
-                ec='white',
-                alpha=0.9,
-                linewidth=1
-            )
+            color='#333333'
         )
     
-    # Círculo central
-    centre_circle = plt.Circle((0, 0), 0.30, fc='white', linewidth=1.5, edgecolor='#e0e0e0')
-    ax.add_artist(centre_circle)
-    
-    # Texto central
-    ax.text(0, 0.06, f'{total_motivos}', ha='center', va='center', 
-            fontsize=24, fontweight='bold', color='#1f2937')
-    ax.text(0, -0.08, 'equipamentos', ha='center', va='center', 
-            fontsize=10, color='#666666')
-    ax.text(0, -0.18, 'com motivo', ha='center', va='center', 
-            fontsize=9, color='#999999')
-    
-    # Título principal
+    # Configurar eixos
+    ax.set_yticks(range(len(motivos_sorted)))
+    ax.set_yticklabels([m[:40] + '...' if len(m) > 40 else m for m in motivos_sorted.index], fontsize=8)
+    ax.set_xlabel('Quantidade de Equipamentos', fontsize=10, color='#666666')
     ax.set_title(
-        'Distribuição dos Motivos de Revisão',
-        fontsize=14,
+        f'Distribuição dos Motivos de Revisão\nTotal: {total_motivos} equipamentos',
+        fontsize=12,
         fontweight='bold',
-        pad=30,
+        pad=15,
         color='#1f2937'
     )
     
-    # Legenda complementar (para labels que foram encurtadas)
-    legend_labels = []
-    for original, curto in zip(labels_originais, labels_curtas):
-        if original != curto:
-            legend_labels.append(f'{curto} = {original}')
-    
-    if legend_labels:
-        ax.text(0, -1.2, '\n'.join(legend_labels), 
-                ha='center', va='top', fontsize=6, color='#999999',
-                style='italic', transform=ax.transAxes)
+    ax.set_xlim(0, max(motivos_sorted.values) * 1.3)
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     
     plt.tight_layout()
     return fig
@@ -567,7 +593,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         # Tabela de motivos
         pdf.set_font('Arial', 'B', 8)
         pdf.set_fill_color(200, 220, 240)
-        pdf.cell(85, 7, 'Motivo', 1, 0, 'C', 1)
+        pdf.cell(80, 7, 'Motivo', 1, 0, 'C', 1)
         pdf.cell(30, 7, 'Quantidade', 1, 0, 'C', 1)
         pdf.cell(30, 7, 'Percentual', 1, 1, 'C', 1)
         
@@ -590,25 +616,30 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             else:
                 pdf.set_text_color(0, 0, 0)
             
-            pdf.cell(85, 6, motivo[:50], 1, 0, 'L')
+            pdf.cell(80, 6, motivo[:45], 1, 0, 'L')
             pdf.cell(30, 6, str(qtd), 1, 0, 'C')
             pdf.cell(30, 6, f'{pct:.1f}%', 1, 1, 'C')
         
         pdf.set_text_color(0, 0, 0)
         pdf.ln(3)
         
-        # Gráfico de motivos
-        if pdf.get_y() > 140:
+        # Gráfico de motivos (pizza melhorada ou barras)
+        if pdf.get_y() > 160:
             pdf.add_page()
         
+        # Escolha o tipo de gráfico:
+        # OPÇÃO 1: Pizza com legenda externa (recomendado para PDF)
         fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
+        
+        # OPÇÃO 2: Barras horizontais (alternativa mais limpa)
+        # fig_motivos = gerar_grafico_motivos_barras(motivos_count, total_com_motivo)
         
         temp_img_motivos = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
         fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='white')
         plt.close(fig_motivos)
         
-        # Imagem mais larga para acomodar labels externas
-        pdf.image(temp_img_motivos.name, x=5, w=200)
+        # Ajustar tamanho da imagem baseado no tipo de gráfico
+        pdf.image(temp_img_motivos.name, x=15, w=180)
         os.unlink(temp_img_motivos.name)
     
     # ============================================
