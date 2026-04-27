@@ -530,19 +530,19 @@ def mostrar_popup_calculos():
         <em>Total de equipamentos que já passaram pelo comissionamento</em><br><br>
         <strong>ETAPA 3 - VALIDADOS:</strong> Validados<br>
         <em>Total de equipamentos com processo concluído e validado</em><br><br>
-        <strong>GARGALO - EM REVISÃO:</strong> Necessário Revisão<br>
-        <em>Equipamentos que precisam de correções. Percentual calculado sobre o total de comissionados</em><br><br>
+        <strong>GARGALO - TOTAL DE REVISÃO:</strong> Equipamentos com status "Necessário Revisão" que possuem motivo de revisão preenchido<br>
+        <em>Total acumulado de equipamentos que passaram por revisão. Percentual calculado sobre o total de comissionados</em><br><br>
         <strong>ETAPA 1 → 2 (já comissionados):</strong> Comissionados / Desenvolvidos × 100<br>
         <em>Percentual dos desenvolvidos que avançaram para comissionamento</em><br><br>
         <strong>ETAPA 2 → 3 (já validados):</strong> Validados / Comissionados × 100<br>
         <em>Percentual dos comissionados que foram validados</em><br><br>
-        <strong>Total de Revisão:</strong> Equipamentos com status "Necessário Revisão" que possuem motivo de revisão preenchido<br>
-        <em>Quantidade de equipamentos que efetivamente passaram por revisão com motivo registrado</em><br><br>
+        <strong>GARGALO (% dos comissionados):</strong> Total de Revisão / Comissionados × 100<br>
+        <em>Percentual dos comissionados que passaram por revisão</em><br><br>
         <strong>Legenda:</strong><br>
         • <span style="color:#2E7D32;">Desenvolvidos</span>: Já iniciaram o fluxo<br>
         • <span style="color:#028a9f;">Comissionados</span>: Já passaram pelo comissionamento<br>
         • <span style="color:#005973;">Validados</span>: Processo concluído<br>
-        • <span style="color:#F57C00;">Em Revisão</span>: Aguardando correções
+        • <span style="color:#F57C00;">Total de Revisão</span>: Equipamentos que passaram por revisão com motivo registrado
     </div>
     """
     return popup_html
@@ -682,9 +682,8 @@ def calcular_em_revisao(df):
     return len(df[df['Status'] == 'Necessário Revisão'])
 
 def calcular_total_revisao(df):
-    """Calcula o total de equipamentos em revisão que possuem motivo de revisão preenchido"""
-    return len(df[(df['Status'] == 'Necessário Revisão') & 
-                  (df['Motivo_Revisao'].notna()) & 
+    """Calcula o total acumulado de equipamentos que passaram por revisão (com motivo preenchido)"""
+    return len(df[(df['Motivo_Revisao'].notna()) & 
                   (df['Motivo_Revisao'] != '') &
                   (df['Motivo_Revisao'] != 'N/A')])
 
@@ -1194,14 +1193,13 @@ if not df_filtrado.empty:
     qtd_aguardando_valid = calcular_aguardando_validacao(df_filtrado)
     qtd_revisao = calcular_em_revisao(df_filtrado)
     
-    # Total de revisão (equipamentos em revisão com motivo preenchido)
+    # Total de revisão acumulado (todos que passaram por revisão com motivo)
     qtd_total_revisao = calcular_total_revisao(df_filtrado)
     
     # Taxas
     taxa_desenv_para_comiss = (qtd_comissionados_acum / qtd_desenvolvidos_acum * 100) if qtd_desenvolvidos_acum > 0 else 0
     taxa_comiss_para_valid = (qtd_validados_acum / qtd_comissionados_acum * 100) if qtd_comissionados_acum > 0 else 0
-    taxa_valid_sobre_desenv = (qtd_validados_acum / qtd_desenvolvidos_acum * 100) if qtd_desenvolvidos_acum > 0 else 0
-    # Percentual de revisão sobre comissionados
+    # Percentual do total de revisão sobre comissionados
     taxa_revisao_sobre_comiss = (qtd_total_revisao / qtd_comissionados_acum * 100) if qtd_comissionados_acum > 0 else 0
     
     # VISUALIZAÇÃO DO FLUXO
@@ -1270,8 +1268,8 @@ if not df_filtrado.empty:
         """, unsafe_allow_html=True)
     
     # ============================================
-    # GARGALO (CORRIGIDO)
-    # Usa Total de Revisão (motivo preenchido) como referência
+    # GARGALO - TOTAL DE REVISÃO ACUMULADO
+    # Mostra o total de equipamentos que passaram por revisão (40)
     # ============================================
     with col4:
         if qtd_total_revisao > 10:
@@ -1289,7 +1287,7 @@ if not df_filtrado.empty:
             <div style="text-align: center;">
                 <div style="font-size: 0.9rem; color: #6b7280;">GARGALO</div>
                 <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_total_revisao}</div>
-                <div style="font-weight: 500; font-size: 1.1rem;">Em Revisão</div>
+                <div style="font-weight: 500; font-size: 1.1rem;">Total de Revisão</div>
                 <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
                     {qtd_total_revisao} equipamentos que passaram por revisão
                 </div>
@@ -1687,7 +1685,7 @@ if not df_filtrado.empty:
                     'Validados (Acumulado)',
                     'Aguardando Comissionamento',
                     'Aguardando Validação',
-                    'Em Revisão (com motivo)'
+                    'Total de Revisão (acumulado)'
                 ],
                 'Quantidade': [
                     qtd_desenvolvidos_acum,
