@@ -302,6 +302,23 @@ st.markdown("""
     .info-popup strong {
         color: #005973;
     }
+    
+    .indicador-box {
+        background: white;
+        border-radius: 12px;
+        padding: 1.2rem 1.5rem;
+        margin: 1rem 0;
+        border-left: 4px solid #028a9f;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .indicador-box-emt {
+        border-left: 4px solid #028a9f;
+    }
+    
+    .indicador-box-eto {
+        border-left: 4px solid #005973;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -319,6 +336,14 @@ CORES = {
 }
 
 ORDEM_STATUS = ['Necessário Revisão', 'Pendente', 'Desenvolvido', 'Comissionado', 'Validado']
+
+# ============================================
+# META DE COMISSIONAMENTO 2026
+# ============================================
+META_2026 = {
+    'EMT': 1489,  # Energisa Mato Grosso
+    'ETO': None   # Energisa Tocantins - Não disponível
+}
 
 # ============================================
 # FUNÇÕES DE PROCESSAMENTO
@@ -530,7 +555,7 @@ def mostrar_popup_calculos():
         <em>Total de equipamentos que já passaram pelo comissionamento</em><br><br>
         <strong>ETAPA 3 - VALIDADOS:</strong> Validados<br>
         <em>Total de equipamentos com processo concluído e validado</em><br><br>
-        <strong>GARGALO - TOTAL DE REVISÃO:</strong> Equipamentos com status "Necessário Revisão" que possuem motivo de revisão preenchido<br>
+        <strong>GARGALO - TOTAL DE REVISÃO:</strong> Equipamentos com motivo de revisão preenchido<br>
         <em>Total acumulado de equipamentos que passaram por revisão. Percentual calculado sobre o total de comissionados</em><br><br>
         <strong>ETAPA 1 → 2 (já comissionados):</strong> Comissionados / Desenvolvidos × 100<br>
         <em>Percentual dos desenvolvidos que avançaram para comissionamento</em><br><br>
@@ -686,6 +711,22 @@ def calcular_total_revisao(df):
     return len(df[(df['Motivo_Revisao'].notna()) & 
                   (df['Motivo_Revisao'] != '') &
                   (df['Motivo_Revisao'] != 'N/A')])
+
+def calcular_comissionados_2026(df):
+    """Calcula quantos equipamentos foram comissionados em 2026"""
+    status_comissionados = ['Comissionado', 'Validado', 'Necessário Revisão']
+    return len(df[(df['Status'].isin(status_comissionados)) & (df['Ano'] == 2026)])
+
+def obter_data_primeiro_comissionamento(df):
+    """Obtém a data do primeiro comissionamento"""
+    status_comissionados = ['Comissionado', 'Validado', 'Necessário Revisão']
+    df_comiss = df[df['Status'].isin(status_comissionados)]
+    if df_comiss.empty or 'Criado' not in df_comiss.columns:
+        return None
+    data_min = df_comiss['Criado'].min()
+    if pd.isna(data_min):
+        return None
+    return data_min
 
 # ============================================
 # FUNÇÕES DE ANÁLISE DE MOTIVOS DE REVISÃO
@@ -935,6 +976,78 @@ def mostrar_analise_motivos(df_filtrado):
         file_name=f'analise_motivos_revisao_{datetime.now().strftime("%Y%m%d")}.csv',
         mime='text/csv',
     )
+
+# ============================================
+# FUNÇÃO PARA MOSTRAR INDICADORES DE COMISSIONAMENTO
+# ============================================
+def mostrar_indicadores_comissionamento(df_filtrado, empresa_selecionada):
+    """Mostra os indicadores de comissionamento por empresa"""
+    
+    if empresa_selecionada == "Todas":
+        # Mostrar para cada empresa individualmente
+        for empresa in ['EMT', 'ETO']:
+            df_emp = df_filtrado[df_filtrado['Empresa'] == empresa]
+            if not df_emp.empty:
+                _mostrar_indicador_empresa(df_emp, empresa)
+            else:
+                st.info(f"📌 Sem dados disponíveis para {empresa}")
+    else:
+        df_emp = df_filtrado[df_filtrado['Empresa'] == empresa_selecionada]
+        if not df_emp.empty:
+            _mostrar_indicador_empresa(df_emp, empresa_selecionada)
+        else:
+            st.info(f"📌 Sem dados disponíveis para {empresa_selecionada}")
+
+def _mostrar_indicador_empresa(df_emp, empresa):
+    """Mostra o indicador para uma empresa específica"""
+    
+    # Data do primeiro comissionamento
+    data_primeiro = obter_data_primeiro_comissionamento(df_emp)
+    
+    # Total comissionados em 2026
+    comissionados_2026 = calcular_comissionados_2026(df_emp)
+    
+    # Meta 2026
+    meta = META_2026.get(empresa)
+    
+    # Nome da empresa por extenso
+    nome_empresa = "Energisa Mato Grosso" if empresa == "EMT" else "Energisa Tocantins"
+    
+    # Classe CSS específica
+    classe_css = "indicador-box-emt" if empresa == "EMT" else "indicador-box-eto"
+    
+    # Construir o texto
+    texto_data = ""
+    if data_primeiro is not None:
+        data_formatada = formatar_data_portugues(data_primeiro)
+        texto_data = f"📅 Os comissionamentos realizados pela unidade <strong>{empresa} ({nome_empresa})</strong> tiveram início em <strong>{data_formatada}</strong>."
+    else:
+        texto_data = f"📅 Ainda não há registros de comissionamentos para a unidade <strong>{empresa} ({nome_empresa})</strong>."
+    
+    texto_meta = ""
+    texto_realizado = ""
+    
+    if meta is not None:
+        # EMT tem meta definida
+        percentual_meta = (comissionados_2026 / meta * 100) if meta > 0 else 0
+        
+        texto_meta = f"""<br><br>🎯 <strong>Previsão de equipamentos</strong> a serem comissionados durante o ano de 2026: <strong>{meta:,} Religadores/Reguladores</strong>."""
+        
+        texto_realizado = f"""<br><br>✅ <strong>Já foram comissionados {comissionados_2026} equipamentos</strong> (Religadores/Reguladores) em 2026, representando <strong>{percentual_meta:.1f}%</strong> da meta prevista para o ano."""
+    else:
+        # ETO não tem meta
+        texto_meta = f"""<br><br>⚠️ <strong>Previsão de equipamentos</strong> a serem comissionados em 2026: <strong>Não disponível</strong>."""
+        
+        texto_realizado = f"""<br><br>✅ <strong>Já foram comissionados {comissionados_2026} equipamentos</strong> em 2026."""
+    
+    # Exibir o indicador
+    st.markdown(f"""
+    <div class="indicador-box {classe_css}">
+        <div style="font-size: 0.95rem; line-height: 1.6; color: #1f2937;">
+            {texto_data}{texto_meta}{texto_realizado}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ============================================
 # INTERFACE PRINCIPAL
@@ -1269,7 +1382,6 @@ if not df_filtrado.empty:
     
     # ============================================
     # GARGALO - TOTAL DE REVISÃO ACUMULADO
-    # Mostra o total de equipamentos que passaram por revisão (40)
     # ============================================
     with col4:
         if qtd_total_revisao > 10:
@@ -1395,6 +1507,14 @@ if not df_filtrado.empty:
                     title_font=dict(size=14, color='#1f2937')
                 )
                 st.plotly_chart(fig_tipo, use_container_width=True)
+        
+        # ============================================
+        # NOVA SEÇÃO: INDICADORES DE COMISSIONAMENTO
+        # ============================================
+        st.markdown("---")
+        st.markdown("### 📅 Indicadores de Comissionamento por Unidade")
+        
+        mostrar_indicadores_comissionamento(df_filtrado, empresa_selecionada)
     
     # ============================================
     # TAB 2: EVOLUÇÃO TEMPORAL
