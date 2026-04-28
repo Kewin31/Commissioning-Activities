@@ -1084,7 +1084,7 @@ st.markdown(f"""
         </div>
         <div class="header-titulo">
             <h1>Monitoring Center</h1>
-            <p>Acompanhamento de Comissionamento das unidades - EMT | ETO</p>
+            <p> Radar de Comissionamento SCADA das unidades - EMT | ETO</p>
         </div>
         <div class="header-data">
             📅 {datetime.now().strftime('%d/%m/%Y')}
