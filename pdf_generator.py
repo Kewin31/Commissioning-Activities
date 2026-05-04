@@ -853,11 +853,31 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'Documento Elaborado por:', 0, 1, 'L')
+    
+    # SRE 1
     pdf.set_font('Arial', '', 10)
     pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira - SRE', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 100, 100)
     pdf.cell(0, 4, 'kewin.ferreira@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    # SRE 2
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Pierry de Freitas Perez - SRE', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'pierry.perez@energisa.com.br', 0, 1, 'L')
+    pdf.ln(2)
+    
+    # SRE 3
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 5, 'Edilson Soares de Araujo Filho - SRE', 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 9)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 4, 'esoares.filho@reenergisa.com.br', 0, 1, 'L')
     pdf.ln(8)
     
     pdf.set_font('Arial', 'B', 10)
@@ -919,6 +939,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(150, 150, 150)
     pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
     
+      
     # Gerar arquivo
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
         pdf.output(tmp.name)
