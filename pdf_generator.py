@@ -371,7 +371,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.ln(3)
     
     # ============================================
-    # 1. INDICADORES DE COMISSIONAMENTO (NOVO)
+    # 1. INDICADORES DE COMISSIONAMENTO
     # ============================================
     y_pos = pdf.get_y() + 3
     
@@ -490,7 +490,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(120, 120, 120)
     pdf.cell(0, 3, f'Processo concluído', 0, 1)
     
-    # GARGALO: TOTAL DE REVISÃO (CORRIGIDO)
+    # GARGALO: TOTAL DE REVISÃO
     pdf.set_fill_color(240, 248, 255)
     pdf.rect(160, card_y, 40, 52, 'F')
     pdf.set_xy(162, card_y + 4)
@@ -854,7 +854,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 6, 'Documento Elaborado por:', 0, 1, 'L')
     
-    # SRE 1
+    # SRE 1 - Kewin
     pdf.set_font('Arial', '', 10)
     pdf.cell(0, 5, 'Kewin Marcel Ramirez Ferreira - SRE', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
@@ -862,7 +862,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 4, 'kewin.ferreira@energisa.com.br', 0, 1, 'L')
     pdf.ln(2)
     
-    # SRE 2
+    # SRE 2 - Pierry
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 5, 'Pierry de Freitas Perez - SRE', 0, 1, 'L')
@@ -871,7 +871,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.cell(0, 4, 'pierry.perez@energisa.com.br', 0, 1, 'L')
     pdf.ln(2)
     
-    # SRE 3
+    # SRE 3 - Edilson
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 5, 'Edilson Soares de Araujo Filho - SRE', 0, 1, 'L')
@@ -939,7 +939,6 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.set_text_color(150, 150, 150)
     pdf.cell(0, 5, f'Energisa - Comissionamento SCADA | Unidade {empresa} | Página {pdf.page_no()}', 0, 0, 'C')
     
-      
     # Gerar arquivo
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
         pdf.output(tmp.name)
