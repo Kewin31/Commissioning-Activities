@@ -306,16 +306,16 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
             motivos_count = df_motivos['Motivo_Revisao'].value_counts()
             total_com_motivo = len(df_motivos)
     
-    # Texto do período
+    # Texto do período para o acumulado (CORRIGIDO - sem duplicar "Acumulado")
     periodo_acumulado_texto = ""
     if mes_selecionado and mes_selecionado != "Todos os Meses":
-        periodo_acumulado_texto = f"Acumulado até {mes_selecionado}"
+        periodo_acumulado_texto = f"ATÉ {mes_selecionado}"
         if ano_selecionado and ano_selecionado != "Todos os Anos":
             periodo_acumulado_texto += f"/{ano_selecionado}"
     elif ano_selecionado and ano_selecionado != "Todos os Anos":
-        periodo_acumulado_texto = f"Acumulado até {ano_selecionado}"
+        periodo_acumulado_texto = f"ATÉ {ano_selecionado}"
     else:
-        periodo_acumulado_texto = "Acumulado Geral (Todos os períodos)"
+        periodo_acumulado_texto = "GERAL (TODOS OS PERÍODOS)"
     
     # ============================================
     # CRIAR PDF
@@ -685,15 +685,17 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         os.unlink(temp_img_motivos.name)
     
     # ============================================
-    # ACUMULADO ATÉ O PERÍODO
+    # ACUMULADO ATÉ O PERÍODO (CORRIGIDO)
     # ============================================
     pdf.add_page()
     
+    # Define o número da seção baseado se tem motivos ou não
     secao_num = '6.' if tem_motivos else '5.'
     pdf.set_y(25)
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(0, 89, 115)
-    pdf.cell(0, 8, f'{secao_num} ACUMULADO {periodo_acumulado_texto.upper()}', 0, 1, 'L')
+    # CORREÇÃO: Não duplica a palavra "Acumulado"
+    pdf.cell(0, 8, f'{secao_num} ACUMULADO {periodo_acumulado_texto}', 0, 1, 'L')
     pdf.set_draw_color(2, 138, 159)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
@@ -704,7 +706,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         comissionados_acum_total, 
         validados_acum_total, 
         total_revisao_acum,
-        periodo_acumulado_texto
+        f"Acumulado {periodo_acumulado_texto}"
     )
     
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
@@ -718,7 +720,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, f'Resumo {periodo_acumulado_texto}:', 0, 1, 'L')
+    pdf.cell(0, 6, f'Resumo do período:', 0, 1, 'L')
     pdf.set_font('Arial', '', 9)
     pdf.cell(0, 5, f'Total de Equipamentos Desenvolvidos: {desenvolvidos_acum_total}', 0, 1)
     pdf.cell(0, 5, f'Equipamentos Comissionados (Acumulado): {comissionados_acum_total} ({pct_comiss_total:.1f}% dos desenvolvidos)', 0, 1)
