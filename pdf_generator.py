@@ -325,6 +325,13 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     pdf.add_page()
     
     # ============================================
+    # DEFINIR COR DE FUNDO DO RELATÓRIO (#F2F2F2)
+    # ============================================
+    # Adiciona retângulo de fundo em todas as páginas
+    pdf.set_fill_color(242, 242, 242)  # #F2F2F2 em RGB
+    pdf.rect(0, 0, 210, 297, 'F')  # Preenche toda a página A4
+    
+    # ============================================
     # CABEÇALHO
     # ============================================
     try:
@@ -622,6 +629,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     if tem_motivos:
         if pdf.get_y() > 200:
             pdf.add_page()
+            # Adiciona fundo na nova página
+            pdf.set_fill_color(242, 242, 242)
+            pdf.rect(0, 0, 210, 297, 'F')
         
         motivos_y = pdf.get_y() + 5
         
@@ -674,6 +684,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         # Gráfico de motivos (pizza)
         if pdf.get_y() > 160:
             pdf.add_page()
+            # Adiciona fundo na nova página
+            pdf.set_fill_color(242, 242, 242)
+            pdf.rect(0, 0, 210, 297, 'F')
         
         fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
         
@@ -688,6 +701,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # ACUMULADO ATÉ O PERÍODO (CORRIGIDO)
     # ============================================
     pdf.add_page()
+    # Adiciona fundo na nova página
+    pdf.set_fill_color(242, 242, 242)
+    pdf.rect(0, 0, 210, 297, 'F')
     
     # Define o número da seção baseado se tem motivos ou não
     secao_num = '6.' if tem_motivos else '5.'
@@ -740,6 +756,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # PERFORMANCE POR RESPONSÁVEL
     # ============================================
     pdf.add_page()
+    # Adiciona fundo na nova página
+    pdf.set_fill_color(242, 242, 242)
+    pdf.rect(0, 0, 210, 297, 'F')
     
     secao_perf = '7.' if tem_motivos else '6.'
     pdf.set_y(25)
@@ -842,6 +861,9 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     # EQUIPE RESPONSÁVEL (ASSINATURAS)
     # ============================================
     pdf.add_page()
+    # Adiciona fundo na nova página
+    pdf.set_fill_color(242, 242, 242)
+    pdf.rect(0, 0, 210, 297, 'F')
     
     secao_equipe = '8.' if tem_motivos else '7.'
     pdf.set_y(30)
