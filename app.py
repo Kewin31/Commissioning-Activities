@@ -211,7 +211,7 @@ st.markdown("""
         transition: all 0.2s;
         text-align: center;
         height: 100%;
-        min-height: 220px;
+        min-height: 240px;
         display: flex;
         flex-direction: column;
     }
@@ -1367,6 +1367,25 @@ if not df_filtrado.empty:
     # ETAPA 1: DESENVOLVIDOS
     # ============================================
     with col1:
+        # Determinar o texto do box baseado na empresa selecionada
+        box_background = "#f3f4f6"
+        box_content = ""
+        
+        if empresa_selecionada == "EMT":
+            # EMT tem meta definida de 1489
+            meta_emt = META_2026.get('EMT', 1489)
+            percentual_meta = (qtd_desenvolvidos_acum / meta_emt * 100) if meta_emt > 0 else 0
+            box_content = f"<strong>🎯 Meta: {meta_emt:,}<br>📊 Progresso: {percentual_meta:.1f}%</strong>"
+            box_background = "#e8f5e9"  # Verde claro
+        elif empresa_selecionada == "ETO":
+            # ETO não tem meta definida
+            box_content = "<strong>Sem definição da quantidade total</strong>"
+            box_background = "#fff3e0"  # Laranja claro
+        else:
+            # "Todas" selecionado - não faz sentido mostrar meta
+            box_content = "<strong>Sem definição da quantidade total</strong>"
+            box_background = "#f3f4f6"  # Cinza claro
+        
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
             <div class="etapa-titulo">ETAPA 1</div>
@@ -1375,8 +1394,8 @@ if not df_filtrado.empty:
             <div class="info-texto">
                 Aguardando comissionamento: <strong>{qtd_aguardando_comiss}</strong>
             </div>
-            <div class="percentual-box" style="background: #f3f4f6;">
-                <strong>Sem definição da quantidade total</strong>
+            <div class="percentual-box" style="background: {box_background};">
+                {box_content}
             </div>
         </div>
         """, unsafe_allow_html=True)
