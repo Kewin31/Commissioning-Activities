@@ -130,8 +130,12 @@ def filtrar_dados_acumulados_ate_periodo(df, mes_selecionado=None, ano_seleciona
     return df_result
 
 def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, revisao_total, periodo_texto=""):
-    """Gera gráfico de barras verticais para o acumulado"""
+    """Gera gráfico de barras verticais para o acumulado com fundo transparente"""
     fig, ax = plt.subplots(figsize=(8, 4))
+    
+    # Configurar fundo transparente
+    fig.patch.set_facecolor('none')
+    ax.set_facecolor('none')
     
     categorias = ['Comissionados\n(Acumulado)', 'Validados\n(Acumulado)', 'Total de\nRevisão']
     valores = [comissionados_acum, validados_acum, revisao_total]
@@ -156,16 +160,25 @@ def gerar_grafico_barras_vertical(total, comissionados_acum, validados_acum, rev
     titulo = f'Total de Equipamentos Desenvolvidos: {total}'
     if periodo_texto:
         titulo += f'\n{periodo_texto}'
-    ax.set_title(titulo, fontsize=11, fontweight='bold', pad=15)
+    ax.set_title(titulo, fontsize=11, fontweight='bold', pad=15, color='#1f2937')
     ax.set_ylim(0, max(valores) * 1.2 if max(valores) > 0 else 10)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
+    
+    # Configurar cores dos textos para manter legibilidade
+    ax.tick_params(colors='#333333')
+    ax.xaxis.label.set_color('#333333')
+    ax.yaxis.label.set_color('#333333')
     
     plt.tight_layout()
     return fig
 
 def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
-    """Gera gráfico de pizza para motivos de revisão"""
+    """Gera gráfico de pizza para motivos de revisão com fundo transparente"""
     fig, ax = plt.subplots(figsize=(10, 7))
+    
+    # Configurar fundo transparente
+    fig.patch.set_facecolor('none')
+    ax.set_facecolor('none')
     
     cores = ['#C62828', '#D32F2F', '#E53935', '#F57C00', '#6A1B9A', 
              '#1565C0', '#00838F', '#00695C', '#2E7D32', '#4527A0',
@@ -205,7 +218,11 @@ def gerar_grafico_motivos_pizza(motivos_count, total_motivos):
         borderpad=1
     )
     
-    centre_circle = plt.Circle((0, 0), 0.50, fc='white', linewidth=2, edgecolor='#e0e0e0')
+    # Configurar fundo da legenda
+    legend.get_frame().set_facecolor('#F2F2F2')
+    legend.get_frame().set_alpha(0.9)
+    
+    centre_circle = plt.Circle((0, 0), 0.50, fc='#F2F2F2', linewidth=2, edgecolor='#e0e0e0')
     ax.add_artist(centre_circle)
     
     ax.text(0, 0, f'{total_motivos}', 
@@ -691,7 +708,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
         fig_motivos = gerar_grafico_motivos_pizza(motivos_count, total_com_motivo)
         
         temp_img_motivos = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='white')
+        fig_motivos.savefig(temp_img_motivos.name, dpi=150, bbox_inches='tight', facecolor='#F2F2F2')
         plt.close(fig_motivos)
         
         pdf.image(temp_img_motivos.name, x=15, w=180)
@@ -726,7 +743,7 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     )
     
     temp_img = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-    fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='white')
+    fig.savefig(temp_img.name, dpi=150, bbox_inches='tight', facecolor='#F2F2F2')
     plt.close(fig)
     
     pdf.image(temp_img.name, x=30, w=150)
