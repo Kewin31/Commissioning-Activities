@@ -200,19 +200,59 @@ st.markdown("""
         backdrop-filter: blur(5px);
     }
     
+    /* Estilos para os cards de fluxo */
     .fluxo-container {
         background: white;
         border-radius: 16px;
-        padding: 1.5rem;
+        padding: 1rem 0.5rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 2rem;
+        margin-bottom: 0.5rem;
         border: 1px solid #e5e7eb;
         transition: all 0.2s;
+        text-align: center;
+        height: 100%;
+        min-height: 220px;
+        display: flex;
+        flex-direction: column;
     }
-    
+
     .fluxo-container:hover {
         box-shadow: 0 4px 12px rgba(0,89,115,0.1);
         border-color: #04d8d7;
+    }
+
+    .fluxo-container .etapa-titulo {
+        font-size: 0.75rem;
+        color: #6b7280;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .fluxo-container .valor-numero {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .fluxo-container .valor-titulo {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .fluxo-container .info-texto {
+        font-size: 0.7rem;
+        color: #6b7280;
+        margin: 0.5rem 0;
+        flex-grow: 1;
+    }
+
+    .fluxo-container .percentual-box {
+        border-radius: 20px;
+        padding: 0.4rem 0.3rem;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
     }
     
     .company-card {
@@ -1329,13 +1369,14 @@ if not df_filtrado.empty:
     with col1:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 1</div>
-                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Desenvolvido']};">{qtd_desenvolvidos_acum}</div>
-                <div style="font-weight: 500; font-size: 1.1rem;">Desenvolvidos</div>
-                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
-                    Aguardando comissionamento: <strong>{qtd_aguardando_comiss}</strong>
-                </div>
+            <div class="etapa-titulo">ETAPA 1</div>
+            <div class="valor-numero" style="color: {CORES['Desenvolvido']};">{qtd_desenvolvidos_acum}</div>
+            <div class="valor-titulo">Desenvolvidos</div>
+            <div class="info-texto">
+                Aguardando comissionamento: <strong>{qtd_aguardando_comiss}</strong>
+            </div>
+            <div class="percentual-box" style="background: #f3f4f6;">
+                <strong>Sem definição da quantidade total</strong>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1346,16 +1387,14 @@ if not df_filtrado.empty:
     with col2:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 2</div>
-                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Comissionado']};">{qtd_comissionados_acum}</div>
-                <div style="font-weight: 500; font-size: 1.1rem;">Comissionados</div>
-                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
-                    Aguardando validação: <strong>{qtd_aguardando_valid}</strong>
-                </div>
-                <div style="margin-top: 0.8rem; background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
-                    <strong>→ {taxa_desenv_para_comiss:.1f}%</strong> já comissionados
-                </div>
+            <div class="etapa-titulo">ETAPA 2</div>
+            <div class="valor-numero" style="color: {CORES['Comissionado']};">{qtd_comissionados_acum}</div>
+            <div class="valor-titulo">Comissionados</div>
+            <div class="info-texto">
+                Aguardando validação: <strong>{qtd_aguardando_valid}</strong>
+            </div>
+            <div class="percentual-box" style="background: #e0f7fa;">
+                <strong>→ {taxa_desenv_para_comiss:.1f}%</strong> já comissionados
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1366,16 +1405,14 @@ if not df_filtrado.empty:
     with col3:
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">ETAPA 3</div>
-                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Validado']};">{qtd_validados_acum}</div>
-                <div style="font-weight: 500; font-size: 1.1rem;">Validados</div>
-                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
-                    Processo concluído
-                </div>
-                <div style="margin-top: 0.8rem; background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
-                    <strong>✓ {taxa_comiss_para_valid:.1f}%</strong> já validados
-                </div>
+            <div class="etapa-titulo">ETAPA 3</div>
+            <div class="valor-numero" style="color: {CORES['Validado']};">{qtd_validados_acum}</div>
+            <div class="valor-titulo">Validados</div>
+            <div class="info-texto">
+                Processo concluído
+            </div>
+            <div class="percentual-box" style="background: #e0f7fa;">
+                <strong>✓ {taxa_comiss_para_valid:.1f}%</strong> já validados
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1396,16 +1433,14 @@ if not df_filtrado.empty:
         
         st.markdown(f"""
         <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
-            <div style="text-align: center;">
-                <div style="font-size: 0.9rem; color: #6b7280;">GARGALO</div>
-                <div style="font-size: 2.2rem; font-weight: 700; color: {CORES['Necessário Revisão']};">{qtd_total_revisao}</div>
-                <div style="font-weight: 500; font-size: 1.1rem;">Total de Revisão</div>
-                <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.3rem;">
-                    {qtd_total_revisao} equipamentos que passaram por revisão
-                </div>
-                <div style="margin-top: 0.8rem; background: #fff3e0; border-radius: 20px; padding: 0.5rem;">
-                    <strong>{icone} {taxa_revisao_sobre_comiss:.1f}%</strong> dos comissionados
-                </div>
+            <div class="etapa-titulo">GARGALO</div>
+            <div class="valor-numero" style="color: {CORES['Necessário Revisão']};">{qtd_total_revisao}</div>
+            <div class="valor-titulo">Total de Revisão</div>
+            <div class="info-texto">
+                {qtd_total_revisao} equipamentos que passaram por revisão
+            </div>
+            <div class="percentual-box" style="background: #fff3e0;">
+                <strong>{icone} {taxa_revisao_sobre_comiss:.1f}%</strong> dos comissionados
             </div>
         </div>
         """, unsafe_allow_html=True)
