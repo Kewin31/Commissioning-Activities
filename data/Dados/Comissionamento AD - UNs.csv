@@ -159,7 +159,7 @@
 "30477309","Carlos Thassius Ferreira Freire","79914857RO","EMT","Religador","Desenvolvido",,,"0","06/03/2026 10:44","06/03/2026 10:44","Carlos Thassius Ferreira Freire",
 "30523774","Samara Nobrega Freires","7946687086","ETO","Religador","Validado","Carlos Thassius Ferreira Freire","Kewin Marcel Ramirez Ferreira","0","29/04/2026 17:01","30/04/2026 10:35","Kewin Marcel Ramirez Ferreira","N/A"
 "30488530","Lucas Wesley Fideles de Andrade","7955790094","ETO","Religador","Desenvolvido",,,"0","09/03/2026 09:03","09/03/2026 09:03","Lucas Wesley Fideles de Andrade",
-"30487590","Lucas Wesley Fideles de Andrade","58814874SI","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","09/03/2026 09:05","12/05/2026 17:06","Pierre Michel Moreira Barbosa",
+"30487590","Lucas Wesley Fideles de Andrade","58814874SI","EMT","Regulador","Validado","Pierre Michel Moreira Barbosa","Pierry de Freitas Perez","0","09/03/2026 09:05","19/05/2026 11:54","Pierry de Freitas Perez",
 "30487583","Lucas Wesley Fideles de Andrade","58224194SI","EMT","Regulador","Desenvolvido",,,"0","09/03/2026 09:05","11/03/2026 14:31","Samara Nobrega Freires",
 "30491250","Lucas Wesley Fideles de Andrade","58408294TG","EMT","Regulador","Desenvolvido",,,"0","09/03/2026 09:13","09/03/2026 09:13","Lucas Wesley Fideles de Andrade",
 "30487631","Lucas Wesley Fideles de Andrade","58816316SI","EMT","Regulador","Desenvolvido",,,"0","09/03/2026 09:14","11/03/2026 14:30","Samara Nobrega Freires",
@@ -244,7 +244,7 @@
 "30477932","Bruno Vinicius da Silva Araujo","58813234ME","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 16:32","13/03/2026 16:32","Samara Nobrega Freires",
 "30477915","Bruno Vinicius da Silva Araujo","58137022ME","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 16:32","13/03/2026 16:32","Samara Nobrega Freires",
 "30477922","Bruno Vinicius da Silva Araujo","58826034ME","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 16:33","13/03/2026 16:33","Samara Nobrega Freires",
-"30478264","Bruno Vinicius da Silva Araujo","58413051ME","EMT","Regulador","Comissionado","Jhonatan Vieria Matos",,"0","13/03/2026 16:33","12/05/2026 08:40","Jhonatan Vieria Matos",
+"30478264","Bruno Vinicius da Silva Araujo","58413051ME","EMT","Regulador","Necessário Revisão","Jhonatan Vieria Matos","Pierry de Freitas Perez","0","13/03/2026 16:33","19/05/2026 12:41","Pierry de Freitas Perez","NOTA IMPEDITIVA NO EQUIPAMENTO"
 "30480501","Bruno Vinicius da Silva Araujo","5866752055","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","13/03/2026 16:35","04/05/2026 15:19","Kewin Marcel Ramirez Ferreira","N/A"
 "30472761","Samara Nobrega Freires","58116540RO","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 16:37","13/03/2026 16:37","Samara Nobrega Freires",
 "30472127","Samara Nobrega Freires","58167195RO","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 16:38","13/03/2026 16:38","Samara Nobrega Freires",
@@ -257,7 +257,7 @@
 "30487665","Bruno Vinicius da Silva Araujo","58221538SI","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:08","13/03/2026 17:08","Samara Nobrega Freires",
 "30532390","Samara Nobrega Freires","7965010157","ETO","Religador","Comissionado","Samara Nobrega Freires",,"0","25/02/2026 16:40","13/05/2026 12:28","Samara Nobrega Freires","N/A"
 "30480553","Bruno Vinicius da Silva Araujo","58165995TG","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:08","13/03/2026 17:08","Samara Nobrega Freires",
-"30480560","Bruno Vinicius da Silva Araujo","58173096TG","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:09","13/03/2026 17:09","Samara Nobrega Freires",
+"30480560","Bruno Vinicius da Silva Araujo","58173096TG","EMT","Regulador","Comissionado","Fabian Albuquerque de Souza",,"0","13/03/2026 17:09","20/05/2026 14:48","Fabian Albuquerque de Souza","N/A"
 "30472524","Samara Nobrega Freires","58126847RO","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:10","13/03/2026 17:10","Samara Nobrega Freires",
 "30472771","Samara Nobrega Freires","58847305RO","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:10","13/03/2026 17:10","Samara Nobrega Freires",
 "30480578","Bruno Vinicius da Silva Araujo","5846626131","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:11","04/05/2026 15:34","Kewin Marcel Ramirez Ferreira","N/A"
@@ -267,18 +267,19 @@
 "30480604","Bruno Vinicius da Silva Araujo","58873321TG","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:14","04/05/2026 15:35","Kewin Marcel Ramirez Ferreira","N/A"
 "30478365","Bruno Vinicius da Silva Araujo","58169590ME","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:15","13/03/2026 17:15","Samara Nobrega Freires",
 "30475993","Lucas Wesley Fideles de Andrade","58705158BG","EMT","Regulador","Validado","Jhonatan Vieria Matos","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:16","04/05/2026 15:37","Kewin Marcel Ramirez Ferreira","N/A"
-"30475965","Lucas Wesley Fideles de Andrade","58180383BG","EMT","Regulador","Comissionado","Jhonatan Vieria Matos",,"0","13/03/2026 17:18","08/05/2026 16:36","Jhonatan Vieria Matos",
+"30475965","Lucas Wesley Fideles de Andrade","58180383BG","EMT","Regulador","Validado","Jhonatan Vieria Matos","Pierry de Freitas Perez","0","13/03/2026 17:18","19/05/2026 12:25","Pierry de Freitas Perez",
 "30476016","Lucas Wesley Fideles de Andrade","58831032BG","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:19","13/03/2026 17:19","Samara Nobrega Freires",
 "30493671","Hugo da Silva Costa","5863384078","ETO","Regulador","Desenvolvido",,,"0","13/03/2026 17:24","13/03/2026 17:24","Hugo da Silva Costa",
 "30467108","Bruno Vinicius da Silva Araujo","58152505CA","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:41","13/03/2026 17:41","Samara Nobrega Freires",
 "30472773","Samara Nobrega Freires","5819817208","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:42","13/03/2026 17:42","Samara Nobrega Freires",
 "30472543","Samara Nobrega Freires","58827680RO","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:43","13/03/2026 17:43","Samara Nobrega Freires",
-"30531407","Samara Nobrega Freires","58872649TG","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:43","12/05/2026 16:04","Alisson Paranhos de Magalhaes",
-"30487687","Bruno Vinicius da Silva Araujo","58162894SI","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:44","13/03/2026 17:44","Samara Nobrega Freires",
+"30531407","Samara Nobrega Freires","58872649TG","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Pierry de Freitas Perez","0","13/03/2026 17:43","19/05/2026 12:39","Pierry de Freitas Perez",
+"30487687","Bruno Vinicius da Silva Araujo","58162894SI","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:44","14/05/2026 12:29","Alisson Paranhos de Magalhaes",
 "30487706","Bruno Vinicius da Silva Araujo","58138830SI","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:44","13/03/2026 17:44","Samara Nobrega Freires",
+"30532707","Samara Nobrega Freires","5867938149","ETO","Regulador","Comissionado","Samara Nobrega Freires",,"0","12/05/2026 10:30","20/05/2026 10:56","Samara Nobrega Freires","N/A"
 "30483245","Bruno Vinicius da Silva Araujo","58163256TG","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:45","13/03/2026 17:45","Samara Nobrega Freires",
-"30483266","Bruno Vinicius da Silva Araujo","58843193TG","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:45","13/03/2026 17:45","Samara Nobrega Freires",
-"30483273","Bruno Vinicius da Silva Araujo","58872671JN","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:46","13/03/2026 17:46","Samara Nobrega Freires",
+"30483266","Bruno Vinicius da Silva Araujo","58843193TG","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","13/03/2026 17:45","14/05/2026 13:39","Pierre Michel Moreira Barbosa",
+"30483273","Bruno Vinicius da Silva Araujo","58872671JN","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:46","15/05/2026 13:32","Alisson Paranhos de Magalhaes",
 "30483281","Bruno Vinicius da Silva Araujo","58870163JN","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:47","13/03/2026 17:47","Samara Nobrega Freires",
 "30483292","Bruno Vinicius da Silva Araujo","5804114055","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:47","06/05/2026 17:03","Alisson Paranhos de Magalhaes",
 "30475828","Lucas Wesley Fideles de Andrade","5879375154","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:48","04/05/2026 15:38","Kewin Marcel Ramirez Ferreira","N/A"
@@ -294,7 +295,7 @@
 "30487755","Bruno Vinicius da Silva Araujo","5828700058","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:54","04/05/2026 15:40","Kewin Marcel Ramirez Ferreira","N/A"
 "30492490","Bruno Vinicius da Silva Araujo","58846169SI","EMT","Regulador","Validado","Jhonatan Vieria Matos","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:54","04/05/2026 15:41","Kewin Marcel Ramirez Ferreira","N/A"
 "30492497","Bruno Vinicius da Silva Araujo","58864277SI","EMT","Regulador","Validado","Jhonatan Vieria Matos","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:55","04/05/2026 15:42","Kewin Marcel Ramirez Ferreira","N/A"
-"30483321","Bruno Vinicius da Silva Araujo","X51496181","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:56","13/03/2026 17:56","Samara Nobrega Freires",
+"30483321","Bruno Vinicius da Silva Araujo","X51496181","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:56","19/05/2026 16:56","Alisson Paranhos de Magalhaes",
 "30492500","Bruno Vinicius da Silva Araujo","58223311SI","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","13/03/2026 17:56","04/05/2026 15:42","Kewin Marcel Ramirez Ferreira","N/A"
 "30475998","Lucas Wesley Fideles de Andrade","58804182BG","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","13/03/2026 17:57","08/05/2026 16:55","Alisson Paranhos de Magalhaes",
 "30492511","Bruno Vinicius da Silva Araujo","5820917024","EMT","Regulador","Desenvolvido",,,"0","13/03/2026 17:57","13/03/2026 17:57","Samara Nobrega Freires",
@@ -327,7 +328,7 @@
 "30367263","Lucas Wesley Fideles de Andrade","58830441ME","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","16/03/2026 08:37","04/05/2026 15:45","Kewin Marcel Ramirez Ferreira","N/A"
 "30474365","Samara Nobrega Freires","58216397CA","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","16/03/2026 08:38","04/05/2026 15:45","Kewin Marcel Ramirez Ferreira","N/A"
 "30474371","Bruno Vinicius da Silva Araujo","58818126CA","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","16/03/2026 08:39","04/05/2026 15:51","Kewin Marcel Ramirez Ferreira","N/A"
-"30474385","Bruno Vinicius da Silva Araujo","58844088CA","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 08:40","16/03/2026 08:40","Samara Nobrega Freires",
+"30474385","Bruno Vinicius da Silva Araujo","58844088CA","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","16/03/2026 08:40","20/05/2026 17:02","Pierre Michel Moreira Barbosa",
 "30474412","Bruno Vinicius da Silva Araujo","5863275069","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 08:41","16/03/2026 08:41","Samara Nobrega Freires",
 "30435634","Lucas Wesley Fideles de Andrade","58703750CA","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 08:41","16/03/2026 08:41","Samara Nobrega Freires",
 "30423983","Bruno Vinicius da Silva Araujo","58806853BG","EMT","Regulador","Comissionado","Jhonatan Vieria Matos",,"0","16/03/2026 08:42","08/05/2026 10:05","Jhonatan Vieria Matos",
@@ -379,12 +380,12 @@
 "30475991","Lucas Wesley Fideles de Andrade","58402985CF","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:15","16/03/2026 09:15","Samara Nobrega Freires",
 "30435590","Lucas Wesley Fideles de Andrade","58847734RO","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:16","16/03/2026 09:16","Samara Nobrega Freires",
 "30468170","Carlos Thassius Ferreira Freire","58882630SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:17","16/03/2026 09:17","Samara Nobrega Freires",
-"30372041","Samara Nobrega Freires","58706950SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:17","16/03/2026 09:17","Samara Nobrega Freires",
+"30372041","Samara Nobrega Freires","58706950SI","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","16/03/2026 09:17","14/05/2026 11:28","Pierre Michel Moreira Barbosa",
 "30367321","Lucas Wesley Fideles de Andrade","58800076SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:18","16/03/2026 09:18","Samara Nobrega Freires",
 "30367269","Lucas Wesley Fideles de Andrade","58834802SI","EMT","Regulador","Validado","Pierre Michel Moreira Barbosa","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:18","04/05/2026 16:18","Kewin Marcel Ramirez Ferreira",
 "30367284","Lucas Wesley Fideles de Andrade","58400928SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:19","16/03/2026 09:19","Samara Nobrega Freires",
-"30372104","Samara Nobrega Freires","5845984198","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:20","16/03/2026 09:20","Samara Nobrega Freires",
-"30358016","Hugo da Silva Costa","58802665SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:21","16/03/2026 09:21","Samara Nobrega Freires",
+"30372104","Samara Nobrega Freires","5845984198","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","16/03/2026 09:20","19/05/2026 14:19","Pierre Michel Moreira Barbosa",
+"30358016","Hugo da Silva Costa","58802665SI","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa",,"0","16/03/2026 09:21","15/05/2026 10:21","Pierre Michel Moreira Barbosa",
 "30374959","Lucas Wesley Fideles de Andrade","5805987139","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:22","16/03/2026 09:22","Samara Nobrega Freires",
 "30472943","Samara Nobrega Freires","5879936103","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:22","16/03/2026 09:22","Samara Nobrega Freires",
 "30387788","Lucas Wesley Fideles de Andrade","58903217ME","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:23","16/03/2026 09:23","Samara Nobrega Freires",
@@ -392,7 +393,7 @@
 "30467308","Bruno Vinicius da Silva Araujo","5814902125","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:27","16/03/2026 09:27","Samara Nobrega Freires",
 "30480525","Bruno Vinicius da Silva Araujo","5816091073","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:28","16/03/2026 09:28","Samara Nobrega Freires",
 "30472897","Samara Nobrega Freires","5818821194","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:28","04/05/2026 16:20","Kewin Marcel Ramirez Ferreira","N/A"
-"30472537","Samara Nobrega Freires","5819315034","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:29","16/03/2026 09:29","Samara Nobrega Freires",
+"30472537","Samara Nobrega Freires","5819315034","EMT","Regulador","Comissionado","Fabian Albuquerque de Souza",,"0","16/03/2026 09:29","18/05/2026 14:46","Fabian Albuquerque de Souza","N/A"
 "30424966","Hugo da Silva Costa","58107794SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:35","16/03/2026 09:35","Samara Nobrega Freires",
 "30472583","Samara Nobrega Freires","58112388RO","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:35","04/05/2026 16:23","Kewin Marcel Ramirez Ferreira","N/A"
 "30424930","Lucas Wesley Fideles de Andrade","58116180ME","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 09:36","16/03/2026 09:36","Samara Nobrega Freires",
@@ -430,7 +431,7 @@
 "30424839","Samara Nobrega Freires","58848710CF","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:35","16/03/2026 10:35","Samara Nobrega Freires",
 "30474439","Bruno Vinicius da Silva Araujo","58844439CA","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:37","16/03/2026 10:37","Samara Nobrega Freires",
 "30483308","Bruno Vinicius da Silva Araujo","58842711TG","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:39","16/03/2026 10:39","Samara Nobrega Freires",
-"30487710","Bruno Vinicius da Silva Araujo","58842189SI","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:39","16/03/2026 10:39","Samara Nobrega Freires",
+"30487710","Bruno Vinicius da Silva Araujo","58842189SI","EMT","Regulador","Comissionado","Jhonatan Vieria Matos",,"0","16/03/2026 10:39","19/05/2026 15:01","Jhonatan Vieria Matos",
 "30474377","Bruno Vinicius da Silva Araujo","58839487CA","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:42","16/03/2026 10:42","Samara Nobrega Freires",
 "30472747","Samara Nobrega Freires","58837289RO","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:43","16/03/2026 10:43","Samara Nobrega Freires",
 "30476022","Lucas Wesley Fideles de Andrade","58832049CF","EMT","Regulador","Desenvolvido",,,"0","16/03/2026 10:44","16/03/2026 10:44","Samara Nobrega Freires",
@@ -462,7 +463,7 @@
 "30507235","Carlos Thassius Ferreira Freire","79813239ME","EMT","Religador","Desenvolvido",,,"0","31/03/2026 16:56","31/03/2026 16:56","Carlos Thassius Ferreira Freire",
 "30507116","Carlos Thassius Ferreira Freire",,"EMT","Regulador","Desenvolvido",,,"0","31/03/2026 17:26","31/03/2026 17:26","Carlos Thassius Ferreira Freire",
 "30509171","Hugo da Silva Costa","5863000094","ETO","Regulador","Desenvolvido",,,"0","01/04/2026 10:42","01/04/2026 10:42","Hugo da Silva Costa",
-"30507074","Samara Nobrega Freires","79219458ME","EMT","Religador","Desenvolvido",,,"0","01/04/2026 10:46","01/04/2026 10:46","Samara Nobrega Freires",
+"30507074","Samara Nobrega Freires","79219458ME","EMT","Religador","Comissionado","Alisson Paranhos de Magalhaes",,"0","01/04/2026 10:46","20/05/2026 17:00","Alisson Paranhos de Magalhaes",
 "30507058","Samara Nobrega Freires","79826236ME","EMT","Religador","Desenvolvido",,,"0","01/04/2026 10:49","01/04/2026 10:49","Samara Nobrega Freires",
 "30507051","Samara Nobrega Freires","79008281ME","EMT","Religador","Desenvolvido",,,"0","01/04/2026 10:52","01/04/2026 10:52","Samara Nobrega Freires",
 "30508281","Carlos Thassius Ferreira Freire","79863519ME","EMT","Religador","Desenvolvido",,,"0","01/04/2026 15:41","01/04/2026 15:41","Carlos Thassius Ferreira Freire",
@@ -486,7 +487,7 @@
 "30518614","Samara Nobrega Freires","58815904SI","EMT","Regulador","Desenvolvido",,,"0","14/04/2026 10:32","14/04/2026 10:32","Samara Nobrega Freires",
 "30517775","Samara Nobrega Freires","7962635060","ETO","Religador","Desenvolvido",,,"0","15/04/2026 11:22","15/04/2026 11:22","Samara Nobrega Freires",
 "30519832","Samara Nobrega Freires","58864648SI","EMT","Regulador","Desenvolvido",,,"0","15/04/2026 12:33","15/04/2026 12:33","Samara Nobrega Freires",
-"30519746","Carlos Thassius Ferreira Freire","58816375SI","EMT","Regulador","Comissionado","Fabian Albuquerque de Souza",,"0","15/04/2026 15:21","13/05/2026 14:12","Fabian Albuquerque de Souza","N/A"
+"30519746","Carlos Thassius Ferreira Freire","58816375SI","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Pierry de Freitas Perez","0","15/04/2026 15:21","19/05/2026 17:22","Pierry de Freitas Perez","N/A"
 "30519797","Carlos Thassius Ferreira Freire","58824426SI","EMT","Regulador","Desenvolvido",,,"0","15/04/2026 15:29","15/04/2026 15:29","Carlos Thassius Ferreira Freire",
 "30519805","Carlos Thassius Ferreira Freire","58178292SI","EMT","Regulador","Desenvolvido",,,"0","15/04/2026 16:35","15/04/2026 16:35","Carlos Thassius Ferreira Freire",
 "30519792","Carlos Thassius Ferreira Freire","58217981SI","EMT","Regulador","Desenvolvido",,,"0","15/04/2026 16:36","15/04/2026 16:36","Carlos Thassius Ferreira Freire",
@@ -500,8 +501,8 @@
 "30522578","Samara Nobrega Freires","58901864SI","EMT","Regulador","Desenvolvido",,,"0","23/04/2026 08:13","23/04/2026 08:13","Samara Nobrega Freires",
 "30472561","Samara Nobrega Freires","58835462RO","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","13/03/2026 15:34","05/05/2026 08:18","Kewin Marcel Ramirez Ferreira","OUTROS"
 "30467072","Bruno Vinicius da Silva Araujo","58161477CA","EMT","Regulador","Necessário Revisão","Fabian Albuquerque de Souza","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:53","04/05/2026 16:26","Kewin Marcel Ramirez Ferreira","EQUIPAMENTO ERRADO NA EVIDENCIA DO RELATÓRIO"
-"30372056","Samara Nobrega Freires","58874879SI","EMT","Regulador","Necessário Revisão","Pierre Michel Moreira Barbosa","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:19","04/05/2026 16:20","Kewin Marcel Ramirez Ferreira","EQUIPAMENTO ERRADO NA EVIDENCIA DO RELATÓRIO"
-"30523334","Samara Nobrega Freires","58887047SI","EMT","Regulador","Necessário Revisão","Alisson Paranhos de Magalhaes","Pierry de Freitas Perez","0","23/04/2026 09:21","06/05/2026 08:32","Kewin Marcel Ramirez Ferreira","ERRO NO DESENVOLVIMENTO"
+"30372056","Samara Nobrega Freires","58874879SI","EMT","Regulador","Comissionado","Pierre Michel Moreira Barbosa","Kewin Marcel Ramirez Ferreira","0","16/03/2026 09:19","14/05/2026 11:25","Pierre Michel Moreira Barbosa","EQUIPAMENTO ERRADO NA EVIDENCIA DO RELATÓRIO"
+"30523334","Samara Nobrega Freires","58887047SI","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Pierry de Freitas Perez","0","23/04/2026 09:21","19/05/2026 12:41","Pierry de Freitas Perez","ERRO NO DESENVOLVIMENTO"
 "30492965","Samara Nobrega Freires","5822891035","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Kewin Marcel Ramirez Ferreira","0","09/03/2026 16:28","05/05/2026 17:10","Kewin Marcel Ramirez Ferreira","E-MAIL NÃO ENVIADO"
 "30522938","Samara Nobrega Freires","58173594JN","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","23/04/2026 17:00","08/05/2026 11:58","Alisson Paranhos de Magalhaes","N/A"
 "30522954","Samara Nobrega Freires","58844818JN","EMT","Regulador","Desenvolvido",,,"0","24/04/2026 17:39","24/04/2026 17:39","Samara Nobrega Freires","N/A"
@@ -553,7 +554,7 @@
 "30526228","Hugo da Silva Costa","5882363131","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:26","05/05/2026 17:26","Hugo da Silva Costa","N/A"
 "30525629","Hugo da Silva Costa","58870104TG","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:27","05/05/2026 17:27","Hugo da Silva Costa","N/A"
 "30525624","Hugo da Silva Costa","58870114TG","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:44","05/05/2026 17:44","Hugo da Silva Costa","N/A"
-"30524547","Hugo da Silva Costa","58834473ME","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:45","05/05/2026 17:45","Hugo da Silva Costa","N/A"
+"30524547","Hugo da Silva Costa","58834473ME","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","05/05/2026 17:45","19/05/2026 13:15","Alisson Paranhos de Magalhaes","N/A"
 "30524553","Hugo da Silva Costa","58169569ME","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:46","05/05/2026 17:46","Hugo da Silva Costa","N/A"
 "30524560","Hugo da Silva Costa","5895520022","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:47","05/05/2026 17:47","Hugo da Silva Costa","N/A"
 "30524560","Hugo da Silva Costa","5817957293","EMT","Regulador","Desenvolvido",,,"0","05/05/2026 17:48","05/05/2026 17:48","Hugo da Silva Costa","N/A"
@@ -592,9 +593,28 @@
 "30527206","Hugo da Silva Costa","58840804RO","EMT","Regulador","Desenvolvido",,,"0","08/05/2026 10:58","08/05/2026 10:58","Hugo da Silva Costa","N/A"
 "30528567","Hugo da Silva Costa","79901719SI","EMT","Religador","Desenvolvido",,,"0","08/05/2026 11:04","08/05/2026 11:04","Hugo da Silva Costa","N/A"
 "30532724","Samara Nobrega Freires","5867939086","ETO","Regulador","Desenvolvido",,,"0","12/05/2026 10:27","12/05/2026 10:27","Samara Nobrega Freires","N/A"
-"30532707","Samara Nobrega Freires","5867938149","ETO","Regulador","Desenvolvido",,,"0","12/05/2026 10:30","12/05/2026 10:30","Samara Nobrega Freires","N/A"
 "30531655","Samara Nobrega Freires","5800586084","ETO","Regulador","Desenvolvido","Samara Nobrega Freires",,"0","12/05/2026 17:49","12/05/2026 17:49","Samara Nobrega Freires","N/A"
 "30535440","Samara Nobrega Freires","58927825ME","EMT","Regulador","Desenvolvido",,,"0","13/05/2026 08:06","13/05/2026 08:06","Samara Nobrega Freires","N/A"
 "30528729","Samara Nobrega Freires","79861492BG","EMT","Religador","Desenvolvido",,,"0","13/05/2026 08:10","13/05/2026 08:10","Samara Nobrega Freires","N/A"
 "30535375","Samara Nobrega Freires","58861023BG","EMT","Regulador","Desenvolvido",,,"0","13/05/2026 09:49","13/05/2026 09:49","Samara Nobrega Freires","N/A"
 "30537266","Samara Nobrega Freires","7930359149","ETO","Religador","Desenvolvido",,,"0","13/05/2026 15:45","13/05/2026 15:45","Samara Nobrega Freires","N/A"
+"30528567","Hugo da Silva Costa","79901719SI","EMT","Religador","Desenvolvido",,,"0","13/05/2026 18:14","13/05/2026 18:14","Hugo da Silva Costa","N/A"
+"30534598","Samara Nobrega Freires","79914419RO","EMT","Religador","Desenvolvido",,,"0","14/05/2026 08:16","14/05/2026 08:16","Samara Nobrega Freires","N/A"
+"30534597","Samara Nobrega Freires","79914420RO","EMT","Religador","Comissionado","Fabian Albuquerque de Souza",,"0","14/05/2026 08:19","14/05/2026 14:29","Fabian Albuquerque de Souza","N/A"
+"30538071","Bruno Vinicius da Silva Araujo","79416068TG","EMT","Religador","Desenvolvido",,,"0","14/05/2026 11:13","14/05/2026 11:13","Bruno Vinicius da Silva Araujo","N/A"
+"30529771","Samara Nobrega Freires","79924451TG","EMT","Religador","Desenvolvido",,,"0","14/05/2026 16:54","14/05/2026 16:54","Samara Nobrega Freires","N/A"
+"30533710","Samara Nobrega Freires","58848767BG","EMT","Regulador","Comissionado","Jhonatan Vieria Matos",,"0","15/05/2026 10:41","15/05/2026 13:38","Jhonatan Vieria Matos","N/A"
+"30535498","Samara Nobrega Freires","58175099SI","EMT","Regulador","Comissionado","Alisson Paranhos de Magalhaes",,"0","18/05/2026 09:59","18/05/2026 11:55","Alisson Paranhos de Magalhaes","N/A"
+"30537691","Samara Nobrega Freires","58849137CA","EMT","Regulador","Validado","Fabian Albuquerque de Souza","Pierry de Freitas Perez","0","18/05/2026 14:48","19/05/2026 17:58","Pierry de Freitas Perez","N/A"
+"30537681","Samara Nobrega Freires","58876975BG","EMT","Regulador","Desenvolvido",,,"0","18/05/2026 14:51","18/05/2026 14:51","Samara Nobrega Freires","N/A"
+"30537661","Samara Nobrega Freires","58889070ME","EMT","Regulador","Desenvolvido",,,"0","18/05/2026 15:21","18/05/2026 15:21","Samara Nobrega Freires","N/A"
+"30536432","Lucas Wesley Fideles de Andrade","5890082085","EMT","Regulador","Validado","Alisson Paranhos de Magalhaes","Pierry de Freitas Perez","0","18/05/2026 15:24","19/05/2026 17:49","Pierry de Freitas Perez","N/A"
+"30539820","Hugo da Silva Costa","79224604ME","EMT","Religador","Desenvolvido",,,"0","18/05/2026 16:28","18/05/2026 16:28","Hugo da Silva Costa","N/A"
+"30537520","Samara Nobrega Freires","7928757019","ETO","Religador","Comissionado","Samara Nobrega Freires",,"0","19/05/2026 10:50","19/05/2026 10:51","Samara Nobrega Freires","N/A"
+"30528684","Samara Nobrega Freires","5867939086","ETO","Regulador","Comissionado","Bruno Vinicius da Silva Araujo",,"0","19/05/2026 10:55","19/05/2026 10:55","Samara Nobrega Freires","N/A"
+"30537443","Samara Nobrega Freires","7954395015","ETO","Religador","Desenvolvido",,,"0","19/05/2026 15:20","19/05/2026 15:20","Samara Nobrega Freires","N/A"
+"30538197","Samara Nobrega Freires","58902925SI","EMT","Regulador","Comissionado","Fabian Albuquerque de Souza",,"0","20/05/2026 09:35","20/05/2026 16:56","Fabian Albuquerque de Souza","N/A"
+"30532660","Samara Nobrega Freires","7925872019","ETO","Religador","Desenvolvido",,,"0","20/05/2026 10:42","20/05/2026 10:42","Samara Nobrega Freires","N/A"
+"30538399","Samara Nobrega Freires","58180287BG","EMT","Regulador","Desenvolvido",,,"0","20/05/2026 15:15","20/05/2026 15:15","Samara Nobrega Freires","N/A"
+"30538370","Samara Nobrega Freires","58889686BG","EMT","Regulador","Desenvolvido",,,"0","20/05/2026 15:18","20/05/2026 15:18","Samara Nobrega Freires","N/A"
+"30538393","Samara Nobrega Freires","58822811BG","EMT","Regulador","Desenvolvido",,,"0","21/05/2026 08:16","21/05/2026 08:16","Samara Nobrega Freires","N/A"
