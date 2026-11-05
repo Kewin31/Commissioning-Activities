@@ -942,10 +942,10 @@ def gerar_relatorio_empresa(df_filtrado, empresa, mes_selecionado=None, ano_sele
     
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 5, 'Bruna Moura Maciel - BP', 0, 1, 'L')
+    pdf.cell(0, 5, 'Ricardo Andrade Tenente - BP', 0, 1, 'L')
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 4, 'bruna.maciel@energisa.com.br', 0, 1, 'L')
+    pdf.cell(0, 4, 'ricardo.tenente@reenergisa.com.br', 0, 1, 'L')
     pdf.ln(8)
     
     pdf.set_font('Arial', 'B', 10)
