@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import numpy as np
 import os
 import io
@@ -19,7 +21,7 @@ from pdf_generator import adicionar_botao_pdf_empresa
 # Configuração da página
 st.set_page_config(
     page_title="Dashboard Executivo | Fábrica SCADA",
-    page_icon="⚡",
+    page_icon=":material/bolt:",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -131,234 +133,196 @@ def load_data_from_github():
         return None
 
 # ============================================
-# CSS PERSONALIZADO - ESTILO ENERGISA
+# IDENTIDADE VISUAL (mesmo padrão do dashboard Esteira SRE)
 # ============================================
-st.markdown("""
+COR_VERDE_ESCURO = "#2E7D32"
+COR_AZUL_PETROLEO = "#028a9f"
+COR_AZUL_ESCURO = "#005973"
+COR_LARANJA = "#F57C00"
+COR_VERMELHO = "#C62828"
+COR_CINZA_FUNDO = "#F8F9FA"
+COR_CINZA_BORDA = "#E9ECEF"
+COR_CINZA_TEXTO = "#6C757D"
+COR_BRANCO = "#FFFFFF"
+COR_PRETO_SUAVE = "#212529"
+
+TZ_BR = ZoneInfo('America/Sao_Paulo')
+
+
+def agora():
+    """Data/hora de Brasília (o servidor do Streamlit Cloud roda em UTC)."""
+    return datetime.now(TZ_BR).replace(tzinfo=None)
+
+
+# Ícones SVG (estilo Lucide) usados nos blocos HTML; nos widgets usamos :material/...:
+ICONES = {
+    'grafico': '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    'check': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    'lista': '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+    'revisao': '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+    'atividade': '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    'calendario': '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+    'ajustes': '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>',
+    'alvo': '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    'alerta': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/>',
+    'empresa': '<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>',
+    'info': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/>',
+    'raio': '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+    'codigo': '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+    'ferramenta': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+    'escudo': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/>',
+    'pacote': '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+    'engrenagem': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    'equipe': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    'email': '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+}
+
+
+def icone(nome, tamanho=20, cor="currentColor", espessura=2):
+    """Ícone SVG inline para os blocos HTML (cards, títulos, rodapé)."""
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{tamanho}" height="{tamanho}" '
+            f'viewBox="0 0 24 24" fill="none" stroke="{cor}" stroke-width="{espessura}" '
+            f'stroke-linecap="round" stroke-linejoin="round" '
+            f'style="vertical-align:-0.18em; flex-shrink:0;">{ICONES[nome]}</svg>')
+
+
+def fmt_milhar(valor):
+    return f"{int(valor):,}".replace(",", ".")
+
+
+def num_br(valor, casas=1):
+    return f"{valor:.{casas}f}".replace(".", ",")
+
+
+def titulo_secao(texto, icone_nome):
+    """Título de seção com barra verde + ícone (igual ao dashboard SRE)."""
+    st.markdown(f'<div class="section-title">{icone(icone_nome, 20, COR_AZUL_ESCURO)}<span>{texto}</span></div>',
+                unsafe_allow_html=True)
+
+
+# Tema único para todos os gráficos Plotly
+pio.templates["energisa"] = go.layout.Template(layout=dict(
+    font=dict(family="Inter, 'Segoe UI', sans-serif", size=12, color=COR_PRETO_SUAVE),
+    colorway=[COR_AZUL_ESCURO, COR_VERDE_ESCURO, COR_LARANJA, COR_AZUL_PETROLEO,
+              "#7E57C2", "#1E88E5", "#8D6E63", COR_VERMELHO],
+    plot_bgcolor=COR_BRANCO, paper_bgcolor=COR_BRANCO,
+    title=dict(font=dict(size=15, color=COR_AZUL_ESCURO)),
+    xaxis=dict(gridcolor="#F1F3F5", linecolor=COR_CINZA_BORDA, zeroline=False, automargin=True),
+    yaxis=dict(gridcolor="#F1F3F5", linecolor=COR_CINZA_BORDA, zeroline=False, automargin=True),
+    hoverlabel=dict(bgcolor=COR_BRANCO, bordercolor=COR_CINZA_BORDA, font_size=12),
+    legend=dict(bgcolor="rgba(255,255,255,0)"),
+    separators=",.",
+))
+pio.templates.default = "plotly_white+energisa"
+
+st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    .stApp {
-        background-color: #f3f4f6;
-    }
-    
-    .header-executivo {
-        background: linear-gradient(135deg, #005973 0%, #028a9f 50%, #04d8d7 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 0 0 20px 20px;
-        margin: -1rem -1rem 2rem -1rem;
-        box-shadow: 0 4px 20px rgba(0,89,115,0.2);
-    }
-    
-    .header-conteudo {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    
-    .header-logo {
-        background: white;
-        padding: 0.5rem;
-        border-radius: 12px;
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    }
-    
-    .header-logo img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-    }
-    
-    .header-titulo h1 {
-        color: white;
-        font-size: 2rem;
-        font-weight: 600;
-        margin: 0;
-        letter-spacing: -0.02em;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    .header-titulo p {
-        color: rgba(255,255,255,0.9);
-        margin: 0.2rem 0 0 0;
-        font-size: 0.95rem;
-    }
-    
-    .header-data {
-        margin-left: auto;
-        background: rgba(255,255,255,0.2);
-        padding: 0.5rem 1rem;
-        border-radius: 30px;
-        color: white;
-        font-size: 0.9rem;
-        backdrop-filter: blur(5px);
-    }
-    
-    /* Estilos para os cards de fluxo */
-    .fluxo-container {
-        background: white;
-        border-radius: 16px;
-        padding: 1rem 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        margin-bottom: 0.5rem;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-        text-align: center;
-        height: 100%;
-        min-height: 240px;
-        display: flex;
-        flex-direction: column;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    html, body, [class*="css"] {{ font-family: 'Inter', 'Segoe UI', sans-serif; }}
+    .stApp {{ background-color: {COR_CINZA_FUNDO}; }}
 
-    .fluxo-container:hover {
-        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
-        border-color: #04d8d7;
-    }
+    /* Cabeçalho */
+    .header-executivo {{
+        background: linear-gradient(135deg, {COR_AZUL_PETROLEO} 0%, {COR_AZUL_ESCURO} 100%);
+        padding: 1.3rem 2rem; margin-bottom: 1.5rem; border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(2, 138, 159, 0.3);
+    }}
+    .header-conteudo {{ display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }}
+    .header-logo {{
+        background: {COR_BRANCO}; padding: 0.4rem; border-radius: 10px; width: 64px; height: 64px;
+        display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }}
+    .header-logo img {{ max-width: 100%; max-height: 100%; object-fit: contain; }}
+    .header-titulo h1 {{
+        color: {COR_BRANCO}; font-size: 1.6rem; font-weight: 600; margin: 0; letter-spacing: -0.3px;
+        display: inline-flex; align-items: center; gap: 10px;
+    }}
+    .header-titulo p {{ color: rgba(255,255,255,0.9); margin: 0.3rem 0 0 0; font-size: 0.85rem; }}
+    .header-data {{ margin-left: auto; text-align: right; color: rgba(255,255,255,0.9); font-size: 0.8rem; line-height: 1.5; }}
 
-    .fluxo-container .etapa-titulo {
-        font-size: 0.75rem;
-        color: #6b7280;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.5rem;
-    }
+    /* Títulos de seção */
+    .section-title {{
+        color: {COR_AZUL_ESCURO}; border-left: 4px solid {COR_VERDE_ESCURO}; padding-left: 1rem;
+        margin: 1.2rem 0 1rem 0; font-size: 1.1rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px;
+    }}
 
-    .fluxo-container .valor-numero {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1.2;
-    }
+    /* Cards do fluxo (Progress Tracker) */
+    .fluxo-container {{
+        background: {COR_BRANCO}; border-radius: 8px; padding: 1.1rem 1rem; height: 100%; min-height: 230px;
+        border: 1px solid {COR_CINZA_BORDA}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex; flex-direction: column; text-align: left; transition: all 0.3s ease; margin-bottom: 0.5rem;
+    }}
+    .fluxo-container:hover {{ transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,89,115,0.1); border-color: {COR_AZUL_PETROLEO}; }}
+    .fluxo-container .etapa-cabecalho {{ display: flex; align-items: center; gap: 12px; margin-bottom: 0.6rem; }}
+    .fluxo-container .etapa-icone {{
+        width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }}
+    .fluxo-container .etapa-titulo {{ font-size: 0.72rem; color: {COR_CINZA_TEXTO}; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }}
+    .fluxo-container .valor-titulo {{ font-weight: 600; font-size: 0.92rem; color: {COR_PRETO_SUAVE}; }}
+    .fluxo-container .valor-numero {{ font-size: 2rem; font-weight: 700; line-height: 1.15; margin: 0.2rem 0; }}
+    .fluxo-container .info-texto {{ font-size: 0.8rem; color: {COR_CINZA_TEXTO}; margin: 0.3rem 0; flex-grow: 1; }}
+    .fluxo-container .percentual-box {{ border-radius: 6px; padding: 0.45rem 0.6rem; font-size: 0.8rem; margin-top: 0.5rem; }}
 
-    .fluxo-container .valor-titulo {
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
+    /* Cards por empresa */
+    .company-card {{
+        background: {COR_BRANCO}; border-radius: 8px; padding: 1.3rem; height: 100%;
+        border: 1px solid {COR_CINZA_BORDA}; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease;
+    }}
+    .company-card:hover {{ box-shadow: 0 4px 12px rgba(0,89,115,0.1); border-color: {COR_AZUL_PETROLEO}; }}
+    .company-title {{
+        font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.5rem;
+        border-bottom: 2px solid {COR_CINZA_BORDA}; display: flex; align-items: center; gap: 8px;
+    }}
+    .company-metric {{ text-align: center; padding: 0.5rem; }}
+    .company-metric-value {{ font-size: 1.9rem; font-weight: 700; }}
+    .company-metric-label {{ font-size: 0.78rem; color: {COR_CINZA_TEXTO}; margin-top: 0.3rem; font-weight: 500; }}
 
-    .fluxo-container .info-texto {
-        font-size: 0.7rem;
-        color: #6b7280;
-        margin: 0.5rem 0;
-        flex-grow: 1;
-    }
+    /* Blocos informativos */
+    .info-popup {{
+        background: linear-gradient(135deg, {COR_BRANCO}, #E0F7FA); border-left: 4px solid {COR_AZUL_PETROLEO};
+        padding: 1rem 1.2rem; border-radius: 8px; margin: 0.5rem 0; font-size: 0.86rem; color: {COR_PRETO_SUAVE}; line-height: 1.55;
+    }}
+    .info-popup strong {{ color: {COR_AZUL_ESCURO}; }}
+    .indicador-box {{
+        background: {COR_BRANCO}; border-radius: 8px; padding: 1.1rem 1.4rem; margin: 0.8rem 0;
+        border: 1px solid {COR_CINZA_BORDA}; border-left: 4px solid {COR_AZUL_PETROLEO}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }}
+    .indicador-box-emt {{ border-left-color: {COR_AZUL_PETROLEO}; }}
+    .indicador-box-eto {{ border-left-color: {COR_AZUL_ESCURO}; }}
+    .indicador-linha {{ display: flex; gap: 10px; align-items: flex-start; margin: 0.35rem 0; }}
 
-    .fluxo-container .percentual-box {
-        border-radius: 20px;
-        padding: 0.4rem 0.3rem;
-        font-size: 0.75rem;
-        margin-top: 0.5rem;
-    }
-    
-    .company-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        height: 100%;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-    }
-    
-    .company-card:hover {
-        box-shadow: 0 4px 12px rgba(0,89,115,0.1);
-        border-color: #04d8d7;
-    }
-    
-    .company-title {
-        font-size: 1.3rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e0f7fa;
-    }
-    
-    .company-metric {
-        text-align: center;
-        padding: 0.5rem;
-    }
-    
-    .company-metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .company-metric-label {
-        font-size: 0.8rem;
-        color: #6b7280;
-        margin-top: 0.3rem;
-    }
-    
-    .filter-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .footer {
-        background: white;
-        padding: 1rem 2rem;
-        border-radius: 12px;
-        margin-top: 2rem;
-        box-shadow: 0 -1px 2px rgba(0,0,0,0.02);
-        font-size: 0.85rem;
-        color: #6b7280;
-        border-top: 1px solid #e5e7eb;
-    }
-    
-    .stButton > button {
-        background: linear-gradient(135deg, #005973, #028a9f);
-        color: white;
-        border: none;
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(135deg, #006c84, #04d8d7);
-    }
-    
-    .css-1d391kg, .css-1633s36 {
-        background-color: #ffffff;
-        border-right: 1px solid #e5e7eb;
-    }
-    
-    .info-popup {
-        background-color: #f8fafc;
-        border-left: 4px solid #028a9f;
-        padding: 0.8rem 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        font-size: 0.85rem;
-        color: #1f2937;
-    }
-    
-    .info-popup strong {
-        color: #005973;
-    }
-    
-    .indicador-box {
-        background: white;
-        border-radius: 12px;
-        padding: 1.2rem 1.5rem;
-        margin: 1rem 0;
-        border-left: 4px solid #028a9f;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    
-    .indicador-box-emt {
-        border-left: 4px solid #028a9f;
-    }
-    
-    .indicador-box-eto {
-        border-left: 4px solid #005973;
-    }
+    /* Sidebar */
+    [data-testid="stSidebar"] {{ background: {COR_BRANCO}; border-right: 1px solid {COR_CINZA_BORDA}; }}
+    .sidebar-resumo div {{ display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid {COR_CINZA_BORDA}; font-size: 0.88rem; }}
+    .sidebar-resumo div:last-child {{ border-bottom: none; }}
+    .sidebar-resumo span {{ display: inline-flex; align-items: center; gap: 6px; color: {COR_CINZA_TEXTO}; }}
+
+    /* Rodapé */
+    .footer {{
+        text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 2px solid {COR_CINZA_BORDA};
+        color: {COR_CINZA_TEXTO}; font-size: 0.85rem;
+    }}
+
+    /* Widgets nativos no mesmo padrão */
+    [data-testid="stMetric"] {{
+        background: {COR_BRANCO}; padding: 0.9rem 1rem; border-radius: 8px;
+        border: 1px solid {COR_CINZA_BORDA}; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease;
+    }}
+    [data-testid="stMetric"]:hover {{ border-color: {COR_AZUL_PETROLEO}; box-shadow: 0 4px 12px rgba(0,89,115,0.1); }}
+    [data-testid="stMetricValue"] {{ color: {COR_AZUL_ESCURO}; font-weight: 700; }}
+    [data-testid="stMetricLabel"] p {{ color: {COR_CINZA_TEXTO}; font-weight: 600; }}
+    .stButton > button, .stDownloadButton > button {{
+        background: {COR_AZUL_ESCURO}; color: {COR_BRANCO}; border: none; border-radius: 6px; font-weight: 500; transition: all 0.3s ease;
+    }}
+    .stButton > button:hover, .stDownloadButton > button:hover {{
+        background: {COR_AZUL_PETROLEO}; color: {COR_BRANCO}; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,89,115,0.3);
+    }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 0.4rem; }}
+    .stTabs [data-baseweb="tab"] {{ font-weight: 600; }}
+    .stTabs [aria-selected="true"] {{ color: {COR_AZUL_ESCURO}; }}
+    [data-testid="stPlotlyChart"] {{ background: {COR_BRANCO}; border: 1px solid {COR_CINZA_BORDA}; border-radius: 8px; padding: 6px; }}
+    [data-testid="stExpander"] {{ background: {COR_BRANCO}; border-radius: 8px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -588,7 +552,7 @@ def mostrar_popup_calculos():
     """Mostra popup com explicação dos cálculos"""
     popup_html = """
     <div class="info-popup">
-        <strong>📊 Como as taxas são calculadas (ACUMULADO):</strong><br><br>
+        <strong>Como as taxas são calculadas (ACUMULADO):</strong><br><br>
         <strong>ETAPA 1 - DESENVOLVIDOS:</strong> Desenvolvido + Comissionado + Validado + Necessário Revisão<br>
         <em>Total de equipamentos que já iniciaram o fluxo de desenvolvimento</em><br><br>
         <strong>ETAPA 2 - COMISSIONADOS:</strong> Comissionado + Validado + Necessário Revisão<br>
@@ -668,13 +632,13 @@ def criar_grafico_pizza_status(df_filtrado):
     )
     
     if pct_revisao > 10:
-        msg_alerta = f"⚠️ ATENÇÃO: {pct_revisao:.1f}% dos equipamentos necessitam de revisão"
+        msg_alerta = f"ATENÇÃO: {pct_revisao:.1f}% dos equipamentos necessitam de revisão"
         cor_alerta = '#F57C00'
     elif pct_revisao > 5:
-        msg_alerta = f"📌 Alerta: {pct_revisao:.1f}% em revisão - Acompanhar"
+        msg_alerta = f"Alerta: {pct_revisao:.1f}% em revisão - Acompanhar"
         cor_alerta = '#FFA726'
     else:
-        msg_alerta = f"✅ Gargalo controlado: {pct_revisao:.1f}% em revisão"
+        msg_alerta = f"Gargalo controlado: {pct_revisao:.1f}% em revisão"
         cor_alerta = '#2E7D32'
     
     fig_status.add_annotation(
@@ -691,7 +655,7 @@ def criar_grafico_pizza_status(df_filtrado):
         borderpad=4
     )
     
-    resumo_texto = f"✓ {pct_validado:.1f}% concluídos | ⚠️ {pct_pendente:.1f}% pendentes"
+    resumo_texto = f"{pct_validado:.1f}% concluídos  ·  {pct_pendente:.1f}% pendentes"
     
     fig_status.add_annotation(
         text=resumo_texto,
@@ -711,8 +675,7 @@ def criar_grafico_pizza_status(df_filtrado):
         margin=dict(t=50, b=90, l=20, r=20),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        title_font=dict(size=16, color='#1f2937'),
-        title_x=0.5
+        title_x=0.02
     )
     
     return fig_status
@@ -841,7 +804,8 @@ def criar_grafico_motivos_empresa(df_motivos):
         color='Motivo_Revisao',
         title='Motivos de Revisão por Empresa',
         barmode='group',
-        text='Quantidade'
+        text='Quantidade',
+        labels={'Motivo_Revisao': 'Motivo'}
     )
     
     fig.update_traces(textposition='outside', texttemplate='%{text}')
@@ -873,13 +837,13 @@ def criar_tabela_motivos_detalhada(df_motivos):
 def mostrar_resumo_motivos(df_motivos):
     """Mostra cards de resumo dos motivos"""
     categorias = {
-        '📧 E-MAIL': ['E-MAIL NÃO ENVIADO', 'E-MAIL FORA DO PADRÃO', 'SEM APR NO E-MAIL'],
-        '⚠️ APR': ['IMPEDITIVO NA APR'],
-        '📏 MEDIÇÕES': ['AJUSTE NAS MEDIÇÕES ANALÓGICAS'],
-        '📄 DOCUMENTAÇÃO': ['NOME INCORRETO NO RELATÓRIO', 'CARD PREENCHIDO ERRADO', 
+        'E-MAIL': ['E-MAIL NÃO ENVIADO', 'E-MAIL FORA DO PADRÃO', 'SEM APR NO E-MAIL'],
+        'APR': ['IMPEDITIVO NA APR'],
+        'MEDIÇÕES': ['AJUSTE NAS MEDIÇÕES ANALÓGICAS'],
+        'DOCUMENTAÇÃO': ['NOME INCORRETO NO RELATÓRIO', 'CARD PREENCHIDO ERRADO', 
                            'CARD SEM RESPONSÁVEL PELO COMISSIONAMENTO', 
                            'EQUIPAMENTO ERRADO NA EVIDENCIA DO RELATÓRIO'],
-        '🔧 EQUIPAMENTO': ['NOTA IMPEDITIVA NO EQUIPAMENTO']
+        'EQUIPAMENTO': ['NOTA IMPEDITIVA NO EQUIPAMENTO']
     }
     
     contagem_categorias = {}
@@ -890,28 +854,28 @@ def mostrar_resumo_motivos(df_motivos):
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        st.metric("📧 E-mail", contagem_categorias.get('📧 E-MAIL', 0))
+        st.metric(":material/mail: E-mail", contagem_categorias.get('E-MAIL', 0))
     with col2:
-        st.metric("⚠️ APR", contagem_categorias.get('⚠️ APR', 0))
+        st.metric(":material/assignment_late: APR", contagem_categorias.get('APR', 0))
     with col3:
-        st.metric("📄 Documentação", contagem_categorias.get('📄 DOCUMENTAÇÃO', 0))
+        st.metric(":material/description: Documentação", contagem_categorias.get('DOCUMENTAÇÃO', 0))
     with col4:
-        st.metric("📏 Medições", contagem_categorias.get('📏 MEDIÇÕES', 0))
+        st.metric(":material/straighten: Medições", contagem_categorias.get('MEDIÇÕES', 0))
     with col5:
-        st.metric("🔧 Equipamento", contagem_categorias.get('🔧 EQUIPAMENTO', 0))
+        st.metric(":material/build: Equipamento", contagem_categorias.get('EQUIPAMENTO', 0))
 
 def mostrar_analise_motivos(df_filtrado):
     """Interface completa de análise de motivos de revisão"""
-    st.markdown("## 🔍 Análise de Motivos de Revisão")
+    titulo_secao("Análise de Motivos de Revisão", "revisao")
     
     df_motivos = analisar_motivos_revisao(df_filtrado)
     
     if df_motivos is None:
-        st.info("📌 Nenhum motivo de revisão registrado nos dados filtrados.")
+        st.info("Nenhum motivo de revisão registrado nos dados filtrados.", icon=":material/info:")
         return
     
     # Resumo em cards
-    st.markdown("### 📊 Resumo por Categoria")
+    st.markdown("##### :material/category: Resumo por Categoria")
     mostrar_resumo_motivos(df_motivos)
     
     st.markdown("---")
@@ -920,16 +884,17 @@ def mostrar_analise_motivos(df_filtrado):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Revisão", len(df_motivos))
+        st.metric(":material/rate_review: Total de Revisão", fmt_milhar(len(df_motivos)))
     with col2:
         motivos_unicos = df_motivos['Motivo_Revisao'].nunique()
-        st.metric("Motivos Diferentes", motivos_unicos)
+        st.metric(":material/list: Motivos Diferentes", motivos_unicos)
     with col3:
         empresas_afetadas = df_motivos['Empresa'].nunique()
-        st.metric("Empresas Afetadas", empresas_afetadas)
+        st.metric(":material/apartment: Empresas Afetadas", empresas_afetadas)
     with col4:
         motivo_top = df_motivos['Motivo_Revisao'].value_counts().index[0] if len(df_motivos) > 0 else "N/A"
-        st.metric("Motivo Mais Frequente", motivo_top[:30] + "..." if len(str(motivo_top)) > 30 else str(motivo_top))
+        st.metric(":material/target: Motivo Mais Frequente", motivo_top[:30] + "..." if len(str(motivo_top)) > 30 else str(motivo_top),
+                  help=str(motivo_top))
     
     st.markdown("---")
     
@@ -951,7 +916,8 @@ def mostrar_analise_motivos(df_filtrado):
                 color='Motivo_Revisao',
                 title='Motivos por Tipo de Equipamento',
                 barmode='stack',
-                text='Quantidade'
+                text='Quantidade',
+                labels={'Motivo_Revisao': 'Motivo', 'Tipo': 'Tipo de Equipamento'}
             )
             fig_tipo.update_layout(
                 height=500,
@@ -968,7 +934,7 @@ def mostrar_analise_motivos(df_filtrado):
     st.markdown("---")
     
     # Tabela detalhada
-    st.markdown("### 📋 Detalhamento dos Motivos")
+    st.markdown("##### :material/table_chart: Detalhamento dos Motivos")
     
     df_tabela = criar_tabela_motivos_detalhada(df_motivos)
     
@@ -988,7 +954,7 @@ def mostrar_analise_motivos(df_filtrado):
     st.markdown("---")
     
     # Filtro por motivo específico
-    st.markdown("### 🔎 Filtrar por Motivo Específico")
+    st.markdown("##### :material/search: Filtrar por Motivo Específico")
     
     motivo_selecionado = st.selectbox(
         "Selecione o motivo para ver os equipamentos:",
@@ -1011,7 +977,8 @@ def mostrar_analise_motivos(df_filtrado):
     # Botão para exportar análise
     csv = df_filtrado_motivo.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Exportar Análise de Motivos (CSV)",
+        label="Exportar Análise de Motivos (CSV)",
+        icon=":material/download:",
         data=csv,
         file_name=f'analise_motivos_revisao_{datetime.now().strftime("%Y%m%d")}.csv',
         mime='text/csv',
@@ -1030,13 +997,13 @@ def mostrar_indicadores_comissionamento(df_filtrado, empresa_selecionada):
             if not df_emp.empty:
                 _mostrar_indicador_empresa(df_emp, empresa)
             else:
-                st.info(f"📌 Sem dados disponíveis para {empresa}")
+                st.info(f"Sem dados disponíveis para {empresa}", icon=":material/info:")
     else:
         df_emp = df_filtrado[df_filtrado['Empresa'] == empresa_selecionada]
         if not df_emp.empty:
             _mostrar_indicador_empresa(df_emp, empresa_selecionada)
         else:
-            st.info(f"📌 Sem dados disponíveis para {empresa_selecionada}")
+            st.info(f"Sem dados disponíveis para {empresa_selecionada}", icon=":material/info:")
 
 def _mostrar_indicador_empresa(df_emp, empresa):
     """Mostra o indicador para uma empresa específica"""
@@ -1056,38 +1023,48 @@ def _mostrar_indicador_empresa(df_emp, empresa):
     # Classe CSS específica
     classe_css = "indicador-box-emt" if empresa == "EMT" else "indicador-box-eto"
     
-    # Construir o texto
-    texto_data = ""
+    cor_emp = CORES.get(empresa, COR_AZUL_PETROLEO)
+
+    def linha(nome_icone, cor, texto):
+        return (f'<div class="indicador-linha">{icone(nome_icone, 18, cor)}'
+                f'<div>{texto}</div></div>')
+
+    linhas = []
     if data_primeiro is not None:
         data_formatada = formatar_data_portugues(data_primeiro)
-        texto_data = f"📅 Os comissionamentos realizados pela unidade <strong>{empresa} ({nome_empresa})</strong> tiveram início em <strong>{data_formatada}</strong>."
+        linhas.append(linha('calendario', cor_emp,
+                            f"Os comissionamentos realizados pela unidade <strong>{empresa} ({nome_empresa})</strong> "
+                            f"tiveram início em <strong>{data_formatada}</strong>."))
     else:
-        texto_data = f"📅 Ainda não há registros de comissionamentos para a unidade <strong>{empresa} ({nome_empresa})</strong>."
-    
-    texto_meta = ""
-    texto_realizado = ""
-    
+        linhas.append(linha('calendario', cor_emp,
+                            f"Ainda não há registros de comissionamentos para a unidade <strong>{empresa} ({nome_empresa})</strong>."))
+
     if meta is not None:
         # EMT tem meta definida
         percentual_meta = (comissionados_2026 / meta * 100) if meta > 0 else 0
-        
-        texto_meta = f"""<br><br>🎯 <strong>Previsão de equipamentos</strong> a serem comissionados durante o ano de 2026: <strong>{meta:,} Religadores/Reguladores</strong>."""
-        
-        texto_realizado = f"""<br><br>✅ <strong>Já foram comissionados {comissionados_2026} equipamentos</strong> (Religadores/Reguladores) em 2026, representando <strong>{percentual_meta:.1f}%</strong> da meta prevista para o ano."""
+        linhas.append(linha('alvo', COR_AZUL_ESCURO,
+                            f"<strong>Previsão de equipamentos</strong> a serem comissionados durante o ano de 2026: "
+                            f"<strong>{fmt_milhar(meta)} Religadores/Reguladores</strong>."))
+        linhas.append(linha('check', COR_VERDE_ESCURO,
+                            f"<strong>Já foram comissionados {fmt_milhar(comissionados_2026)} equipamentos</strong> "
+                            f"(Religadores/Reguladores) em 2026, representando <strong>{num_br(percentual_meta)}%</strong> "
+                            f"da meta prevista para o ano."))
+        barra = (f'<div style="margin-top:0.7rem;"><div style="display:flex; justify-content:space-between; font-size:0.78rem; '
+                 f'color:{COR_CINZA_TEXTO};"><span>Progresso da meta 2026</span><strong style="color:{COR_AZUL_ESCURO};">'
+                 f'{num_br(percentual_meta)}%</strong></div><div style="background:{COR_CINZA_BORDA}; height:8px; '
+                 f'border-radius:4px; margin-top:4px;"><div style="width:{min(percentual_meta, 100):.1f}%; height:8px; '
+                 f'border-radius:4px; background:linear-gradient(90deg, {COR_AZUL_PETROLEO}, {COR_AZUL_ESCURO});"></div></div></div>')
     else:
         # ETO não tem meta
-        texto_meta = f"""<br><br>⚠️ <strong>Previsão de equipamentos</strong> a serem comissionados em 2026: <strong>Não disponível</strong>."""
-        
-        texto_realizado = f"""<br><br>✅ <strong>Já foram comissionados {comissionados_2026} equipamentos</strong> em 2026."""
-    
-    # Exibir o indicador
-    st.markdown(f"""
-    <div class="indicador-box {classe_css}">
-        <div style="font-size: 0.95rem; line-height: 1.6; color: #1f2937;">
-            {texto_data}{texto_meta}{texto_realizado}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        linhas.append(linha('alerta', COR_LARANJA,
+                            "<strong>Previsão de equipamentos</strong> a serem comissionados em 2026: <strong>Não disponível</strong>."))
+        linhas.append(linha('check', COR_VERDE_ESCURO,
+                            f"<strong>Já foram comissionados {fmt_milhar(comissionados_2026)} equipamentos</strong> em 2026."))
+        barra = ""
+
+    st.markdown(
+        f'<div class="indicador-box {classe_css}"><div style="font-size:0.92rem; line-height:1.55; color:{COR_PRETO_SUAVE};">'
+        + "".join(linhas) + barra + '</div></div>', unsafe_allow_html=True)
 
 # ============================================
 # INTERFACE PRINCIPAL
@@ -1095,7 +1072,7 @@ def _mostrar_indicador_empresa(df_emp, empresa):
 
 # Carregar dados
 if 'df' not in st.session_state:
-    with st.spinner("🔄 Carregando dados..."):
+    with st.spinner("Carregando dados..."):
         df, fonte = load_data()
         st.session_state.df = df
         st.session_state.fonte = fonte
@@ -1105,7 +1082,7 @@ else:
     fonte = st.session_state.fonte
 
 if df is None or df.empty:
-    st.error("❌ Não foi possível carregar os dados.")
+    st.error("Não foi possível carregar os dados.", icon=":material/error:")
     st.stop()
 
 # HEADER EXECUTIVO COM LOGO
@@ -1114,20 +1091,20 @@ logo_base64, mime_type = get_logo_base64()
 if logo_base64:
     header_logo_html = f'<img src="data:{mime_type};base64,{logo_base64}" alt="Logo Energisa">'
 else:
-    header_logo_html = '<div style="font-size: 35px;">⚡</div>'
+    header_logo_html = icone('raio', 34, COR_AZUL_ESCURO, 2.2)
 
 st.markdown(f"""
 <div class="header-executivo">
     <div class="header-conteudo">
-        <div class="header-logo">
-            {header_logo_html}
-        </div>
+        <div class="header-logo">{header_logo_html}</div>
         <div class="header-titulo">
-            <h1>Monitoring Center</h1>
-            <p> Radar de Comissionamento SCADA das unidades - EMT | ETO</p>
+            <h1>{icone('atividade', 26, COR_BRANCO, 2.4)} Monitoring Center</h1>
+            <p>Radar de Comissionamento SCADA das unidades · EMT | ETO</p>
         </div>
         <div class="header-data">
-            📅 {datetime.now().strftime('%d/%m/%Y')}
+            <strong>Dashboard Executivo</strong><br>
+            Fábrica SCADA · v5.1<br>
+            <span style="opacity:0.8;">{agora().strftime('%d/%m/%Y')}</span>
         </div>
     </div>
 </div>
@@ -1138,109 +1115,61 @@ st.markdown(f"""
 # ============================================
 
 with st.sidebar:
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h3 style="color: #005973; margin-bottom: 0.5rem;">🎯 Filtros</h3>
-        <p style="color: #6b7280; font-size: 0.85rem;">Selecione os critérios para análise</p>
+    st.markdown(f"""
+    <div style="text-align:center; padding:0.6rem 0 0.4rem 0;">
+        <h3 style="color:{COR_AZUL_ESCURO}; margin:0; display:inline-flex; align-items:center; gap:8px;">
+            {icone('ajustes', 22, COR_AZUL_ESCURO)} Painel de Controle</h3>
+        <p style="color:{COR_CINZA_TEXTO}; margin:0.2rem 0 0 0; font-size:0.85rem;">Selecione os critérios para análise</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # FILTRO DE ANO
-    st.markdown('<div class="filter-title">📅 Ano</div>', unsafe_allow_html=True)
-    
-    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
-    anos_opcoes = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
-    
-    ano_selecionado = st.selectbox(
-        "Selecione o ano",
-        options=anos_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_ano"
-    )
-    
-    # FILTRO DE MÊS
-    st.markdown('<div class="filter-title" style="margin-top: 1rem;">📆 Mês</div>', unsafe_allow_html=True)
-    
-    meses_nomes = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    
-    mes_selecionado = st.selectbox(
-        "Selecione o mês",
-        options=meses_nomes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_mes"
-    )
-    
-    st.markdown("---")
-    
-    # FILTRO DE EMPRESA
-    st.markdown('<div class="filter-title">🏢 Empresa</div>', unsafe_allow_html=True)
-    
-    empresas_opcoes = ["Todas"] + sorted(df['Empresa'].unique().tolist())
-    empresa_selecionada = st.selectbox(
-        "Selecione a empresa",
-        options=empresas_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_empresa"
-    )
-    
-    # FILTRO DE TIPO DE EQUIPAMENTO
-    st.markdown('<div class="filter-title">🔧 Tipo Equipamento</div>', unsafe_allow_html=True)
-    
-    if 'Tipo' in df.columns:
-        tipos_opcoes = ["Todos"] + sorted(df['Tipo'].unique().tolist())
-        tipo_selecionado = st.selectbox(
-            "Selecione o tipo",
-            options=tipos_opcoes,
-            index=0,
-            label_visibility="collapsed",
-            key="filtro_tipo"
-        )
-    else:
-        tipo_selecionado = "Todos"
-    
-    # FILTRO DE STATUS
-    st.markdown('<div class="filter-title">📊 Status</div>', unsafe_allow_html=True)
-    
-    status_opcoes = ["Todos"] + sorted(df['Status'].unique().tolist())
-    status_selecionado = st.selectbox(
-        "Selecione o status",
-        options=status_opcoes,
-        index=0,
-        label_visibility="collapsed",
-        key="filtro_status"
-    )
-    
-    st.markdown("---")
-    
-    # Botões de ação
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Limpar", use_container_width=True, help="Limpar todos os filtros"):
-            limpar_filtros()
-            st.rerun()
-    
-    with col2:
-        if st.button("🔄 Atualizar", use_container_width=True, help="Força a leitura da base de dados do GitHub"):
-            with st.spinner("🔄 Atualizando dados do GitHub..."):
+
+    with st.container(border=True):
+        st.markdown("**:material/filter_alt: Filtros de Análise**")
+
+        anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
+        anos_opcoes = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
+        ano_selecionado = st.selectbox(":material/calendar_month: Ano", options=anos_opcoes, index=0, key="filtro_ano")
+
+        meses_nomes = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        mes_selecionado = st.selectbox(":material/date_range: Mês", options=meses_nomes, index=0, key="filtro_mes")
+
+        empresas_opcoes = ["Todas"] + sorted(df['Empresa'].dropna().unique().tolist())
+        empresa_selecionada = st.selectbox(":material/apartment: Empresa", options=empresas_opcoes, index=0,
+                                           key="filtro_empresa")
+
+        if 'Tipo' in df.columns:
+            tipos_opcoes = ["Todos"] + sorted(df['Tipo'].dropna().unique().tolist())
+            tipo_selecionado = st.selectbox(":material/category: Tipo Equipamento", options=tipos_opcoes, index=0,
+                                            key="filtro_tipo")
+        else:
+            tipo_selecionado = "Todos"
+
+        status_opcoes = ["Todos"] + sorted(df['Status'].unique().tolist())
+        status_selecionado = st.selectbox(":material/flag: Status", options=status_opcoes, index=0, key="filtro_status")
+
+    with st.container(border=True):
+        st.markdown("**:material/sync: Controles de Atualização**")
+        if st.button("Atualizar dados", icon=":material/refresh:", use_container_width=True,
+                     help="Força a leitura da base de dados do GitHub"):
+            with st.spinner("Atualizando dados do GitHub..."):
                 limpar_cache_e_recarregar()
                 st.rerun()
-    
-    # Informação da fonte dos dados
-    st.markdown("---")
-    if fonte == "github":
-        st.success(f"✅ Dados carregados do GitHub")
-    elif fonte == "local":
-        st.info(f"📁 Dados carregados localmente")
-    elif fonte == "exemplo":
-        st.warning(f"⚠️ Usando dados de exemplo")
-    
-    # Última atualização
-    if 'ultima_atualizacao' in st.session_state:
-        st.caption(f"Última atualização: {st.session_state.ultima_atualizacao.strftime('%d/%m/%Y %H:%M')}")
+        if st.button("Limpar filtros", icon=":material/filter_alt_off:", use_container_width=True,
+                     help="Limpar todos os filtros"):
+            limpar_filtros()
+            st.rerun()
+
+        # Informação da fonte dos dados
+        if fonte == "github":
+            st.success("Dados carregados do GitHub", icon=":material/cloud_done:")
+        elif fonte == "local":
+            st.info("Dados carregados localmente", icon=":material/folder:")
+        elif fonte == "exemplo":
+            st.warning("Usando dados de exemplo", icon=":material/warning:")
+
+        if 'ultima_atualizacao' in st.session_state:
+            st.caption(f"Última atualização: {st.session_state.ultima_atualizacao.strftime('%d/%m/%Y %H:%M')}")
 
 # ============================================
 # APLICAR FILTROS
@@ -1267,71 +1196,45 @@ if status_selecionado != "Todos":
 # ADICIONAR BOTÕES DO PDF COM FILTRO DE MÊS
 # ============================================
 with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 📄 Exportar Relatório")
-    
-    # Filtro de período para o relatório
-    st.markdown('<div class="filter-title">📅 Período do Relatório</div>', unsafe_allow_html=True)
-    
-    anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
-    anos_opcoes_rel = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
-    
-    ano_relatorio = st.selectbox(
-        "Ano",
-        options=anos_opcoes_rel,
-        index=0,
-        key="filtro_ano_relatorio",
-        label_visibility="collapsed"
-    )
-    
-    meses_opcoes_rel = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
-                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-    
-    mes_relatorio = st.selectbox(
-        "Mês",
-        options=meses_opcoes_rel,
-        index=0,
-        key="filtro_mes_relatorio",
-        label_visibility="collapsed"
-    )
-    
-    st.markdown("---")
-    
-    # Botão para gerar relatório EMT
-    adicionar_botao_pdf_empresa(df_filtrado, "EMT", mes_relatorio, ano_relatorio)
-    
-    # Botão para gerar relatório ETO
-    adicionar_botao_pdf_empresa(df_filtrado, "ETO", mes_relatorio, ano_relatorio)
+    with st.container(border=True):
+        st.markdown("**:material/picture_as_pdf: Exportar Relatório**")
+
+        anos_disponiveis = sorted(df['Ano'].dropna().unique()) if 'Ano' in df.columns else []
+        anos_opcoes_rel = ["Todos os Anos"] + [int(ano) for ano in anos_disponiveis]
+        ano_relatorio = st.selectbox(":material/calendar_month: Ano do relatório", options=anos_opcoes_rel, index=0,
+                                     key="filtro_ano_relatorio")
+
+        meses_opcoes_rel = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+        mes_relatorio = st.selectbox(":material/date_range: Mês do relatório", options=meses_opcoes_rel, index=0,
+                                     key="filtro_mes_relatorio")
+
+        # Botão para gerar relatório EMT
+        adicionar_botao_pdf_empresa(df_filtrado, "EMT", mes_relatorio, ano_relatorio)
+
+        # Botão para gerar relatório ETO
+        adicionar_botao_pdf_empresa(df_filtrado, "ETO", mes_relatorio, ano_relatorio)
 
 # ============================================
 # ESTATÍSTICAS RÁPIDAS NA SIDEBAR
 # ============================================
 
 with st.sidebar:
-    st.markdown("---")
-    st.markdown("### 📊 Visão Rápida")
-    
     total_filtrado = len(df_filtrado)
     em_andamento = len(df_filtrado[df_filtrado['Status'].isin(['Desenvolvido', 'Comissionado'])])
     finalizados = len(df_filtrado[df_filtrado['Status'] == 'Validado'])
     revisao = len(df_filtrado[df_filtrado['Status'] == 'Necessário Revisão'])
-    
-    st.markdown(f"""
-    <div style="background: white; padding: 1rem; border-radius: 12px; border-left: 4px solid #028a9f; border: 1px solid #e5e7eb;">
-        <div style="display: flex; justify-content: space-between;">
-            <span>📦 Total:</span> <strong>{total_filtrado}</strong>
+
+    with st.container(border=True):
+        st.markdown("**:material/dashboard: Visão Rápida**")
+        st.markdown(f"""
+        <div class="sidebar-resumo">
+            <div><span>{icone('pacote', 15, COR_AZUL_ESCURO)} Total</span><strong>{fmt_milhar(total_filtrado)}</strong></div>
+            <div><span>{icone('engrenagem', 15, COR_AZUL_PETROLEO)} Em andamento</span><strong>{fmt_milhar(em_andamento)}</strong></div>
+            <div><span>{icone('check', 15, COR_VERDE_ESCURO)} Finalizados</span><strong>{fmt_milhar(finalizados)}</strong></div>
+            <div><span>{icone('revisao', 15, COR_LARANJA)} Em revisão</span><strong>{fmt_milhar(revisao)}</strong></div>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>⚙️ Em andamento:</span> <strong>{em_andamento}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>✅ Finalizados:</span> <strong>{finalizados}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-            <span>📝 Em revisão:</span> <strong>{revisao}</strong>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 # ============================================
 # PAINEL PRINCIPAL
@@ -1356,128 +1259,85 @@ if not df_filtrado.empty:
     taxa_revisao_sobre_comiss = (qtd_total_revisao / qtd_comissionados_acum * 100) if qtd_comissionados_acum > 0 else 0
     
     # VISUALIZAÇÃO DO FLUXO
-    st.markdown("### 🔄 Progress Tracker (Acumulado)")
-    
-    with st.expander("ℹ️ Detalhes dos cálculos", expanded=False):
+    titulo_secao("Progress Tracker (Acumulado)", "atividade")
+
+    with st.expander("Detalhes dos cálculos", expanded=False, icon=":material/info:"):
         st.markdown(mostrar_popup_calculos(), unsafe_allow_html=True)
-    
+
+    def card_fluxo(etapa, titulo, valor, cor, nome_icone, info, rodape, fundo_rodape):
+        return f"""
+        <div class="fluxo-container" style="border-left: 4px solid {cor};">
+            <div class="etapa-cabecalho">
+                <div class="etapa-icone" style="background: {cor}14;">{icone(nome_icone, 24, cor)}</div>
+                <div><div class="etapa-titulo">{etapa}</div><div class="valor-titulo">{titulo}</div></div>
+            </div>
+            <div class="valor-numero" style="color: {cor};">{fmt_milhar(valor)}</div>
+            <div class="info-texto">{info}</div>
+            <div class="percentual-box" style="background: {fundo_rodape};">{rodape}</div>
+        </div>
+        """
+
     col1, col2, col3, col4 = st.columns(4)
-    
-    # ============================================
+
     # ETAPA 1: DESENVOLVIDOS
-    # ============================================
     with col1:
-        # Determinar o texto do box baseado na empresa selecionada
-        box_background = "#f3f4f6"
-        box_content = ""
-        
         if empresa_selecionada == "EMT":
             # EMT tem meta definida de 1489
             meta_emt = META_2026.get('EMT', 1489)
             percentual_meta = (qtd_desenvolvidos_acum / meta_emt * 100) if meta_emt > 0 else 0
-            box_content = f"<strong>🎯 Meta: {meta_emt:,}<br>📊 Progresso: {percentual_meta:.1f}%</strong>"
-            box_background = "#e8f5e9"  # Verde claro
-        elif empresa_selecionada == "ETO":
-            # ETO não tem meta definida
-            box_content = "<strong>Sem definição da quantidade total</strong>"
-            box_background = "#fff3e0"  # Laranja claro
+            rodape_1 = (f"<strong>Meta: {fmt_milhar(meta_emt)}</strong> · Progresso: "
+                        f"<strong>{num_br(percentual_meta)}%</strong>")
+            fundo_1 = "#E8F5E9"
         else:
-            # "Todas" selecionado - não faz sentido mostrar meta
-            box_content = "<strong>Sem definição da quantidade total</strong>"
-            box_background = "#f3f4f6"  # Cinza claro
-        
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Desenvolvido']};">
-            <div class="etapa-titulo">ETAPA 1</div>
-            <div class="valor-numero" style="color: {CORES['Desenvolvido']};">{qtd_desenvolvidos_acum}</div>
-            <div class="valor-titulo">Desenvolvidos</div>
-            <div class="info-texto">
-                Aguardando comissionamento: <strong>{qtd_aguardando_comiss}</strong>
-            </div>
-            <div class="percentual-box" style="background: {box_background};">
-                {box_content}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # ============================================
+            # ETO ou "Todas": sem quantidade total definida
+            rodape_1 = "Sem definição da quantidade total"
+            fundo_1 = "#FFF3E0" if empresa_selecionada == "ETO" else COR_CINZA_FUNDO
+        st.markdown(card_fluxo("Etapa 1", "Desenvolvidos", qtd_desenvolvidos_acum, CORES['Desenvolvido'], 'codigo',
+                               f"Aguardando comissionamento: <strong>{fmt_milhar(qtd_aguardando_comiss)}</strong>",
+                               rodape_1, fundo_1), unsafe_allow_html=True)
+
     # ETAPA 2: COMISSIONADOS
-    # ============================================
     with col2:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Comissionado']};">
-            <div class="etapa-titulo">ETAPA 2</div>
-            <div class="valor-numero" style="color: {CORES['Comissionado']};">{qtd_comissionados_acum}</div>
-            <div class="valor-titulo">Comissionados</div>
-            <div class="info-texto">
-                Aguardando validação: <strong>{qtd_aguardando_valid}</strong>
-            </div>
-            <div class="percentual-box" style="background: #e0f7fa;">
-                <strong>→ {taxa_desenv_para_comiss:.1f}%</strong> já comissionados
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # ============================================
+        st.markdown(card_fluxo("Etapa 2", "Comissionados", qtd_comissionados_acum, CORES['Comissionado'], 'ferramenta',
+                               f"Aguardando validação: <strong>{fmt_milhar(qtd_aguardando_valid)}</strong>",
+                               f"<strong>{num_br(taxa_desenv_para_comiss)}%</strong> dos desenvolvidos já comissionados",
+                               "#E0F7FA"), unsafe_allow_html=True)
+
     # ETAPA 3: VALIDADOS
-    # ============================================
     with col3:
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Validado']};">
-            <div class="etapa-titulo">ETAPA 3</div>
-            <div class="valor-numero" style="color: {CORES['Validado']};">{qtd_validados_acum}</div>
-            <div class="valor-titulo">Validados</div>
-            <div class="info-texto">
-                Processo concluído
-            </div>
-            <div class="percentual-box" style="background: #e0f7fa;">
-                <strong>✓ {taxa_comiss_para_valid:.1f}%</strong> já validados
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # ============================================
+        st.markdown(card_fluxo("Etapa 3", "Validados", qtd_validados_acum, CORES['Validado'], 'escudo',
+                               "Processo concluído",
+                               f"<strong>{num_br(taxa_comiss_para_valid)}%</strong> dos comissionados já validados",
+                               "#E0F7FA"), unsafe_allow_html=True)
+
     # GARGALO - TOTAL DE REVISÃO ACUMULADO
-    # ============================================
     with col4:
         if qtd_total_revisao > 10:
-            cor_alerta = '#F57C00'
-            icone = '⚠️'
+            fundo_4 = "#FFF3E0"
         elif qtd_total_revisao > 5:
-            cor_alerta = '#FFA726'
-            icone = '📌'
+            fundo_4 = "#FFF8E1"
         else:
-            cor_alerta = '#2E7D32'
-            icone = '✅'
-        
-        st.markdown(f"""
-        <div class="fluxo-container" style="border-left: 4px solid {CORES['Necessário Revisão']};">
-            <div class="etapa-titulo">GARGALO</div>
-            <div class="valor-numero" style="color: {CORES['Necessário Revisão']};">{qtd_total_revisao}</div>
-            <div class="valor-titulo">Total de Revisão</div>
-            <div class="info-texto">
-                {qtd_total_revisao} equipamentos que passaram por revisão
-            </div>
-            <div class="percentual-box" style="background: #fff3e0;">
-                <strong>{icone} {taxa_revisao_sobre_comiss:.1f}%</strong> dos comissionados
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
+            fundo_4 = "#E8F5E9"
+        st.markdown(card_fluxo("Gargalo", "Total de Revisão", qtd_total_revisao, CORES['Necessário Revisão'], 'alerta',
+                               f"{fmt_milhar(qtd_total_revisao)} equipamentos passaram por revisão",
+                               f"<strong>{num_br(taxa_revisao_sobre_comiss)}%</strong> dos comissionados",
+                               fundo_4), unsafe_allow_html=True)
+
     # TABS PARA ANÁLISES DETALHADAS
+    st.write("")
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Visão Executiva", 
-        "📈 Evolução Temporal",
-        "👥 Performance por Responsável",
-        "📋 Detalhamento",
-        "🔍 Motivos Revisão"
+        ":material/dashboard: Visão Executiva",
+        ":material/show_chart: Evolução Temporal",
+        ":material/groups: Performance por Responsável",
+        ":material/table_rows: Detalhamento",
+        ":material/fact_check: Motivos Revisão"
     ])
     
     # ============================================
     # TAB 1: VISÃO EXECUTIVA
     # ============================================
     with tab1:
-        st.markdown("### 📊 Análise Comparativa por Empresa (Acumulado)")
+        titulo_secao("Análise Comparativa por Empresa (Acumulado)", "empresa")
         
         col1, col2 = st.columns(2)
         
@@ -1494,36 +1354,36 @@ if not df_filtrado.empty:
                     
                     st.markdown(f"""
                     <div class="company-card">
-                        <div class="company-title" style="color: {CORES[empresa]};">{empresa}</div>
+                        <div class="company-title" style="color: {CORES[empresa]};">{icone('empresa', 20, CORES[empresa])} {empresa}</div>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: #005973;">{desenvolvidos_emp}</div>
+                                <div class="company-metric-value" style="color: {CORES['Desenvolvido']};">{fmt_milhar(desenvolvidos_emp)}</div>
                                 <div class="company-metric-label">Desenvolvidos</div>
                             </div>
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{comissionados_emp}</div>
+                                <div class="company-metric-value" style="color: {CORES['Comissionado']};">{fmt_milhar(comissionados_emp)}</div>
                                 <div class="company-metric-label">Comissionados</div>
                             </div>
                             <div class="company-metric">
-                                <div class="company-metric-value" style="color: {CORES['Validado']};">{validados_emp}</div>
+                                <div class="company-metric-value" style="color: {CORES['Validado']};">{fmt_milhar(validados_emp)}</div>
                                 <div class="company-metric-label">Validados</div>
                             </div>
                         </div>
                         <div style="margin-top: 1rem;">
-                            <div style="background: #e0f7fa; border-radius: 20px; padding: 0.5rem;">
+                            <div style="background: {COR_CINZA_FUNDO}; border-radius: 6px; padding: 0.6rem 0.8rem;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span>Progresso do fluxo:</span>
-                                    <strong>{progresso_emp:.1f}%</strong>
+                                    <strong style="color: {COR_AZUL_ESCURO};">{num_br(progresso_emp)}%</strong>
                                 </div>
-                                <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
-                                    <div style="width: {progresso_emp}%; background: linear-gradient(90deg, #028a9f, #04d8d7); height: 6px; border-radius: 3px;"></div>
+                                <div style="width: 100%; background: {COR_CINZA_BORDA}; height: 8px; border-radius: 4px; margin-top: 0.5rem;">
+                                    <div style="width: {min(progresso_emp, 100):.1f}%; background: linear-gradient(90deg, {COR_AZUL_PETROLEO}, {COR_AZUL_ESCURO}); height: 8px; border-radius: 4px;"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
         
-        st.markdown("### 📊 Distribuição do Portfólio")
+        titulo_secao("Distribuição do Portfólio", "grafico")
         
         col1, col2 = st.columns(2)
         
@@ -1554,6 +1414,7 @@ if not df_filtrado.empty:
                 fig_tipo.update_layout(
                     height=450,
                     margin=dict(t=50, b=10, l=10, r=10),
+                    coloraxis_showscale=False,
                     xaxis_title="Quantidade",
                     yaxis_title="",
                     paper_bgcolor='rgba(0,0,0,0)',
@@ -1565,8 +1426,7 @@ if not df_filtrado.empty:
         # ============================================
         # NOVA SEÇÃO: INDICADORES DE COMISSIONAMENTO
         # ============================================
-        st.markdown("---")
-        st.markdown("### 📅 Indicadores de Comissionamento por Unidade")
+        titulo_secao("Indicadores de Comissionamento por Unidade", "calendario")
         
         mostrar_indicadores_comissionamento(df_filtrado, empresa_selecionada)
     
@@ -1574,7 +1434,7 @@ if not df_filtrado.empty:
     # TAB 2: EVOLUÇÃO TEMPORAL
     # ============================================
     with tab2:
-        st.markdown("### 📈 Evolução do Fluxo (Acumulado)")
+        titulo_secao("Evolução do Fluxo (Acumulado)", "atividade")
         
         if 'Criado' in df_filtrado.columns:
             df_filtrado['Ano_Mes'] = df_filtrado['Criado'].dt.strftime('%Y-%m')
@@ -1671,10 +1531,10 @@ if not df_filtrado.empty:
     # TAB 3: PERFORMANCE POR RESPONSÁVEL
     # ============================================
     with tab3:
-        st.markdown("### 👥 Performance por Responsável")
+        titulo_secao("Performance por Responsável", "equipe")
         
         tipo_resp = st.radio(
-            "Selecionar tipo:",
+            ":material/person_search: Selecionar tipo:",
             options=['Desenvolvimento', 'Comissionamento', 'Auditoria'],
             horizontal=True,
             key='tipo_resp_tab'
@@ -1689,12 +1549,12 @@ if not df_filtrado.empty:
         col_resp = mapa_colunas[tipo_resp]
         
         if col_resp not in df_filtrado.columns:
-            st.warning(f"⚠️ Coluna '{col_resp}' não encontrada nos dados.")
+            st.warning(f"Coluna '{col_resp}' não encontrada nos dados.", icon=":material/warning:")
         else:
             df_resp = df_filtrado[df_filtrado[col_resp] != 'Não atribuído']
             
             if df_resp.empty:
-                st.info(f"📌 Nenhum responsável de {tipo_resp} encontrado.")
+                st.info(f"Nenhum responsável de {tipo_resp} encontrado.", icon=":material/info:")
             else:
                 col1, col2 = st.columns(2)
                 
@@ -1719,6 +1579,7 @@ if not df_filtrado.empty:
                     )
                     fig_ranking.update_layout(
                         height=400,
+                        coloraxis_showscale=False,
                         xaxis_title="Quantidade de Atividades",
                         yaxis_title="",
                         paper_bgcolor='rgba(0,0,0,0)',
@@ -1762,6 +1623,7 @@ if not df_filtrado.empty:
                         )
                         fig_sucesso.update_layout(
                             height=400,
+                            coloraxis_showscale=False,
                             xaxis_title="Taxa de Sucesso (%)",
                             xaxis_range=[0, 100],
                             yaxis_title="",
@@ -1770,7 +1632,7 @@ if not df_filtrado.empty:
                         )
                         st.plotly_chart(fig_sucesso, use_container_width=True)
                 
-                st.markdown(f"#### 📊 Distribuição de Status por {tipo_resp}")
+                st.markdown(f"##### :material/stacked_bar_chart: Distribuição de Status por {tipo_resp}")
                 
                 top_resp = ranking['Responsável'].head(8).tolist()
                 df_top = df_resp[df_resp[col_resp].isin(top_resp)]
@@ -1786,7 +1648,8 @@ if not df_filtrado.empty:
                         title=f'Distribuição de Status por Responsável de {tipo_resp}',
                         barmode='stack',
                         color_discrete_map=CORES,
-                        text='Quantidade'
+                        text='Quantidade',
+                        labels={col_resp: 'Responsável'}
                     )
                     fig_dist.update_traces(textposition='inside', texttemplate='%{text}')
                     fig_dist.update_layout(
@@ -1803,21 +1666,21 @@ if not df_filtrado.empty:
     # TAB 4: DETALHAMENTO
     # ============================================
     with tab4:
-        st.markdown("### 📋 Detalhamento dos Registros")
+        titulo_secao("Detalhamento dos Registros", "lista")
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Total de Registros", len(df_filtrado))
+            st.metric(":material/inventory_2: Total de Registros", fmt_milhar(len(df_filtrado)))
         with col2:
-            st.metric("Empresas", len(df_filtrado['Empresa'].unique()))
+            st.metric(":material/apartment: Empresas", len(df_filtrado['Empresa'].unique()))
         with col3:
             if 'Tipo' in df_filtrado.columns:
-                st.metric("Tipos de Equipamento", len(df_filtrado['Tipo'].unique()))
+                st.metric(":material/category: Tipos de Equipamento", len(df_filtrado['Tipo'].unique()))
             else:
-                st.metric("Tipos de Equipamento", 0)
+                st.metric(":material/category: Tipos de Equipamento", 0)
         with col4:
-            st.metric("Responsáveis Desenvolvimento", len(df_filtrado['Resp_Dev'].unique()))
+            st.metric(":material/engineering: Responsáveis Desenvolvimento", len(df_filtrado['Resp_Dev'].unique()))
         
         # Mostrar tabela com Motivo Revisão
         colunas_mostrar = ['Codigo', 'Tipo', 'Empresa', 'Status', 'Motivo_Revisao', 
@@ -1827,9 +1690,9 @@ if not df_filtrado.empty:
         if colunas_existentes:
             df_display = df_filtrado[colunas_existentes].copy()
             df_display = df_display.rename(columns={'Motivo_Revisao': 'Motivo Revisão'})
-            st.dataframe(df_display, use_container_width=True)
+            st.dataframe(df_display, use_container_width=True, hide_index=True)
         
-        with st.expander("📊 Estatísticas Detalhadas"):
+        with st.expander("Estatísticas Detalhadas", icon=":material/analytics:"):
             st.markdown("**Distribuição por Status:**")
             status_counts = df_filtrado['Status'].value_counts().reset_index()
             status_counts.columns = ['Status', 'Quantidade']
@@ -1850,7 +1713,7 @@ if not df_filtrado.empty:
                 st.dataframe(tipo_counts.head(15), use_container_width=True)
             
             st.markdown("---")
-            st.markdown("### 📊 Resumo Acumulado")
+            st.markdown("##### :material/summarize: Resumo Acumulado")
             
             resumo_acum = pd.DataFrame({
                 'Métrica': [
@@ -1881,32 +1744,35 @@ if not df_filtrado.empty:
     # FOOTER
     st.markdown(f"""
     <div class="footer">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
-            </div>
-            <div>
-                Última atualização: {st.session_state.get('ultima_atualizacao', datetime.now()).strftime('%d/%m/%Y %H:%M')}
-            </div>
-            <div style="color: #6b7280;">
-                {len(df_filtrado)} registros • {fonte.upper()}
-            </div>
+        <div style="margin-bottom: 0.6rem;">
+            <p style="margin: 0; color: {COR_PRETO_SUAVE}; font-weight: 500; display:inline-flex; align-items:center; gap:6px;">
+                {icone('raio', 16, COR_AZUL_ESCURO)} <span style="color: {COR_AZUL_ESCURO};">Radar de Comissionamento SCADA</span> · Energisa
+            </p>
         </div>
+        <p style="margin: 0; font-size: 0.75rem;">
+            © {agora().year} Monitoring Center | Sistema proprietário - Energisa Group
+        </p>
+        <p style="margin: 0.2rem 0 0 0; font-size: 0.7rem;">
+            Versão 5.1 · Última atualização: {st.session_state.get('ultima_atualizacao', agora()).strftime('%d/%m/%Y %H:%M')} · {fmt_milhar(len(df_filtrado))} registros · {fonte.upper()}
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
 else:
-    st.warning("⚠️ Nenhum dado encontrado com os filtros selecionados.")
+    st.warning("Nenhum dado encontrado com os filtros selecionados.", icon=":material/search_off:")
     
     st.markdown(f"""
     <div class="footer">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>⚡ Radar de Comissionamento SCADA</strong> • Versão 5.0 • Energisa
-            </div>
-            <div>
-                Última atualização: {st.session_state.get('ultima_atualizacao', datetime.now()).strftime('%d/%m/%Y %H:%M')}
-            </div>
+        <div style="margin-bottom: 0.6rem;">
+            <p style="margin: 0; color: {COR_PRETO_SUAVE}; font-weight: 500; display:inline-flex; align-items:center; gap:6px;">
+                {icone('raio', 16, COR_AZUL_ESCURO)} <span style="color: {COR_AZUL_ESCURO};">Radar de Comissionamento SCADA</span> · Energisa
+            </p>
         </div>
+        <p style="margin: 0; font-size: 0.75rem;">
+            © {agora().year} Monitoring Center | Sistema proprietário - Energisa Group
+        </p>
+        <p style="margin: 0.2rem 0 0 0; font-size: 0.7rem;">
+            Versão 5.1 · Última atualização: {st.session_state.get('ultima_atualizacao', agora()).strftime('%d/%m/%Y %H:%M')}
+        </p>
     </div>
     """, unsafe_allow_html=True)
